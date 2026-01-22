@@ -61,6 +61,19 @@
                     </a>
                 </li>
                 <li>
+                    <a href="#blood-requests" class="nav-item" data-section="blood-requests">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                        <span>Запросы крови</span>
+                        <span class="badge badge-warning" id="requests-badge">0</span>
+                    </a>
+                </li>
+                <li>
                     <a href="#responses" class="nav-item" data-section="responses">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
@@ -277,6 +290,55 @@
                     <path d="M12 8v4M12 16h.01"/>
                 </svg>
                 <p>При установке статуса "Срочно" система автоматически отправит уведомления всем донорам с подходящей группой крови в Telegram.</p>
+            </div>
+        </section>
+
+        <!-- Секция: Запросы крови -->
+        <section id="blood-requests" class="dashboard-section">
+            <div class="section-header">
+                <h2>Запросы крови</h2>
+                <p>Создавайте и управляйте запросами на донацию</p>
+            </div>
+            
+            <div class="requests-actions">
+                <button class="btn btn-primary" onclick="openCreateRequestModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="16"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    Создать запрос
+                </button>
+            </div>
+            
+            <div class="requests-filters">
+                <div class="filter-group">
+                    <label>Статус:</label>
+                    <select id="requests-filter-status">
+                        <option value="all">Все</option>
+                        <option value="active">Активные</option>
+                        <option value="fulfilled">Выполненные</option>
+                        <option value="cancelled">Отменённые</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Группа крови:</label>
+                    <select id="requests-filter-blood">
+                        <option value="all">Все группы</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="requests-list" id="requests-list">
+                <!-- Заполняется динамически -->
             </div>
         </section>
 
@@ -537,6 +599,87 @@
             <div class="modal-footer">
                 <button class="btn btn-outline" data-action="close">Закрыть</button>
                 <button class="btn btn-primary" data-action="contact">Связаться</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка: Создать запрос крови -->
+    <div id="create-request-modal" class="modal">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-header">
+                <h3>Создать запрос на донацию</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="create-request-form">
+                    <div class="form-group">
+                        <label>Группа крови *</label>
+                        <div class="blood-type-selector">
+                            <label class="blood-option">
+                                <input type="radio" name="request_blood" value="A+" required>
+                                <span>A+</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="request_blood" value="A-">
+                                <span>A-</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="request_blood" value="B+">
+                                <span>B+</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="request_blood" value="B-">
+                                <span>B-</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="request_blood" value="AB+">
+                                <span>AB+</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="request_blood" value="AB-">
+                                <span>AB-</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="request_blood" value="O+">
+                                <span>O+</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="request_blood" value="O-">
+                                <span>O-</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Срочность *</label>
+                        <select name="urgency" required>
+                            <option value="normal">Обычная</option>
+                            <option value="urgent">Срочная</option>
+                            <option value="critical">Критическая (с рассылкой)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Описание / Комментарий</label>
+                        <textarea name="description" rows="4" placeholder="Укажите дополнительную информацию о запросе (необязательно)"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Срок действия (дней)</label>
+                        <input type="number" name="expires_days" min="1" max="30" value="7" placeholder="7">
+                        <small>Запрос автоматически закроется через указанное количество дней</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" data-action="cancel">Отмена</button>
+                <button class="btn btn-primary" data-action="create-request">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    Создать запрос
+                </button>
             </div>
         </div>
     </div>

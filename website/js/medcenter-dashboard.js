@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Асинхронные функции - загрузка данных (не блокируют)
     loadMedcenterData().then(() => console.log('✓ Данные медцентра загружены')).catch(e => console.error('✗ Ошибка данных медцентра:', e));
     loadTrafficLightFromAPI().then(() => console.log('✓ Светофор загружен')).catch(e => console.error('✗ Ошибка светофора:', e));
+    loadBloodRequestsFromAPI().then(() => console.log('✓ Запросы крови загружены')).catch(e => console.error('✗ Ошибка запросов:', e));
     loadResponsesFromAPI().then(() => console.log('✓ Отклики загружены')).catch(e => console.error('✗ Ошибка откликов:', e));
     loadDonorsFromAPI().then(() => console.log('✓ Доноры загружены')).catch(e => console.error('✗ Ошибка доноров:', e));
     loadStatisticsFromAPI().then(() => console.log('✓ Статистика загружена')).catch(e => console.error('✗ Ошибка статистики:', e));
@@ -702,11 +703,269 @@ function renderStatistics(apiStats) {
 }
 
 /**
+ * Запросы крови
+ */
+async function loadBloodRequestsFromAPI() {
+    try {
+        const response = await fetch(`${MC_API_URL}/blood-requests`, {
+            headers: getAuthHeaders()
+        });
+        const requests = await response.json();
+        renderBloodRequests(requests);
+        updateRequestsBadge(requests);
+    } catch (error) {
+        console.error('Ошибка загрузки запросов крови:', error);
+        renderBloodRequests([]);
+    }
+}
+
+function renderBloodRequests(requests) {
+    const container = document.getElementById('requests-list');
+    if (!container) return;
+    
+    if (!requests || requests.length === 0) {
+        container.innerHTML = '<p class="no-data">Нет активных запросов на донацию</p>';
+        return;
+    }
+    
+    container.innerHTML = requests.map(req => {
+        const urgencyLabels = {
+            'normal': 'Обычная',
+            'urgent': 'Срочная',
+            'critical': 'Критическая'
+        };
+        
+        const statusLabels = {
+            'active': 'Активный',
+            'fulfilled': 'Выполнен',
+            'cancelled': 'Отменён'
+        };
+        
+        const createdDate = new Date(req.created_at).toLocaleDateString('ru-RU');
+        const expiresDate = req.expires_at ? new Date(req.expires_at).toLocaleDateString('ru-RU') : '—';
+        
+        return `
+            <div class="request-card ${req.status}">
+                <div class="request-header">
+                    <div class="request-blood">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 4C12 4 6 10 6 14a6 6 0 1012 0c0-4-6-10-6-10z"/>
+                        </svg>
+                        ${req.blood_type}
+                    </div>
+                    <div class="request-urgency ${req.urgency}">
+                        ${urgencyLabels[req.urgency]}
+                    </div>
+                </div>
+                
+                <div class="request-body">
+                    ${req.description ? `<p class="request-description">${req.description}</p>` : ''}
+                    
+                    <div class="request-meta">
+                        <div class="request-meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            Создан: ${createdDate}
+                        </div>
+                        <div class="request-meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            Истекает: ${expiresDate}
+                        </div>
+                        <div class="request-meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                            </svg>
+                            Статус: ${statusLabels[req.status]}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="request-footer">
+                    <div class="request-stats">
+                        <div class="request-stat">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                            </svg>
+                            <strong>${req.responses_count || 0}</strong> откликов
+                        </div>
+                        <div class="request-stat">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            <strong>${req.approved_count || 0}</strong> подтверждено
+                        </div>
+                    </div>
+                    
+                    <div class="request-actions">
+                        ${req.status === 'active' ? `
+                            <button class="btn btn-sm btn-success" onclick="fulfillRequest(${req.id})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                                Выполнен
+                            </button>
+                            <button class="btn btn-sm btn-outline" onclick="cancelRequest(${req.id})">Отменить</button>
+                        ` : ''}
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteRequest(${req.id})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function updateRequestsBadge(requests) {
+    const badge = document.getElementById('requests-badge');
+    if (badge) {
+        const activeCount = requests.filter(r => r.status === 'active').length;
+        badge.textContent = activeCount;
+        badge.style.display = activeCount > 0 ? 'inline-block' : 'none';
+    }
+}
+
+function openCreateRequestModal() {
+    document.getElementById('create-request-modal')?.classList.add('active');
+}
+
+async function createBloodRequest(formData) {
+    try {
+        const response = await fetch(`${MC_API_URL}/blood-requests`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(formData)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showNotification('Запрос на донацию создан!', 'success');
+            closeModal(document.getElementById('create-request-modal'));
+            await loadBloodRequestsFromAPI();
+            if (formData.urgency === 'critical') {
+                showNotification('Уведомления отправлены донорам!', 'info');
+            }
+        } else {
+            showNotification(result.error || 'Ошибка создания запроса', 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        showNotification('Ошибка соединения с сервером', 'error');
+    }
+}
+
+async function fulfillRequest(requestId) {
+    if (!confirm('Отметить запрос как выполненный?')) return;
+    
+    try {
+        const response = await fetch(`${MC_API_URL}/blood-requests/${requestId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ status: 'fulfilled' })
+        });
+        
+        if (response.ok) {
+            showNotification('Запрос отмечен как выполненный', 'success');
+            await loadBloodRequestsFromAPI();
+        } else {
+            showNotification('Ошибка обновления статуса', 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        showNotification('Ошибка соединения', 'error');
+    }
+}
+
+async function cancelRequest(requestId) {
+    if (!confirm('Отменить этот запрос?')) return;
+    
+    try {
+        const response = await fetch(`${MC_API_URL}/blood-requests/${requestId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ status: 'cancelled' })
+        });
+        
+        if (response.ok) {
+            showNotification('Запрос отменён', 'success');
+            await loadBloodRequestsFromAPI();
+        } else {
+            showNotification('Ошибка обновления статуса', 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        showNotification('Ошибка соединения', 'error');
+    }
+}
+
+async function deleteRequest(requestId) {
+    if (!confirm('Удалить этот запрос? Это действие необратимо.')) return;
+    
+    try {
+        const response = await fetch(`${MC_API_URL}/blood-requests/${requestId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            showNotification('Запрос удалён', 'success');
+            await loadBloodRequestsFromAPI();
+        } else {
+            showNotification('Ошибка удаления', 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        showNotification('Ошибка соединения', 'error');
+    }
+}
+
+/**
  * Модальные окна
  */
 function initModals() {
     // Срочный запрос
     document.getElementById('urgent-request-btn')?.addEventListener('click', openUrgentModal);
+    
+    // Создание запроса крови
+    const createRequestBtn = document.querySelector('[data-action="create-request"]');
+    if (createRequestBtn) {
+        createRequestBtn.addEventListener('click', async () => {
+            const form = document.getElementById('create-request-form');
+            const formData = new FormData(form);
+            
+            const bloodType = formData.get('request_blood');
+            if (!bloodType) {
+                showNotification('Выберите группу крови', 'error');
+                return;
+            }
+            
+            const data = {
+                blood_type: bloodType,
+                urgency: formData.get('urgency'),
+                description: formData.get('description'),
+                expires_days: parseInt(formData.get('expires_days')) || 7
+            };
+            
+            createRequestBtn.classList.add('loading');
+            await createBloodRequest(data);
+            createRequestBtn.classList.remove('loading');
+            form.reset();
+        });
+    }
     
     // Закрытие модалок
     document.querySelectorAll('.modal').forEach(modal => {

@@ -690,6 +690,145 @@ def delete_request(request_id):
     return jsonify({'message': 'Запрос удалён'})
 
 # ============================================
+# API: Запросы крови
+# ============================================
+
+@app.route('/api/blood-requests', methods=['GET'])
+@require_auth('medcenter')
+def get_blood_requests():
+    """Получить список запросов крови медцентра"""
+    mc_id = g.session['medical_center_id']
+    status = request.args.get('status', 'all')
+    blood_type = request.args.get('blood_type', 'all')
+    
+    query = """
+        SELECT id, blood_type, urgency, status, description,
+               created_at, expires_at, fulfilled_at,
+               (SELECT COUNT(*) FROM donation_responses dr 
+                WHERE dr.request_id = blood_requests.id) as responses_count,
+               (SELECT COUNT(*) FROM donation_responses dr 
+                WHERE dr.request_id = blood_requests.id AND dr.status = 'approved') as approved_count
+        FROM blood_requests
+        WHERE medical_center_id = %s
+    """
+    params = [mc_id]
+    
+    if status != 'all':
+        query += " AND status = %s"
+        params.append(status)
+    
+    if blood_type != 'all':
+        query += " AND blood_type = %s"
+        params.append(blood_type)
+    
+    query += " ORDER BY created_at DESC"
+    
+    requests_list = query_db(query, tuple(params))
+    return jsonify(requests_list or [])
+
+@app.route('/api/blood-requests', methods=['POST'])
+@require_auth('medcenter')
+def create_blood_request():
+    """Создать новый запрос крови"""
+    mc_id = g.session['medical_center_id']
+    data = request.json
+    
+    required = ['blood_type', 'urgency']
+    for field in required:
+        if not data.get(field):
+            return jsonify({'error': f'Поле {field} обязательно'}), 400
+    
+    # Проверяем группу крови
+    valid_blood = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-']
+    if data['blood_type'] not in valid_blood:
+        return jsonify({'error': 'Неверная группа крови'}), 400
+    
+    # Проверяем срочность
+    if data['urgency'] not in ['normal', 'urgent', 'critical']:
+        return jsonify({'error': 'Неверная срочность'}), 400
+    
+    # Вычисляем expires_at
+    expires_days = data.get('expires_days', 7)
+    
+    # Создаём запрос
+    request_id = query_db(
+        """INSERT INTO blood_requests 
+           (medical_center_id, blood_type, urgency, status, description, expires_at, created_at)
+           VALUES (%s, %s, %s, 'active', %s, NOW() + INTERVAL '%s days', NOW())
+           RETURNING id""",
+        (mc_id, data['blood_type'], data['urgency'], data.get('description', ''), expires_days),
+        commit=True, one=True
+    )['id']
+    
+    # Обновляем светофор если критическая срочность
+    if data['urgency'] == 'critical':
+        query_db(
+            """INSERT INTO blood_needs (medical_center_id, blood_type, status, last_updated)
+               VALUES (%s, %s, 'critical', NOW())
+               ON CONFLICT (medical_center_id, blood_type)
+               DO UPDATE SET status = 'critical', last_updated = NOW()""",
+            (mc_id, data['blood_type']), commit=True
+        )
+        
+        # Отправляем уведомления
+        mc = query_db("SELECT district_id FROM medical_centers WHERE id = %s", (mc_id,), one=True)
+        send_urgent_notifications(mc_id, data['blood_type'], request_id, mc.get('district_id'))
+    
+    return jsonify({'message': 'Запрос создан', 'request_id': request_id}), 201
+
+@app.route('/api/blood-requests/<int:request_id>', methods=['PUT'])
+@require_auth('medcenter')
+def update_blood_request(request_id):
+    """Обновить статус запроса"""
+    mc_id = g.session['medical_center_id']
+    data = request.json
+    
+    # Проверяем принадлежность запроса медцентру
+    req = query_db(
+        "SELECT id FROM blood_requests WHERE id = %s AND medical_center_id = %s",
+        (request_id, mc_id), one=True
+    )
+    
+    if not req:
+        return jsonify({'error': 'Запрос не найден'}), 404
+    
+    status = data.get('status')
+    if status not in ['active', 'fulfilled', 'cancelled']:
+        return jsonify({'error': 'Неверный статус'}), 400
+    
+    # Обновляем
+    if status == 'fulfilled':
+        query_db(
+            "UPDATE blood_requests SET status = %s, fulfilled_at = NOW() WHERE id = %s",
+            (status, request_id), commit=True
+        )
+    else:
+        query_db(
+            "UPDATE blood_requests SET status = %s WHERE id = %s",
+            (status, request_id), commit=True
+        )
+    
+    return jsonify({'message': 'Статус обновлён'})
+
+@app.route('/api/blood-requests/<int:request_id>', methods=['DELETE'])
+@require_auth('medcenter')
+def delete_blood_request(request_id):
+    """Удалить запрос"""
+    mc_id = g.session['medical_center_id']
+    
+    # Проверяем принадлежность
+    req = query_db(
+        "SELECT id FROM blood_requests WHERE id = %s AND medical_center_id = %s",
+        (request_id, mc_id), one=True
+    )
+    
+    if not req:
+        return jsonify({'error': 'Запрос не найден'}), 404
+    
+    query_db("DELETE FROM blood_requests WHERE id = %s", (request_id,), commit=True)
+    return jsonify({'message': 'Запрос удалён'})
+
+# ============================================
 # API: Отклики
 # ============================================
 

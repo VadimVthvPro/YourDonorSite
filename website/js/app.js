@@ -10,6 +10,9 @@ window.API_URL = 'http://localhost:5001/api';
 const API_URL = window.API_URL;
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Проверяем авторизацию и обновляем кнопки
+    checkAuthAndUpdateNav();
+    
     // Инициализация всех компонентов
     initScrollAnimations();
     initHeader();
@@ -19,6 +22,47 @@ document.addEventListener('DOMContentLoaded', function() {
     initCentersSelector();
     initSmoothScroll();
 });
+
+/**
+ * Проверка авторизации и обновление навигации
+ */
+function checkAuthAndUpdateNav() {
+    const authToken = localStorage.getItem('auth_token');
+    const userType = localStorage.getItem('user_type');
+    const navButtons = document.getElementById('nav-buttons');
+    
+    if (!navButtons) return;
+    
+    if (authToken && userType) {
+        // Пользователь авторизован
+        let dashboardUrl = '';
+        let dashboardLabel = '';
+        let userName = '';
+        
+        if (userType === 'donor') {
+            dashboardUrl = 'pages/donor-dashboard.html';
+            dashboardLabel = 'Личный кабинет';
+            const donorData = JSON.parse(localStorage.getItem('donor_user') || '{}');
+            userName = donorData.full_name || 'Донор';
+        } else if (userType === 'medcenter') {
+            dashboardUrl = 'pages/medcenter-dashboard.html';
+            dashboardLabel = 'Панель медцентра';
+            const mcData = JSON.parse(localStorage.getItem('medcenter_user') || '{}');
+            userName = mcData.name || 'Медцентр';
+        }
+        
+        navButtons.innerHTML = `
+            <span class="nav-user-name">${userName}</span>
+            <a href="${dashboardUrl}" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px; margin-right: 6px;">
+                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                </svg>
+                ${dashboardLabel}
+            </a>
+        `;
+    }
+}
 
 /**
  * Загрузка статуса крови для главной страницы

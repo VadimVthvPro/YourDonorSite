@@ -301,6 +301,178 @@
     color: var(--color-gray-700);
 }
 
+/* Запросы крови */
+.requests-actions {
+    margin-bottom: var(--spacing-xl);
+}
+
+.requests-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.requests-actions svg {
+    width: 20px;
+    height: 20px;
+}
+
+.requests-filters {
+    display: flex;
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.requests-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.request-card {
+    background: var(--color-white);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-sm);
+    border-left: 4px solid var(--color-gray-300);
+    transition: all var(--transition-base);
+}
+
+.request-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.request-card.active {
+    border-left-color: var(--color-primary);
+}
+
+.request-card.fulfilled {
+    border-left-color: var(--color-success);
+    opacity: 0.8;
+}
+
+.request-card.cancelled {
+    border-left-color: var(--color-gray-400);
+    opacity: 0.6;
+}
+
+.request-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-md);
+}
+
+.request-blood {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    color: var(--color-primary);
+}
+
+.request-blood svg {
+    width: 28px;
+    height: 28px;
+}
+
+.request-urgency {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: 600;
+}
+
+.request-urgency.normal {
+    background: var(--color-gray-100);
+    color: var(--color-gray-700);
+}
+
+.request-urgency.urgent {
+    background: var(--color-warning-light);
+    color: var(--color-warning);
+}
+
+.request-urgency.critical {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.request-body {
+    margin-bottom: var(--spacing-md);
+}
+
+.request-description {
+    font-size: var(--text-sm);
+    color: var(--color-gray-600);
+    margin-bottom: var(--spacing-md);
+}
+
+.request-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-lg);
+    font-size: var(--text-sm);
+    color: var(--color-gray-500);
+}
+
+.request-meta-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.request-meta-item svg {
+    width: 16px;
+    height: 16px;
+}
+
+.request-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--color-gray-100);
+}
+
+.request-stats {
+    display: flex;
+    gap: var(--spacing-lg);
+}
+
+.request-stat {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--text-sm);
+    color: var(--color-gray-600);
+}
+
+.request-stat svg {
+    width: 18px;
+    height: 18px;
+    color: var(--color-primary);
+}
+
+.request-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.request-actions .btn-sm {
+    padding: var(--spacing-xs) var(--spacing-md);
+    font-size: var(--text-sm);
+}
+
 /* Список откликов */
 .responses-list {
     display: flex;

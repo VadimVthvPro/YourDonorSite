@@ -232,6 +232,19 @@ button {
     gap: var(--spacing-md);
 }
 
+.nav-user-name {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-gray-700);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--color-gray-100);
+    border-radius: var(--radius-lg);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .mobile-menu-btn {
     display: none;
     flex-direction: column;
