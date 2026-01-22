@@ -3,7 +3,11 @@
  * Интерактивность, анимации и динамический функционал
  */
 
-const API_URL = 'http://localhost:5001/api';
+console.log('==== app.js ЗАГРУЖЕН ====');
+
+// Глобальный URL для API
+window.API_URL = 'http://localhost:5001/api';
+const API_URL = window.API_URL;
 
 document.addEventListener('DOMContentLoaded', function() {
     // Инициализация всех компонентов

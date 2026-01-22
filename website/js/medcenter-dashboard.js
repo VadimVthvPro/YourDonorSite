@@ -3,24 +3,60 @@
  * Управление донорством, светофор, отклики
  */
 
-const API_URL = 'http://localhost:5001/api';
+console.log('==== medcenter-dashboard.js ЗАГРУЖЕН ====');
+
+// Используем MC_API_URL из app.js или определяем свой
+const MC_MC_API_URL = window.MC_API_URL || 'http://localhost:5001/api';
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== Инициализация dashboard медцентра ===');
+    
     if (!checkAuth()) {
+        console.warn('Авторизация не пройдена, перенаправление...');
         window.location.href = 'auth.html?type=medcenter';
         return;
     }
     
-    initNavigation();
-    initMobileSidebar();
-    loadMedcenterData();
-    loadTrafficLightFromAPI();
-    loadResponsesFromAPI();
-    loadDonorsFromAPI();
-    loadStatisticsFromAPI();
-    initModals();
-    initForms();
-    initLogout();
+    console.log('✓ Авторизация OK');
+    
+    // Синхронные функции - критически важные
+    try {
+        initNavigation();
+        console.log('✓ Навигация инициализирована');
+    } catch (e) { console.error('✗ Ошибка initNavigation:', e); }
+    
+    try {
+        initMobileSidebar();
+        console.log('✓ Мобильный sidebar инициализирован');
+    } catch (e) { console.error('✗ Ошибка initMobileSidebar:', e); }
+    
+    try {
+        loadMedcenterData();
+        console.log('✓ Данные медцентра загружены');
+    } catch (e) { console.error('✗ Ошибка loadMedcenterData:', e); }
+    
+    try {
+        initModals();
+        console.log('✓ Модальные окна инициализированы');
+    } catch (e) { console.error('✗ Ошибка initModals:', e); }
+    
+    try {
+        initForms();
+        console.log('✓ Формы инициализированы');
+    } catch (e) { console.error('✗ Ошибка initForms:', e); }
+    
+    try {
+        initLogout();
+        console.log('✓ Выход инициализирован');
+    } catch (e) { console.error('✗ Ошибка initLogout:', e); }
+    
+    // Асинхронные функции - загрузка данных (не блокируют)
+    loadTrafficLightFromAPI().then(() => console.log('✓ Светофор загружен')).catch(e => console.error('✗ Ошибка светофора:', e));
+    loadResponsesFromAPI().then(() => console.log('✓ Отклики загружены')).catch(e => console.error('✗ Ошибка откликов:', e));
+    loadDonorsFromAPI().then(() => console.log('✓ Доноры загружены')).catch(e => console.error('✗ Ошибка доноров:', e));
+    loadStatisticsFromAPI().then(() => console.log('✓ Статистика загружена')).catch(e => console.error('✗ Ошибка статистики:', e));
+    
+    console.log('=== Инициализация завершена ===');
 });
 
 /**
@@ -115,13 +151,26 @@ function initMobileSidebar() {
  * Загрузка данных медцентра
  */
 function loadMedcenterData() {
-    const mcData = JSON.parse(localStorage.getItem('medcenter_user') || '{}');
-    document.getElementById('mc-name').textContent = mcData.name || 'Медцентр';
-    
-    // Заполнение настроек
-    document.getElementById('setting-name').value = mcData.name || '';
-    document.getElementById('setting-address').value = mcData.address || '';
-    document.getElementById('setting-phone').value = mcData.contact || '';
+    try {
+        const mcData = JSON.parse(localStorage.getItem('medcenter_user') || '{}');
+        console.log('Загружены данные медцентра:', mcData);
+        
+        const mcNameEl = document.getElementById('mc-name');
+        if (mcNameEl) mcNameEl.textContent = mcData.name || 'Медцентр';
+        
+        // Заполнение настроек
+        const settingName = document.getElementById('setting-name');
+        const settingAddress = document.getElementById('setting-address');
+        const settingPhone = document.getElementById('setting-phone');
+        const settingEmail = document.getElementById('setting-email');
+        
+        if (settingName) settingName.value = mcData.name || '';
+        if (settingAddress) settingAddress.value = mcData.address || '';
+        if (settingPhone) settingPhone.value = mcData.phone || '';
+        if (settingEmail) settingEmail.value = mcData.email || '';
+    } catch (error) {
+        console.error('Ошибка загрузки данных медцентра:', error);
+    }
 }
 
 /**
@@ -132,16 +181,20 @@ let donorCountsData = {};
 
 async function loadTrafficLightFromAPI() {
     const mcId = getMedcenterId();
+    console.log('Загрузка светофора для медцентра ID:', mcId);
+    
     if (!mcId) {
+        console.warn('ID медцентра не найден, используем fallback');
         initTrafficLightFallback();
         return;
     }
     
     try {
-        const response = await fetch(`${API_URL}/blood-needs/${mcId}`, {
+        const response = await fetch(`${MC_API_URL}/blood-needs/${mcId}`, {
             headers: getAuthHeaders()
         });
         bloodNeedsData = await response.json();
+        console.log('Данные светофора загружены:', bloodNeedsData);
         
         renderMiniTrafficLight();
         renderFullTrafficLight();
@@ -216,7 +269,7 @@ async function setBloodStatus(bloodType, status) {
     }
     
     try {
-        const response = await fetch(`${API_URL}/blood-needs/${mcId}`, {
+        const response = await fetch(`${MC_API_URL}/blood-needs/${mcId}`, {
             method: 'PUT',
             headers: getAuthHeaders(),
             body: JSON.stringify({ blood_type: bloodType, status: status })
@@ -253,7 +306,7 @@ async function loadResponsesFromAPI() {
     const mcId = getMedcenterId();
     
     try {
-        const response = await fetch(`${API_URL}/responses?medical_center_id=${mcId}`, {
+        const response = await fetch(`${MC_API_URL}/responses?medical_center_id=${mcId}`, {
             headers: getAuthHeaders()
         });
         const responses = await response.json();
@@ -350,7 +403,7 @@ function getResponseStatusText(status) {
 
 async function updateResponseStatus(responseId, status) {
     try {
-        const response = await fetch(`${API_URL}/responses/${responseId}`, {
+        const response = await fetch(`${MC_API_URL}/responses/${responseId}`, {
             method: 'PUT',
             headers: getAuthHeaders(),
             body: JSON.stringify({ status: status })
@@ -379,7 +432,7 @@ function formatDate(dateStr) {
  */
 async function loadDonorsFromAPI() {
     try {
-        const response = await fetch(`${API_URL}/medcenter/donors`, {
+        const response = await fetch(`${MC_API_URL}/medcenter/donors`, {
             headers: getAuthHeaders()
         });
         const donors = await response.json();
@@ -509,7 +562,7 @@ async function sendMessageToDonor(donorId) {
     const message = document.getElementById('msg-content').value;
     
     try {
-        const response = await fetch(`${API_URL}/messages`, {
+        const response = await fetch(`${MC_API_URL}/messages`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify({
@@ -536,7 +589,7 @@ async function sendMessageToDonor(donorId) {
  */
 async function loadStatisticsFromAPI() {
     try {
-        const response = await fetch(`${API_URL}/stats/medcenter`, {
+        const response = await fetch(`${MC_API_URL}/stats/medcenter`, {
             headers: getAuthHeaders()
         });
         const stats = await response.json();
@@ -736,7 +789,7 @@ function initLogout() {
         e.preventDefault();
         
         try {
-            await fetch(`${API_URL}/logout`, {
+            await fetch(`${MC_API_URL}/logout`, {
                 method: 'POST',
                 headers: getAuthHeaders()
             });

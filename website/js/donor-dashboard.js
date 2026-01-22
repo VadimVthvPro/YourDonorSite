@@ -3,7 +3,10 @@
  * Функционал управления профилем и откликов на запросы
  */
 
-const API_URL = 'http://localhost:5001/api';
+console.log('==== donor-dashboard.js ЗАГРУЖЕН ====');
+
+// Используем DONOR_API_URL из app.js или определяем свой
+const DONOR_DONOR_API_URL = window.DONOR_API_URL || 'http://localhost:5001/api';
 
 document.addEventListener('DOMContentLoaded', function() {
     // Проверка авторизации
@@ -41,7 +44,7 @@ function getAuthHeaders() {
  */
 async function loadUserDataFromAPI() {
     try {
-        const response = await fetch(`${API_URL}/donor/profile`, {
+        const response = await fetch(`${DONOR_API_URL}/donor/profile`, {
             headers: getAuthHeaders()
         });
         
@@ -108,7 +111,7 @@ function displayUserData(user) {
 async function loadRequestsFromAPI() {
     try {
         const user = JSON.parse(localStorage.getItem('donor_user') || '{}');
-        const response = await fetch(`${API_URL}/requests?blood_type=${user.blood_type || ''}&status=active`, {
+        const response = await fetch(`${DONOR_API_URL}/requests?blood_type=${user.blood_type || ''}&status=active`, {
             headers: getAuthHeaders()
         });
         
@@ -164,7 +167,7 @@ function getUrgencyText(urgency) {
 
 async function respondToRequest(requestId) {
     try {
-        const response = await fetch(`${API_URL}/responses`, {
+        const response = await fetch(`${DONOR_API_URL}/responses`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify({ request_id: parseInt(requestId) })
@@ -188,7 +191,7 @@ async function respondToRequest(requestId) {
  */
 async function loadMessagesFromAPI() {
     try {
-        const response = await fetch(`${API_URL}/messages`, {
+        const response = await fetch(`${DONOR_API_URL}/messages`, {
             headers: getAuthHeaders()
         });
         
@@ -865,7 +868,7 @@ function initLogout() {
             e.preventDefault();
             
             try {
-                await fetch(`${API_URL}/logout`, {
+                await fetch(`${DONOR_API_URL}/logout`, {
                     method: 'POST',
                     headers: getAuthHeaders()
                 });

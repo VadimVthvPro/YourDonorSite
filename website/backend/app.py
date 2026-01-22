@@ -407,7 +407,7 @@ def register_medcenter_with_password():
                VALUES (%s, %s, %s, %s, %s, %s, %s)""",
             (data['name'], data.get('district_id'), data.get('address'), 
              data['email'], data.get('phone'), data.get('is_blood_center', False), 
-             data['password'])
+             data['password']), commit=True
         )
         
         # Получаем созданный медцентр
@@ -424,12 +424,21 @@ def register_medcenter_with_password():
         if not mc:
             return jsonify({'error': 'Ошибка создания медцентра'}), 500
         
+        # Инициализируем светофор (все группы крови в норме)
+        blood_types = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-']
+        for bt in blood_types:
+            query_db(
+                """INSERT INTO blood_needs (medical_center_id, blood_type, status) 
+                   VALUES (%s, %s, 'normal') ON CONFLICT DO NOTHING""",
+                (mc['id'], bt), commit=True
+            )
+        
         # Создаём сессию
         token = generate_token()
         query_db(
-            """INSERT INTO sessions (token, user_type, medical_center_id, expires_at)
+            """INSERT INTO user_sessions (session_token, user_type, medical_center_id, expires_at)
                VALUES (%s, 'medcenter', %s, NOW() + INTERVAL '30 days')""",
-            (token, mc['id'])
+            (token, mc['id']), commit=True
         )
         
         return jsonify({
@@ -816,13 +825,33 @@ def update_response(response_id):
 def get_medcenter_donors():
     mc_id = g.session['medical_center_id']
     blood_type = request.args.get('blood_type')
+    include_district = request.args.get('include_district', 'true')
     
-    query = """
-        SELECT id, full_name, blood_type, phone, email, telegram_username,
-               last_donation_date, total_donations, is_honorary_donor
-        FROM users WHERE medical_center_id = %s AND is_active = TRUE
-    """
-    params = [mc_id]
+    # Получаем район медцентра
+    mc = query_db(
+        "SELECT district_id FROM medical_centers WHERE id = %s",
+        (mc_id,), one=True
+    )
+    
+    if include_district == 'true' and mc and mc.get('district_id'):
+        # Показываем всех доноров из района
+        query = """
+            SELECT u.id, u.full_name, u.blood_type, u.phone, u.email, u.telegram_username,
+                   u.last_donation_date, u.total_donations, u.is_honorary_donor,
+                   mc.name as medical_center_name
+            FROM users u
+            LEFT JOIN medical_centers mc ON u.medical_center_id = mc.id
+            WHERE u.district_id = %s AND u.is_active = TRUE
+        """
+        params = [mc['district_id']]
+    else:
+        # Только доноры привязанные к этому медцентру
+        query = """
+            SELECT id, full_name, blood_type, phone, email, telegram_username,
+                   last_donation_date, total_donations, is_honorary_donor
+            FROM users WHERE medical_center_id = %s AND is_active = TRUE
+        """
+        params = [mc_id]
     
     if blood_type:
         query += " AND blood_type = %s"
@@ -831,7 +860,7 @@ def get_medcenter_donors():
     query += " ORDER BY full_name"
     
     donors = query_db(query, tuple(params))
-    return jsonify(donors)
+    return jsonify(donors if donors else [])
 
 # ============================================
 # API: Сообщения/консультации
