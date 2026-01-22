@@ -233,14 +233,14 @@
 
                     <div class="form-group">
                         <label for="reg-mc-region">Область</label>
-                        <select id="reg-mc-region" name="region_id" required>
-                            <option value="">Выберите область</option>
+                        <select id="reg-mc-region" name="region_id">
+                            <option value="">Выберите область (необязательно)</option>
                         </select>
                     </div>
 
                     <div class="form-group">
                         <label for="reg-mc-district">Район</label>
-                        <select id="reg-mc-district" name="district_id" required disabled>
+                        <select id="reg-mc-district" name="district_id" disabled>
                             <option value="">Сначала выберите область</option>
                         </select>
                     </div>
@@ -258,6 +258,17 @@
                     <div class="form-group">
                         <label for="reg-mc-phone">Телефон</label>
                         <input type="tel" id="reg-mc-phone" name="phone" placeholder="+375 17 123 45 67">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-mc-password">Пароль для входа</label>
+                        <input type="password" id="reg-mc-password" name="password" placeholder="Придумайте пароль" required minlength="6">
+                        <small>Минимум 6 символов. Этот пароль будет использоваться для входа в систему.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-mc-password2">Подтвердите пароль</label>
+                        <input type="password" id="reg-mc-password2" name="password_confirm" placeholder="Повторите пароль" required>
                     </div>
 
                     <div class="form-group">

@@ -13,7 +13,35 @@ document.addEventListener('DOMContentLoaded', function() {
     loadRegionsFromAPI();
     initFormValidation();
     checkUrlParams();
+    
+    // Показываем форму входа по умолчанию
+    showDefaultForms();
 });
+
+/**
+ * Показать формы по умолчанию
+ */
+function showDefaultForms() {
+    // Показываем форму донора по умолчанию
+    const donorForm = document.getElementById('donor-form');
+    const medcenterForm = document.getElementById('medcenter-form');
+    
+    if (donorForm) donorForm.style.display = 'block';
+    if (medcenterForm) medcenterForm.style.display = 'none';
+    
+    // Показываем форму входа по умолчанию для каждого контейнера
+    document.querySelectorAll('.auth-form-container').forEach(container => {
+        const loginForm = container.querySelector('[id$="-login-form"]');
+        const registerForm = container.querySelector('[id$="-register-form"]');
+        const loginTab = container.querySelector('.mode-tab[data-mode="login"]');
+        const registerTab = container.querySelector('.mode-tab[data-mode="register"]');
+        
+        if (loginForm) loginForm.style.display = 'block';
+        if (registerForm) registerForm.style.display = 'none';
+        if (loginTab) loginTab.classList.add('active');
+        if (registerTab) registerTab.classList.remove('active');
+    });
+}
 
 // Загрузка регионов из API
 async function loadRegionsFromAPI() {
@@ -733,19 +761,33 @@ function initFormValidation() {
                 return;
             }
             
+            // Проверка пароля
+            if (!data.password || data.password.length < 6) {
+                showNotification('Пароль должен быть не менее 6 символов', 'error');
+                return;
+            }
+            
+            if (data.password !== data.password_confirm) {
+                showNotification('Пароли не совпадают', 'error');
+                return;
+            }
+            
             const btn = mcRegisterForm.querySelector('button[type="submit"]');
             btn.classList.add('loading');
+            btn.disabled = true;
             
             try {
-                const response = await fetch(`${API_URL}/medcenters`, {
+                const response = await fetch(`${API_URL}/medcenter/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         name: data.name,
-                        district_id: parseInt(data.district_id),
+                        district_id: parseInt(data.district_id) || null,
+                        region_id: parseInt(data.region_id) || null,
                         address: data.address || null,
                         email: data.email,
                         phone: data.phone || null,
+                        password: data.password,
                         is_blood_center: data.is_blood_center === 'on'
                     })
                 });
@@ -765,9 +807,11 @@ function initFormValidation() {
                 }
                 
             } catch (error) {
+                console.error('Ошибка:', error);
                 showNotification('Ошибка соединения с сервером', 'error');
             } finally {
                 btn.classList.remove('loading');
+                btn.disabled = false;
             }
         });
     }
@@ -779,21 +823,26 @@ function initFormValidation() {
 function checkUrlParams() {
     const params = new URLSearchParams(window.location.search);
     
-    // Если пришли с параметром register=true
-    if (params.get('register') === 'true') {
-        const registerTab = document.querySelector('.auth-tab[data-tab="register"]');
-        if (registerTab) {
-            registerTab.click();
-        }
+    // Определяем тип пользователя
+    const type = params.get('type') || 'donor';
+    const mode = params.get('mode') || 'login';
+    
+    // Активируем нужную кнопку типа
+    const typeBtn = document.querySelector(`.type-btn[data-type="${type}"]`);
+    if (typeBtn) {
+        typeBtn.click();
     }
     
-    // Если пришли с параметром type=medcenter
-    if (params.get('type') === 'medcenter') {
-        const mcBtn = document.querySelector('.type-btn[data-type="medcenter"]');
-        if (mcBtn) {
-            mcBtn.click();
+    // Ждём переключения формы и активируем нужный таб
+    setTimeout(() => {
+        const activeContainer = document.querySelector('.auth-form-container:not([style*="display: none"])');
+        if (activeContainer) {
+            const modeTab = activeContainer.querySelector(`.mode-tab[data-mode="${mode}"]`);
+            if (modeTab) {
+                modeTab.click();
+            }
         }
-    }
+    }, 100);
 }
 
 /**

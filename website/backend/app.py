@@ -379,6 +379,69 @@ def update_donor_profile():
 # API: Авторизация медцентра
 # ============================================
 
+@app.route('/api/medcenter/register', methods=['POST'])
+def register_medcenter_with_password():
+    """Регистрация нового медцентра с паролем"""
+    data = request.json
+    
+    if not data.get('name'):
+        return jsonify({'error': 'Укажите название медцентра'}), 400
+    if not data.get('email'):
+        return jsonify({'error': 'Укажите email медцентра'}), 400
+    if not data.get('password') or len(data.get('password', '')) < 6:
+        return jsonify({'error': 'Пароль должен быть не менее 6 символов'}), 400
+    
+    # Проверяем существует ли медцентр с таким email
+    existing = query_db(
+        "SELECT id FROM medical_centers WHERE email = %s",
+        (data['email'],), one=True
+    )
+    
+    if existing:
+        return jsonify({'error': 'Медцентр с таким email уже зарегистрирован'}), 400
+    
+    # Создаём медцентр
+    try:
+        query_db(
+            """INSERT INTO medical_centers (name, district_id, address, email, phone, is_blood_center, master_password)
+               VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+            (data['name'], data.get('district_id'), data.get('address'), 
+             data['email'], data.get('phone'), data.get('is_blood_center', False), 
+             data['password'])
+        )
+        
+        # Получаем созданный медцентр
+        mc = query_db(
+            """SELECT mc.id, mc.name, mc.address, mc.email, mc.is_blood_center,
+                      d.name as district_name, r.name as region_name
+               FROM medical_centers mc
+               LEFT JOIN districts d ON mc.district_id = d.id
+               LEFT JOIN regions r ON d.region_id = r.id
+               WHERE mc.email = %s""",
+            (data['email'],), one=True
+        )
+        
+        if not mc:
+            return jsonify({'error': 'Ошибка создания медцентра'}), 500
+        
+        # Создаём сессию
+        token = generate_token()
+        query_db(
+            """INSERT INTO sessions (token, user_type, medical_center_id, expires_at)
+               VALUES (%s, 'medcenter', %s, NOW() + INTERVAL '30 days')""",
+            (token, mc['id'])
+        )
+        
+        return jsonify({
+            'success': True,
+            'token': token,
+            'medical_center': mc
+        })
+        
+    except Exception as e:
+        print(f"Ошибка регистрации медцентра: {e}")
+        return jsonify({'error': 'Ошибка регистрации медцентра'}), 500
+
 @app.route('/api/medcenter/login', methods=['POST'])
 def login_medcenter():
     data = request.json
