@@ -49,9 +49,10 @@
 /* Основной контейнер */
 .auth-main {
     min-height: calc(100vh - 80px);
-    padding: var(--spacing-2xl) var(--spacing-lg);
+    padding: var(--spacing-lg);
+    padding-top: 120px;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     position: relative;
     overflow: hidden;

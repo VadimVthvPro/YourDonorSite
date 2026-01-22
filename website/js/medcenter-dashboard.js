@@ -150,15 +150,37 @@ function initMobileSidebar() {
 /**
  * Загрузка данных медцентра
  */
-function loadMedcenterData() {
+async function loadMedcenterData() {
     try {
-        const mcData = JSON.parse(localStorage.getItem('medcenter_user') || '{}');
-        console.log('Загружены данные медцентра:', mcData);
+        const mcId = getMedcenterId();
+        console.log('Загрузка данных медцентра ID:', mcId);
         
+        if (!mcId) {
+            console.error('ID медцентра не найден');
+            return;
+        }
+        
+        // Загружаем полные данные из API
+        const response = await fetch(`${MC_API_URL}/medcenter/profile`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            console.error('Ошибка загрузки профиля медцентра:', response.status);
+            return;
+        }
+        
+        const mcData = await response.json();
+        console.log('Данные медцентра с сервера:', mcData);
+        
+        // Сохраняем в localStorage
+        localStorage.setItem('medcenter_user', JSON.stringify(mcData));
+        
+        // Отображаем в интерфейсе
         const mcNameEl = document.getElementById('mc-name');
         if (mcNameEl) mcNameEl.textContent = mcData.name || 'Медцентр';
         
-        // Заполнение настроек
+        // Заполнение формы настроек
         const settingName = document.getElementById('setting-name');
         const settingAddress = document.getElementById('setting-address');
         const settingPhone = document.getElementById('setting-phone');
@@ -168,6 +190,8 @@ function loadMedcenterData() {
         if (settingAddress) settingAddress.value = mcData.address || '';
         if (settingPhone) settingPhone.value = mcData.phone || '';
         if (settingEmail) settingEmail.value = mcData.email || '';
+        
+        console.log('✓ Данные медцентра загружены и отображены');
     } catch (error) {
         console.error('Ошибка загрузки данных медцентра:', error);
     }
@@ -245,17 +269,50 @@ function renderFullTrafficLight() {
     const container = document.getElementById('traffic-light-full');
     if (!container) return;
     
+    const statusColors = {
+        'normal': '#10b981',
+        'low': '#f59e0b', 
+        'critical': '#ef4444'
+    };
+    
+    const statusLabels = {
+        'normal': 'Достаточно',
+        'low': 'Нужно пополнить',
+        'critical': 'Срочно нужна'
+    };
+    
     container.innerHTML = bloodNeedsData.map(item => `
-        <div class="traffic-light-card ${getStatusClass(item.status)}" data-type="${item.blood_type}" data-status="${item.status}">
-            <div class="tl-blood-type">${item.blood_type}</div>
-            <div class="tl-status ${getStatusClass(item.status)}">
-                <span class="status-dot ${getStatusClass(item.status)}"></span>
-                <span>${getStatusText(item.status)}</span>
-            </div>
-            <div class="tl-actions">
-                <button class="btn btn-sm btn-outline" onclick="setBloodStatus('${item.blood_type}', 'normal')">Норма</button>
-                <button class="btn btn-sm btn-warning" onclick="setBloodStatus('${item.blood_type}', 'low')">Мало</button>
-                <button class="btn btn-sm btn-danger" onclick="setBloodStatus('${item.blood_type}', 'critical')">Срочно</button>
+        <div class="blood-panel ${item.status}" 
+             data-type="${item.blood_type}" 
+             data-status="${item.status}"
+             style="background: ${statusColors[item.status]};">
+            <div class="blood-panel-type">${item.blood_type}</div>
+            <div class="blood-panel-status">${statusLabels[item.status]}</div>
+            <div class="blood-panel-buttons">
+                <button class="panel-btn ${item.status === 'normal' ? 'active' : ''}" 
+                        onclick="setBloodStatus('${item.blood_type}', 'normal')"
+                        title="Достаточно">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 13l4 4L19 7"/>
+                    </svg>
+                </button>
+                <button class="panel-btn ${item.status === 'low' ? 'active' : ''}" 
+                        onclick="setBloodStatus('${item.blood_type}', 'low')"
+                        title="Нужно пополнить">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 8v4"/>
+                    </svg>
+                </button>
+                <button class="panel-btn ${item.status === 'critical' ? 'active' : ''}" 
+                        onclick="setBloodStatus('${item.blood_type}', 'critical')"
+                        title="Срочно (рассылка в Telegram)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                </button>
             </div>
         </div>
     `).join('');

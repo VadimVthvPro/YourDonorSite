@@ -167,74 +167,117 @@
     color: var(--color-gray-600);
 }
 
+/* Донорский светофор - цветные панели */
 .traffic-light-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: var(--spacing-lg);
     margin-bottom: var(--spacing-xl);
 }
 
-.traffic-light-card {
-    background: var(--color-white);
-    border-radius: var(--radius-xl);
+.blood-panel {
+    position: relative;
     padding: var(--spacing-xl);
-    text-align: center;
-    box-shadow: var(--shadow-sm);
-    border: 2px solid var(--color-gray-100);
-    transition: all var(--transition-base);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-lg);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--color-white);
+    overflow: hidden;
     cursor: pointer;
 }
 
-.traffic-light-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
+.blood-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(0,0,0,0.1));
+    opacity: 0;
+    transition: opacity 0.3s;
 }
 
-.traffic-light-card.ok {
-    border-color: var(--color-success);
+.blood-panel:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
 }
 
-.traffic-light-card.need {
-    border-color: var(--color-warning);
+.blood-panel:hover::before {
+    opacity: 1;
 }
 
-.traffic-light-card.urgent {
-    border-color: var(--color-danger);
-    background: var(--color-danger-light);
+.blood-panel.normal {
+    background: linear-gradient(135deg, #10b981, #059669);
 }
 
-.tl-blood-type {
+.blood-panel.low {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.blood-panel.critical {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    animation: pulse-critical 2s ease-in-out infinite;
+}
+
+@keyframes pulse-critical {
+    0%, 100% { box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 10px 50px rgba(239, 68, 68, 0.7); }
+}
+
+.blood-panel-type {
     font-size: var(--text-4xl);
     font-weight: 800;
-    color: var(--color-gray-900);
-    margin-bottom: var(--spacing-md);
+    text-align: center;
+    margin-bottom: var(--spacing-sm);
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
-.tl-status {
+.blood-panel-status {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: var(--spacing-lg);
+    opacity: 0.95;
+}
+
+.blood-panel-buttons {
+    display: flex;
+    gap: var(--spacing-sm);
+    justify-content: center;
+    margin-top: var(--spacing-md);
+}
+
+.panel-btn {
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--spacing-sm);
-    font-size: var(--text-sm);
-    font-weight: 600;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--radius-lg);
+    color: var(--color-white);
+    cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(10px);
 }
 
-.tl-status.ok {
-    color: var(--color-success);
+.panel-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.1);
 }
 
-.tl-status.need {
-    color: var(--color-warning);
+.panel-btn.active {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: var(--color-white);
+    color: var(--color-gray-900);
 }
 
-.tl-status.urgent {
-    color: var(--color-danger);
-}
-
-.tl-donors {
-    margin-top: var(--spacing-md);
-    font-size: var(--text-xs);
-    color: var(--color-gray-500);
+.panel-btn svg {
+    width: 18px;
+    height: 18px;
 }
 
 .traffic-light-note {
