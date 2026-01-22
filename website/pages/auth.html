@@ -103,6 +103,19 @@
                         </select>
                     </div>
 
+                    <div class="form-group">
+                        <label for="donor-password">Пароль</label>
+                        <div class="password-field">
+                            <input type="password" id="donor-password" name="password" placeholder="Введите пароль" required>
+                            <button type="button" class="toggle-password" data-target="donor-password">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn btn-primary btn-block">Войти</button>
                     
                     <p class="form-note">Нет аккаунта? <a href="#" class="switch-to-register">Зарегистрируйтесь</a></p>
@@ -171,6 +184,32 @@
                     <div class="form-group">
                         <label for="reg-donor-telegram">Telegram username (необязательно)</label>
                         <input type="text" id="reg-donor-telegram" name="telegram_username" placeholder="@username">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-donor-password">Пароль</label>
+                        <div class="password-field">
+                            <input type="password" id="reg-donor-password" name="password" placeholder="Придумайте пароль" required minlength="6">
+                            <button type="button" class="toggle-password" data-target="reg-donor-password">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-donor-password-confirm">Подтверждение пароля</label>
+                        <div class="password-field">
+                            <input type="password" id="reg-donor-password-confirm" name="password_confirm" placeholder="Повторите пароль" required minlength="6">
+                            <button type="button" class="toggle-password" data-target="reg-donor-password-confirm">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-block">Зарегистрироваться</button>

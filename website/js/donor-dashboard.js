@@ -595,8 +595,6 @@ function formatMessageDate(dateString) {
         });
     }
 }
-    `).join('');
-}
 
 /**
  * Навигация по секциям
@@ -634,7 +632,7 @@ function initNavigation() {
     // Обработка хэша в URL
     if (window.location.hash) {
         const hash = window.location.hash.slice(1);
-        const navItem = document.querySelector(`.nav-item[data-section="${hash}"]`);
+        const navItem = document.querySelector('.nav-item[data-section="' + hash + '"]');
         if (navItem) {
             navItem.click();
         }
@@ -747,7 +745,7 @@ function loadUserData() {
     
     // Выбор группы крови
     if (bloodType !== '—') {
-        const bloodRadio = document.querySelector(`input[name="blood_type"][value="${bloodType}"]`);
+        const bloodRadio = document.querySelector('input[name="blood_type"][value="' + bloodType + '"]');
         if (bloodRadio) bloodRadio.checked = true;
     }
 }

@@ -627,7 +627,8 @@ function initFormValidation() {
                     body: JSON.stringify({
                         full_name: data.full_name,
                         birth_year: parseInt(data.birth_year),
-                        medical_center_id: parseInt(data.medical_center_id)
+                        medical_center_id: parseInt(data.medical_center_id),
+                        password: data.password
                     })
                 });
                 
@@ -665,22 +666,38 @@ function initFormValidation() {
                 return;
             }
             
+            // Проверка пароля
+            if (!data.password || data.password.length < 6) {
+                showNotification('Пароль должен быть не менее 6 символов', 'error');
+                return;
+            }
+            
+            if (data.password !== data.password_confirm) {
+                showNotification('Пароли не совпадают', 'error');
+                return;
+            }
+            
             const btn = donorRegisterForm.querySelector('button[type="submit"]');
             btn.classList.add('loading');
+            
+            const payload = {
+                full_name: data.full_name,
+                birth_year: parseInt(data.birth_year),
+                blood_type: data.blood_type,
+                medical_center_id: parseInt(data.medical_center_id),
+                phone: data.phone || null,
+                email: data.email || null,
+                telegram_username: data.telegram_username || null,
+                password: data.password
+            };
+            
+            console.log('[DONOR REGISTER] Отправка данных:', payload);
             
             try {
                 const response = await fetch(`${API_URL}/donor/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        full_name: data.full_name,
-                        birth_year: parseInt(data.birth_year),
-                        blood_type: data.blood_type,
-                        medical_center_id: parseInt(data.medical_center_id),
-                        phone: data.phone || null,
-                        email: data.email || null,
-                        telegram_username: data.telegram_username || null
-                    })
+                    body: JSON.stringify(payload)
                 });
                 
                 const result = await response.json();

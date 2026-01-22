@@ -238,10 +238,12 @@ def register_medcenter():
 @app.route('/api/donor/register', methods=['POST'])
 def register_donor():
     data = request.json
+    print(f"[DONOR REGISTER] Получены данные: {data}")
     
-    required = ['full_name', 'birth_year', 'blood_type', 'medical_center_id']
+    required = ['full_name', 'birth_year', 'blood_type', 'medical_center_id', 'password']
     for field in required:
         if not data.get(field):
+            print(f"[DONOR REGISTER] Отсутствует поле: {field}")
             return jsonify({'error': f'Поле {field} обязательно'}), 400
     
     # Проверяем группу крови
@@ -272,11 +274,15 @@ def register_donor():
     if not mc:
         return jsonify({'error': 'Медцентр не найден'}), 404
     
+    # Хешируем пароль
+    import hashlib
+    password_hash = hashlib.sha256(data['password'].encode()).hexdigest()
+    
     query_db(
         """INSERT INTO users 
            (full_name, birth_year, blood_type, medical_center_id, 
-            region_id, district_id, city, phone, email, telegram_username)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            region_id, district_id, city, phone, email, telegram_username, password_hash)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
         (
             data['full_name'],
             data['birth_year'],
@@ -287,7 +293,8 @@ def register_donor():
             data.get('city'),
             data.get('phone'),
             data.get('email'),
-            data.get('telegram_username')
+            data.get('telegram_username'),
+            password_hash
         ), commit=True
     )
     
@@ -315,13 +322,13 @@ def register_donor():
 def login_donor():
     data = request.json
     
-    required = ['full_name', 'birth_year', 'medical_center_id']
+    required = ['full_name', 'birth_year', 'medical_center_id', 'password']
     for field in required:
         if not data.get(field):
             return jsonify({'error': f'Поле {field} обязательно'}), 400
     
     user = query_db(
-        """SELECT id, full_name, blood_type FROM users 
+        """SELECT id, full_name, blood_type, password_hash FROM users 
            WHERE full_name = %s AND birth_year = %s AND medical_center_id = %s AND is_active = TRUE""",
         (data['full_name'], data['birth_year'], data['medical_center_id']),
         one=True
@@ -329,6 +336,18 @@ def login_donor():
     
     if not user:
         return jsonify({'error': 'Донор не найден. Сначала зарегистрируйтесь.'}), 404
+    
+    # Проверка пароля
+    if user.get('password_hash'):
+        import hashlib
+        password_hash = hashlib.sha256(data['password'].encode()).hexdigest()
+        if user['password_hash'] != password_hash:
+            return jsonify({'error': 'Неверный пароль'}), 401
+    else:
+        # Если пароль не установлен, сохраняем его
+        import hashlib
+        password_hash = hashlib.sha256(data['password'].encode()).hexdigest()
+        query_db("UPDATE users SET password_hash = %s WHERE id = %s", (password_hash, user['id']), commit=True)
     
     token = generate_token()
     query_db(
@@ -342,7 +361,7 @@ def login_donor():
     return jsonify({
         'message': 'Вход выполнен',
         'token': token,
-        'user': user
+        'user': {'id': user['id'], 'full_name': user['full_name'], 'blood_type': user['blood_type']}
     })
 
 @app.route('/api/donor/profile', methods=['GET'])
@@ -1336,7 +1355,7 @@ def get_donor_blood_requests():
     
     # Получаем данные донора
     donor = query_db("""
-        SELECT district_id, blood_type, linked_medical_center_id 
+        SELECT district_id, blood_type, medical_center_id 
         FROM users 
         WHERE id = %s
     """, (user_id,), one=True)
@@ -1363,8 +1382,8 @@ def get_donor_blood_requests():
             mc.email as medical_center_email,
             dr.id as response_id,
             dr.status as response_status,
-            dr.message as response_message,
-            dr.responded_at
+            dr.donor_comment as response_message,
+            dr.created_at as responded_at
         FROM blood_requests br
         JOIN medical_centers mc ON br.medical_center_id = mc.id
         LEFT JOIN donation_responses dr ON dr.request_id = br.id AND dr.user_id = %s
@@ -1388,7 +1407,7 @@ def get_donor_blood_requests():
     requests = query_db(query, (
         user_id, 
         donor['blood_type'],
-        donor['linked_medical_center_id'],
+        donor['medical_center_id'],
         donor['district_id']
     ))
     
@@ -1473,7 +1492,7 @@ def get_donor_messages():
     user_id = g.session['user_id']
     
     messages = query_db(
-        """SELECT m.id, m.subject, m.message, m.is_read, m.created_at, m.read_at,
+        """SELECT m.id, m.subject, m.message, m.is_read, m.created_at,
                   mc.name as from_medcenter_name
            FROM messages m
            JOIN medical_centers mc ON m.from_medcenter_id = mc.id
