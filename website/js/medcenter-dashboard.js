@@ -45,13 +45,24 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('✓ Выход инициализирован');
     } catch (e) { console.error('✗ Ошибка initLogout:', e); }
     
-    // Асинхронные функции - загрузка данных (не блокируют)
-    loadMedcenterData().then(() => console.log('✓ Данные медцентра загружены')).catch(e => console.error('✗ Ошибка данных медцентра:', e));
-    loadTrafficLightFromAPI().then(() => console.log('✓ Светофор загружен')).catch(e => console.error('✗ Ошибка светофора:', e));
-    loadBloodRequestsFromAPI().then(() => console.log('✓ Запросы крови загружены')).catch(e => console.error('✗ Ошибка запросов:', e));
-    loadResponsesFromAPI().then(() => console.log('✓ Отклики загружены')).catch(e => console.error('✗ Ошибка откликов:', e));
-    loadDonorsFromAPI().then(() => console.log('✓ Доноры загружены')).catch(e => console.error('✗ Ошибка доноров:', e));
-    loadStatisticsFromAPI().then(() => console.log('✓ Статистика загружена')).catch(e => console.error('✗ Ошибка статистики:', e));
+    // Асинхронные функции - загрузка данных (последовательно, чтобы данные загрузились)
+    (async () => {
+        try {
+            await loadMedcenterData();
+            console.log('✓ Данные медцентра загружены');
+            
+            // После загрузки данных медцентра загружаем остальное
+            await Promise.all([
+                loadTrafficLightFromAPI().then(() => console.log('✓ Светофор загружен')).catch(e => console.error('✗ Ошибка светофора:', e)),
+                loadBloodRequestsFromAPI().then(() => console.log('✓ Запросы крови загружены')).catch(e => console.error('✗ Ошибка запросов:', e)),
+                loadResponsesFromAPI().then(() => console.log('✓ Отклики загружены')).catch(e => console.error('✗ Ошибка откликов:', e)),
+                loadDonorsFromAPI().then(() => console.log('✓ Доноры загружены')).catch(e => console.error('✗ Ошибка доноров:', e)),
+                loadStatisticsFromAPI().then(() => console.log('✓ Статистика загружена')).catch(e => console.error('✗ Ошибка статистики:', e))
+            ]);
+        } catch (e) {
+            console.error('✗ Критическая ошибка загрузки:', e);
+        }
+    })();
     
     console.log('=== Инициализация завершена ===');
 });
@@ -1067,30 +1078,64 @@ function closeModal(modal) {
  * Формы настроек
  */
 function initForms() {
-    document.getElementById('mc-settings-form')?.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const mcData = JSON.parse(localStorage.getItem('medcenter_user') || '{}');
-        mcData.name = document.getElementById('setting-name').value;
-        mcData.address = document.getElementById('setting-address').value;
-        mcData.contact = document.getElementById('setting-phone').value;
-        localStorage.setItem('medcenter_user', JSON.stringify(mcData));
-        loadMedcenterData();
-        showNotification('Настройки сохранены', 'success');
-    });
+    const settingsForm = document.getElementById('mc-settings-form');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const mcId = getMedcenterId();
+            if (!mcId) {
+                showNotification('Ошибка: медцентр не определён', 'error');
+                return;
+            }
+            
+            const formData = {
+                address: document.getElementById('setting-address')?.value || '',
+                phone: document.getElementById('setting-phone')?.value || '',
+                email: document.getElementById('setting-email')?.value || ''
+            };
+            
+            console.log('Сохранение настроек медцентра:', formData);
+            
+            try {
+                const response = await fetch(`${MC_API_URL}/medcenter/profile`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification('✓ Настройки сохранены', 'success');
+                    // Перезагружаем данные
+                    await loadMedcenterData();
+                } else {
+                    showNotification('✗ ' + (result.error || 'Ошибка сохранения'), 'error');
+                }
+            } catch (error) {
+                console.error('Ошибка сохранения настроек:', error);
+                showNotification('✗ Ошибка соединения', 'error');
+            }
+        });
+    }
     
-    document.getElementById('password-form')?.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const newPass = document.getElementById('new-password').value;
-        const confirm = document.getElementById('confirm-password').value;
-        
-        if (newPass !== confirm) {
-            showNotification('Пароли не совпадают', 'error');
-            return;
-        }
-        
-        showNotification('Пароль изменён', 'success');
-        e.target.reset();
-    });
+    const passwordForm = document.getElementById('password-form');
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newPass = document.getElementById('new-password')?.value;
+            const confirm = document.getElementById('confirm-password')?.value;
+            
+            if (newPass !== confirm) {
+                showNotification('Пароли не совпадают', 'error');
+                return;
+            }
+            
+            showNotification('Пароль изменён', 'success');
+            e.target.reset();
+        });
+    }
 }
 
 /**

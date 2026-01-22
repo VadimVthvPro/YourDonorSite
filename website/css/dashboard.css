@@ -1579,3 +1579,156 @@
     }
 }
 
+
+/* ============================================
+   Секция "Хочу сдать кровь"
+   ============================================ */
+
+.donate-centers {
+    display: grid;
+    gap: var(--spacing-lg);
+}
+
+.center-card {
+    background: var(--color-surface);
+    border: 2px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    transition: all 0.3s ease;
+}
+
+.center-card:hover {
+    border-color: var(--color-primary-light);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.center-card.needs-blood {
+    border-color: var(--color-primary);
+    background: linear-gradient(135deg, #fff 0%, #fee 100%);
+}
+
+.urgent-indicator {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: var(--text-sm);
+    margin-bottom: var(--spacing-md);
+    text-align: center;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.center-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-md);
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+.center-header h3 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+}
+
+.needs-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    color: white;
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.center-info {
+    display: grid;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.center-info .info-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--color-gray-700);
+    font-size: var(--text-sm);
+}
+
+.center-info .info-row svg {
+    width: 16px;
+    height: 16px;
+    color: var(--color-primary);
+    flex-shrink: 0;
+}
+
+.center-info a {
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.center-info a:hover {
+    text-decoration: underline;
+}
+
+.blood-needs-indicator {
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--color-gray-200);
+}
+
+.blood-needs-indicator h4 {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-gray-700);
+    margin-bottom: var(--spacing-sm);
+}
+
+.blood-types-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+.blood-type-status {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    background: var(--color-gray-100);
+}
+
+.blood-type-status.normal {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.blood-type-status.low {
+    background: #fed7aa;
+    color: #92400e;
+}
+
+.blood-type-status.critical {
+    background: #fecaca;
+    color: #991b1b;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}

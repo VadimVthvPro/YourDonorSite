@@ -510,6 +510,36 @@ def get_medcenter_profile():
     
     return jsonify(mc)
 
+@app.route('/api/medcenter/profile', methods=['PUT'])
+@require_auth('medcenter')
+def update_medcenter_profile():
+    """Обновить профиль медцентра"""
+    mc_id = g.session['medical_center_id']
+    data = request.json
+    
+    # Разрешённые поля для обновления
+    allowed_fields = ['address', 'phone', 'email']
+    updates = []
+    params = []
+    
+    for field in allowed_fields:
+        if field in data:
+            updates.append(f"{field} = %s")
+            params.append(data[field])
+    
+    if not updates:
+        return jsonify({'error': 'Нет данных для обновления'}), 400
+    
+    updates.append("updated_at = NOW()")
+    params.append(mc_id)
+    
+    query_db(
+        f"UPDATE medical_centers SET {', '.join(updates)} WHERE id = %s",
+        tuple(params), commit=True
+    )
+    
+    return jsonify({'message': 'Профиль обновлён'})
+
 # ============================================
 # API: Донорский светофор
 # ============================================
@@ -522,11 +552,24 @@ def get_blood_needs(mc_id):
         (mc_id,)
     )
     
-    if not needs:
-        blood_types = ['A+', 'A-', 'AB+', 'AB-', 'B+', 'B-', 'O+', 'O-']
-        needs = [{'blood_type': bt, 'status': 'normal', 'notes': None} for bt in blood_types]
+    # Всегда возвращаем все 8 групп крови
+    all_blood_types = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-']
+    needs_dict = {n['blood_type']: n for n in (needs or [])}
     
-    return jsonify(needs)
+    # Заполняем отсутствующие группы крови статусом 'normal'
+    result = []
+    for bt in all_blood_types:
+        if bt in needs_dict:
+            result.append(needs_dict[bt])
+        else:
+            result.append({
+                'blood_type': bt, 
+                'status': 'normal', 
+                'last_updated': None,
+                'notes': None
+            })
+    
+    return jsonify(result)
 
 @app.route('/api/blood-needs/<int:mc_id>', methods=['PUT'])
 @require_auth('medcenter')
@@ -1282,9 +1325,6 @@ def unlink_telegram():
 
 # ============================================
 # Выход
-# ============================================
-
-# ============================================
 # API: Запросы крови для доноров
 # ============================================
 
@@ -1478,6 +1518,54 @@ def get_donor_unread_count():
     )
     
     return jsonify({'unread': result['count'] if result else 0})
+
+# ============================================
+# API: Медцентры (для доноров)
+# ============================================
+
+@app.route('/api/medical-centers', methods=['GET'])
+def get_medical_centers_with_needs():
+    """Получить список медцентров с данными о потребности в крови"""
+    district_id = request.args.get('district_id', type=int)
+    
+    # Базовый запрос
+    query = """
+        SELECT 
+            mc.id,
+            mc.name,
+            mc.address,
+            mc.phone,
+            mc.email,
+            mc.district_id,
+            d.name as district_name,
+            r.name as region_name
+        FROM medical_centers mc
+        LEFT JOIN districts d ON mc.district_id = d.id
+        LEFT JOIN regions r ON d.region_id = r.id
+        WHERE mc.is_active = TRUE
+    """
+    
+    params = []
+    if district_id:
+        query += " AND mc.district_id = %s"
+        params.append(district_id)
+    
+    query += " ORDER BY mc.name"
+    
+    centers = query_db(query, tuple(params) if params else ())
+    
+    # Для каждого медцентра получаем данные о потребности в крови
+    for center in centers:
+        blood_needs = query_db(
+            """SELECT blood_type, status, last_updated 
+               FROM blood_needs 
+               WHERE medical_center_id = %s
+               ORDER BY blood_type""",
+            (center['id'],)
+        )
+        center['blood_needs'] = blood_needs or []
+    
+    return jsonify(centers or [])
 
 # ============================================
 # Выход

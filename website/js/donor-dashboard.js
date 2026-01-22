@@ -5,8 +5,8 @@
 
 console.log('==== donor-dashboard.js ЗАГРУЖЕН ====');
 
-// Используем DONOR_API_URL из app.js или определяем свой
-const DONOR_DONOR_API_URL = window.DONOR_API_URL || 'http://localhost:5001/api';
+// Используем API_URL из app.js или определяем свой
+const DONOR_API_URL = window.API_URL || 'http://localhost:5001/api';
 
 document.addEventListener('DOMContentLoaded', function() {
     // Проверка авторизации
@@ -15,14 +15,30 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
+    // Синхронные функции инициализации
     initNavigation();
     initMobileSidebar();
-    loadUserDataFromAPI();
-    loadRequestsFromAPI();
-    loadMessagesFromAPI();
     initForms();
     initModal();
     initLogout();
+    
+    // Асинхронная загрузка данных (последовательно)
+    (async () => {
+        try {
+            await loadUserDataFromAPI();
+            console.log('✓ Данные донора загружены');
+            
+            // После загрузки профиля загружаем остальное
+            await Promise.all([
+                loadRequestsFromAPI(),
+                loadMessagesFromAPI(),
+                loadDonateCenters()
+            ]);
+            console.log('✓ Все данные загружены');
+        } catch (e) {
+            console.error('✗ Ошибка загрузки данных:', e);
+        }
+    })();
 });
 
 /**
@@ -50,9 +66,15 @@ async function loadUserDataFromAPI() {
         
         if (response.ok) {
             const user = await response.json();
+            console.log('Профиль донора загружен:', user);
+            
+            // Сохраняем в localStorage
+            localStorage.setItem('donor_user', JSON.stringify(user));
+            
             displayUserData(user);
         } else {
             // Токен невалидный
+            console.error('Ошибка загрузки профиля, статус:', response.status);
             localStorage.clear();
             window.location.href = 'auth.html';
         }
@@ -1235,6 +1257,135 @@ function initLogout() {
             window.location.href = 'auth.html';
         });
     }
+}
+
+/**
+ * Загрузка центров для донации
+ */
+async function loadDonateCenters() {
+    try {
+        console.log('Загрузка центров донации...');
+        
+        // Получаем данные донора из localStorage
+        const donorUser = JSON.parse(localStorage.getItem('donor_user') || '{}');
+        const bloodType = donorUser.blood_type;
+        const districtId = donorUser.district_id;
+        
+        if (!bloodType || !districtId) {
+            console.warn('Нет информации о группе крови или районе донора');
+            return;
+        }
+        
+        // Загружаем медцентры района с данными о потребности в крови
+        const response = await fetch(`${DONOR_API_URL}/medical-centers?district_id=${districtId}`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const centers = await response.json();
+        console.log('Центры донации загружены:', centers);
+        
+        displayDonateCenters(centers, bloodType);
+    } catch (error) {
+        console.error('Ошибка загрузки центров донации:', error);
+        const container = document.getElementById('donate-centers');
+        if (container) {
+            container.innerHTML = '<p class="no-data">Ошибка загрузки центров донации</p>';
+        }
+    }
+}
+
+/**
+ * Отображение центров для донации
+ */
+function displayDonateCenters(centers, userBloodType) {
+    const container = document.getElementById('donate-centers');
+    
+    if (!container) {
+        console.warn('Контейнер donate-centers не найден');
+        return;
+    }
+    
+    if (!centers || centers.length === 0) {
+        container.innerHTML = `
+            <div class="request-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
+                <p>Центры донации не найдены в вашем районе</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = centers.map(center => {
+        // Проверяем, нужна ли этому центру кровь донора
+        const needsBlood = center.blood_needs && center.blood_needs.some(
+            need => need.blood_type === userBloodType && need.status !== 'normal'
+        );
+        
+        const urgentNeed = center.blood_needs && center.blood_needs.find(
+            need => need.blood_type === userBloodType && need.status === 'critical'
+        );
+        
+        return `
+            <div class="center-card ${needsBlood ? 'needs-blood' : ''}" data-id="${center.id}">
+                ${urgentNeed ? '<div class="urgent-indicator">🚨 Срочно нужна ваша группа крови!</div>' : ''}
+                
+                <div class="center-header">
+                    <h3>${center.name}</h3>
+                    ${needsBlood ? '<span class="needs-badge">Нужна ваша кровь</span>' : ''}
+                </div>
+                
+                <div class="center-info">
+                    ${center.address ? `
+                        <div class="info-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            ${center.address}
+                        </div>
+                    ` : ''}
+                    
+                    ${center.phone ? `
+                        <div class="info-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                            </svg>
+                            <a href="tel:${center.phone}">${center.phone}</a>
+                        </div>
+                    ` : ''}
+                    
+                    ${center.email ? `
+                        <div class="info-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            <a href="mailto:${center.email}">${center.email}</a>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                ${center.blood_needs && center.blood_needs.length > 0 ? `
+                    <div class="blood-needs-indicator">
+                        <h4>Потребность в крови:</h4>
+                        <div class="blood-types-grid">
+                            ${center.blood_needs.map(need => `
+                                <div class="blood-type-status ${need.status}">
+                                    <span class="blood-type">${need.blood_type}</span>
+                                    <span class="status-dot"></span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
 }
 
 /**
