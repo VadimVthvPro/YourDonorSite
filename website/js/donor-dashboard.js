@@ -106,99 +106,390 @@ function displayUserData(user) {
 }
 
 /**
- * Загрузка активных запросов из API
+ * Загрузка активных запросов крови из API
  */
 async function loadRequestsFromAPI() {
     try {
-        const user = JSON.parse(localStorage.getItem('donor_user') || '{}');
-        const response = await fetch(`${DONOR_API_URL}/requests?blood_type=${user.blood_type || ''}&status=active`, {
+        console.log('Загрузка запросов крови...');
+        
+        const response = await fetch(`${DONOR_API_URL}/donor/blood-requests`, {
             headers: getAuthHeaders()
         });
         
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
         const requests = await response.json();
-        displayRequests(requests);
+        console.log('Запросы крови загружены:', requests);
+        
+        displayBloodRequests(requests);
+        updateRequestsBadges(requests);
     } catch (error) {
-        console.error('Ошибка загрузки запросов:', error);
-        loadRequests(); // fallback
+        console.error('Ошибка загрузки запросов крови:', error);
+        const container = document.getElementById('blood-requests-list');
+        if (container) {
+            container.innerHTML = '<div class="request-empty"><p>Ошибка загрузки запросов</p></div>';
+        }
     }
 }
 
-function displayRequests(requests) {
-    const container = document.getElementById('requests-list');
-    const countBadge = document.getElementById('requests-count');
+/**
+ * Отображение запросов крови
+ */
+function displayBloodRequests(requests) {
+    const container = document.getElementById('blood-requests-list');
     
-    if (countBadge) countBadge.textContent = requests.length;
-    
-    if (!container) return;
-    
-    if (requests.length === 0) {
-        container.innerHTML = '<p class="no-data">Нет активных запросов для вашей группы крови</p>';
+    if (!container) {
+        console.warn('Контейнер blood-requests-list не найден');
         return;
     }
     
-    container.innerHTML = requests.map(r => `
-        <div class="request-card ${r.urgency}" data-id="${r.id}">
-            <div class="request-header">
-                <span class="request-blood">${r.blood_type}</span>
-                <span class="request-urgency ${r.urgency}">${getUrgencyText(r.urgency)}</span>
+    if (requests.length === 0) {
+        container.innerHTML = `
+            <div class="request-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 4C12 4 6 10 6 14a6 6 0 1012 0c0-4-6-10-6-10z"/>
+                </svg>
+                <p>Нет активных запросов крови</p>
+                <p style="font-size: var(--text-sm); margin-top: 8px;">Мы уведомим вас, когда появится срочная необходимость в донации</p>
             </div>
-            <div class="request-body">
-                <h4>${r.medical_center_name}</h4>
-                <p>${r.medical_center_address || ''}</p>
-                ${r.description ? `<p class="request-desc">${r.description}</p>` : ''}
-            </div>
-            <div class="request-footer">
-                <span class="request-date">${new Date(r.created_at).toLocaleDateString('ru-RU')}</span>
-                <button class="btn btn-primary btn-sm respond-btn" data-id="${r.id}">Откликнуться</button>
-            </div>
-        </div>
-    `).join('');
+        `;
+        return;
+    }
     
-    // Обработчики откликов
-    container.querySelectorAll('.respond-btn').forEach(btn => {
-        btn.addEventListener('click', () => respondToRequest(btn.dataset.id));
+    container.innerHTML = requests.map(r => {
+        const isResponded = r.response_id !== null;
+        const responseStatus = r.response_status;
+        
+        return `
+            <div class="request-card urgency-${r.urgency}" data-id="${r.id}" data-urgency="${r.urgency}" data-responded="${isResponded}">
+                <div class="request-card-header">
+                    <div class="request-blood-type">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 4C12 4 6 10 6 14a6 6 0 1012 0c0-4-6-10-6-10z"/>
+                        </svg>
+                        ${r.blood_type}
+                    </div>
+                    <div class="request-urgency ${r.urgency}">
+                        ${getUrgencyText(r.urgency)}
+                    </div>
+                </div>
+                
+                <div class="request-card-body">
+                    ${r.description ? `<div class="request-description">${r.description}</div>` : ''}
+                    
+                    <div class="request-medcenter-info">
+                        <div class="info-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                            </svg>
+                            <strong>${r.medical_center_name}</strong>
+                        </div>
+                        ${r.medical_center_address ? `
+                            <div class="info-row">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                    <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                                ${r.medical_center_address}
+                            </div>
+                        ` : ''}
+                        ${r.medical_center_phone ? `
+                            <div class="info-row">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                                </svg>
+                                ${r.medical_center_phone}
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="request-meta">
+                        <span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v6l4 2"/>
+                            </svg>
+                            ${formatDate(r.created_at)}
+                        </span>
+                        <span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 8v4M12 16h.01"/>
+                            </svg>
+                            Действителен до ${formatDate(r.expires_at)}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="request-card-footer">
+                    ${isResponded ? `
+                        <div class="request-response-status ${responseStatus}">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            ${getResponseStatusText(responseStatus)}
+                        </div>
+                        ${responseStatus === 'pending' ? `
+                            <button class="btn-cancel-response" data-id="${r.id}">
+                                Отменить отклик
+                            </button>
+                        ` : ''}
+                    ` : `
+                        <button class="btn-respond" data-id="${r.id}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 4C12 4 6 10 6 14a6 6 0 1012 0c0-4-6-10-6-10z"/>
+                            </svg>
+                            Откликнуться
+                        </button>
+                    `}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Обработчики кнопок
+    container.querySelectorAll('.btn-respond').forEach(btn => {
+        btn.addEventListener('click', () => openRespondModal(btn.dataset.id));
+    });
+    
+    container.querySelectorAll('.btn-cancel-response').forEach(btn => {
+        btn.addEventListener('click', () => cancelResponse(btn.dataset.id));
+    });
+    
+    // Фильтры
+    initRequestFilters(requests);
+}
+
+/**
+ * Обновление бейджей с количеством запросов
+ */
+function updateRequestsBadges(requests) {
+    const totalCount = requests.length;
+    const criticalCount = requests.filter(r => r.urgency === 'critical').length;
+    const urgentCount = requests.filter(r => r.urgency === 'urgent').length;
+    const respondedCount = requests.filter(r => r.response_id !== null).length;
+    
+    // Бейдж в навигации
+    const navBadge = document.getElementById('requests-badge');
+    if (navBadge) {
+        navBadge.textContent = totalCount;
+        navBadge.style.display = totalCount > 0 ? 'inline-flex' : 'none';
+    }
+    
+    // Бейджи в фильтрах
+    document.getElementById('filter-count-all').textContent = totalCount;
+    document.getElementById('filter-count-critical').textContent = criticalCount;
+    document.getElementById('filter-count-urgent').textContent = urgentCount;
+    document.getElementById('filter-count-responded').textContent = respondedCount;
+}
+
+/**
+ * Инициализация фильтров запросов
+ */
+function initRequestFilters(requests) {
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const requestCards = document.querySelectorAll('.request-card');
+    
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const filter = btn.dataset.filter;
+            
+            // Активная кнопка
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Фильтрация карточек
+            requestCards.forEach(card => {
+                const urgency = card.dataset.urgency;
+                const responded = card.dataset.responded === 'true';
+                
+                let show = false;
+                
+                if (filter === 'all') {
+                    show = true;
+                } else if (filter === 'responded') {
+                    show = responded;
+                } else {
+                    show = urgency === filter;
+                }
+                
+                card.style.display = show ? 'block' : 'none';
+            });
+        });
     });
 }
 
-function getUrgencyText(urgency) {
-    const map = { 'normal': 'Обычный', 'urgent': 'Срочный', 'critical': 'Критический' };
-    return map[urgency] || urgency;
+/**
+ * Открыть модальное окно для отклика
+ */
+function openRespondModal(requestId) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-respond active';
+    modal.innerHTML = `
+        <div class="modal-respond-content">
+            <div class="modal-respond-header">
+                <h3>Отклик на запрос</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-respond-body">
+                <p>Вы уверены, что готовы прийти на донацию?</p>
+                <p style="margin-top: 12px; font-size: var(--text-sm); color: var(--color-gray-600);">
+                    Медицинский центр получит уведомление о вашем отклике.
+                </p>
+                <textarea id="response-message" placeholder="Дополнительная информация (необязательно)" 
+                          style="width: 100%; margin-top: 16px; padding: 12px; border: 1px solid var(--color-gray-300); border-radius: var(--radius-md); min-height: 80px;"></textarea>
+            </div>
+            <div class="modal-respond-footer">
+                <button class="btn-cancel-response" onclick="this.closest('.modal-respond').remove()">
+                    Отмена
+                </button>
+                <button class="btn-respond" id="confirm-respond-btn">
+                    Подтвердить отклик
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Закрытие по клику вне
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    // Закрытие по кнопке
+    modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+    
+    // Подтверждение
+    modal.querySelector('#confirm-respond-btn').addEventListener('click', () => {
+        const message = document.getElementById('response-message').value;
+        respondToBloodRequest(requestId, message);
+        modal.remove();
+    });
 }
 
-async function respondToRequest(requestId) {
+/**
+ * Откликнуться на запрос крови
+ */
+async function respondToBloodRequest(requestId, message = '') {
     try {
-        const response = await fetch(`${DONOR_API_URL}/responses`, {
+        const response = await fetch(`${DONOR_API_URL}/donor/blood-requests/${requestId}/respond`, {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ request_id: parseInt(requestId) })
+            body: JSON.stringify({ message })
         });
         
         const result = await response.json();
         
         if (response.ok) {
-            showNotification('Вы откликнулись на запрос! Ждите подтверждения.', 'success');
+            showNotification('✅ Ваш отклик отправлен! Медицинский центр свяжется с вами.', 'success');
             loadRequestsFromAPI();
         } else {
-            showNotification(result.error || 'Ошибка', 'error');
+            showNotification('❌ ' + (result.error || 'Ошибка отклика'), 'error');
         }
     } catch (error) {
+        console.error('Ошибка отклика:', error);
+        showNotification('❌ Ошибка соединения', 'error');
+    }
+}
+
+/**
+ * Отменить отклик на запрос
+ */
+async function cancelResponse(requestId) {
+    if (!confirm('Вы уверены, что хотите отменить свой отклик?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${DONOR_API_URL}/donor/blood-requests/${requestId}/respond`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showNotification('Отклик отменён', 'info');
+            loadRequestsFromAPI();
+        } else {
+            showNotification('Ошибка: ' + (result.error || 'Не удалось отменить'), 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка отмены отклика:', error);
         showNotification('Ошибка соединения', 'error');
     }
+}
+
+function getUrgencyText(urgency) {
+    const map = { 
+        'normal': 'Обычный', 
+        'urgent': 'Срочно', 
+        'critical': 'Критично' 
+    };
+    return map[urgency] || urgency;
+}
+
+function getResponseStatusText(status) {
+    const map = {
+        'pending': 'Отклик отправлен',
+        'approved': 'Одобрено',
+        'rejected': 'Отклонено'
+    };
+    return map[status] || status;
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = date - now;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    
+    if (hours < 24 && hours >= 0) {
+        return `Через ${hours} ч.`;
+    }
+    
+    return date.toLocaleDateString('ru-RU', { 
+        day: 'numeric', 
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 }
 
 /**
  * Загрузка сообщений от медцентра
  */
+/**
+ * Загрузка сообщений от медцентра
+ */
 async function loadMessagesFromAPI() {
     try {
-        const response = await fetch(`${DONOR_API_URL}/messages`, {
+        console.log('Загрузка сообщений...');
+        
+        const response = await fetch(`${DONOR_API_URL}/donor/messages`, {
             headers: getAuthHeaders()
         });
         
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
         const messages = await response.json();
+        console.log('Сообщения загружены:', messages);
+        
         displayMessages(messages);
+        updateMessagesBadge(messages);
     } catch (error) {
         console.error('Ошибка загрузки сообщений:', error);
+        const container = document.getElementById('messages-list');
+        if (container) {
+            container.innerHTML = '<p class="no-data">Ошибка загрузки сообщений</p>';
+        }
     }
 }
 
@@ -207,19 +498,81 @@ function displayMessages(messages) {
     if (!container) return;
     
     if (!messages || messages.length === 0) {
-        container.innerHTML = '<p class="no-data">Нет сообщений</p>';
+        container.innerHTML = `
+            <div class="request-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                </svg>
+                <p>Нет сообщений</p>
+            </div>
+        `;
         return;
     }
     
     container.innerHTML = messages.map(m => `
         <div class="message-item ${m.is_read ? 'read' : 'unread'}" data-id="${m.id}">
             <div class="message-header">
-                <span class="message-from">${m.from_medcenter_name || 'Медцентр'}</span>
-                <span class="message-date">${new Date(m.created_at).toLocaleDateString('ru-RU')}</span>
+                <div class="message-from">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                    </svg>
+                    ${m.from_medcenter_name || 'Медицинский центр'}
+                </div>
+                <span class="message-date">${formatMessageDate(m.created_at)}</span>
             </div>
             ${m.subject ? `<div class="message-subject">${m.subject}</div>` : ''}
             <div class="message-text">${m.message}</div>
+            ${!m.is_read ? '<div class="message-unread-indicator"></div>' : ''}
         </div>
+    `).join('');
+    
+    // Пометить сообщения как прочитанные при клике
+    container.querySelectorAll('.message-item.unread').forEach(item => {
+        item.addEventListener('click', () => markMessageAsRead(item.dataset.id));
+    });
+}
+
+function updateMessagesBadge(messages) {
+    const unreadCount = messages.filter(m => !m.is_read).length;
+    const badge = document.getElementById('messages-badge');
+    
+    if (badge) {
+        badge.textContent = unreadCount;
+        badge.style.display = unreadCount > 0 ? 'inline-flex' : 'none';
+    }
+}
+
+async function markMessageAsRead(messageId) {
+    try {
+        await fetch(`${DONOR_API_URL}/donor/messages/${messageId}/read`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        
+        loadMessagesFromAPI(); // Перезагрузить сообщения
+    } catch (error) {
+        console.error('Ошибка отметки сообщения как прочитанного:', error);
+    }
+}
+
+function formatMessageDate(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+        return 'Сегодня, ' + date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    } else if (diffDays === 1) {
+        return 'Вчера, ' + date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    } else {
+        return date.toLocaleDateString('ru-RU', { 
+            day: 'numeric', 
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+}
     `).join('');
 }
 

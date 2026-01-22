@@ -47,6 +47,16 @@
                     </a>
                 </li>
                 <li>
+                    <a href="#requests" class="nav-item" data-section="requests">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 4C12 4 6 10 6 14a6 6 0 1012 0c0-4-6-10-6-10z"/>
+                            <path d="M12 14h.01M9.5 11h5"/>
+                        </svg>
+                        <span>Запросы крови</span>
+                        <span class="badge" id="requests-badge">0</span>
+                    </a>
+                </li>
+                <li>
                     <a href="#donations" class="nav-item" data-section="donations">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 4C12 4 6 10 6 14a6 6 0 1012 0c0-4-6-10-6-10z"/>
@@ -276,6 +286,40 @@
             
             <div id="requests-list" class="requests-list">
                 <!-- Заполняется динамически -->
+            </div>
+        </section>
+
+        <!-- Секция: Запросы крови -->
+        <section id="requests" class="dashboard-section">
+            <div class="section-header">
+                <h2>Запросы крови</h2>
+                <p>Актуальные запросы на донацию от медицинских центров</p>
+            </div>
+
+            <div class="requests-filters">
+                <button class="filter-btn active" data-filter="all">
+                    <span>Все</span>
+                    <span class="filter-count" id="filter-count-all">0</span>
+                </button>
+                <button class="filter-btn" data-filter="critical">
+                    <span>Критично</span>
+                    <span class="filter-count" id="filter-count-critical">0</span>
+                </button>
+                <button class="filter-btn" data-filter="urgent">
+                    <span>Срочно</span>
+                    <span class="filter-count" id="filter-count-urgent">0</span>
+                </button>
+                <button class="filter-btn" data-filter="responded">
+                    <span>Мои отклики</span>
+                    <span class="filter-count" id="filter-count-responded">0</span>
+                </button>
+            </div>
+
+            <div id="blood-requests-list" class="blood-requests-list">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Загрузка запросов...</p>
+                </div>
             </div>
         </section>
 

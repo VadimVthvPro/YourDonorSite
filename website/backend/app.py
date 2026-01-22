@@ -16,6 +16,15 @@ from psycopg2.extras import RealDictCursor
 import requests
 from dotenv import load_dotenv
 
+# Импорт функции уведомлений из telegram_bot
+try:
+    from telegram_bot import send_notification
+except ImportError:
+    # Если telegram_bot недоступен, создаём заглушку
+    def send_notification(telegram_id, message):
+        print(f"[TELEGRAM] Уведомление для {telegram_id}: {message}")
+        return False
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -1270,6 +1279,205 @@ def unlink_telegram():
     )
     
     return jsonify({'message': 'Telegram отвязан'})
+
+# ============================================
+# Выход
+# ============================================
+
+# ============================================
+# API: Запросы крови для доноров
+# ============================================
+
+@app.route('/api/donor/blood-requests', methods=['GET'])
+@require_auth('donor')
+def get_donor_blood_requests():
+    """Получить список запросов крови для донора"""
+    user_id = g.session['user_id']
+    
+    # Получаем данные донора
+    donor = query_db("""
+        SELECT district_id, blood_type, linked_medical_center_id 
+        FROM users 
+        WHERE id = %s
+    """, (user_id,), one=True)
+    
+    if not donor:
+        return jsonify({'error': 'Донор не найден'}), 404
+    
+    # Получаем активные запросы крови:
+    # 1) От медцентра, к которому привязан донор
+    # 2) От медцентров в том же районе
+    # 3) С подходящей группой крови
+    query = """
+        SELECT 
+            br.id,
+            br.blood_type,
+            br.urgency,
+            br.description,
+            br.status,
+            br.created_at,
+            br.expires_at,
+            mc.name as medical_center_name,
+            mc.address as medical_center_address,
+            mc.phone as medical_center_phone,
+            mc.email as medical_center_email,
+            dr.id as response_id,
+            dr.status as response_status,
+            dr.message as response_message,
+            dr.responded_at
+        FROM blood_requests br
+        JOIN medical_centers mc ON br.medical_center_id = mc.id
+        LEFT JOIN donation_responses dr ON dr.request_id = br.id AND dr.user_id = %s
+        WHERE 
+            br.status = 'active' 
+            AND br.expires_at > NOW()
+            AND br.blood_type = %s
+            AND (
+                br.medical_center_id = %s 
+                OR mc.district_id = %s
+            )
+        ORDER BY 
+            CASE br.urgency 
+                WHEN 'critical' THEN 1
+                WHEN 'urgent' THEN 2
+                ELSE 3
+            END,
+            br.created_at DESC
+    """
+    
+    requests = query_db(query, (
+        user_id, 
+        donor['blood_type'],
+        donor['linked_medical_center_id'],
+        donor['district_id']
+    ))
+    
+    return jsonify(requests or [])
+
+@app.route('/api/donor/blood-requests/<int:request_id>/respond', methods=['POST'])
+@require_auth('donor')
+def respond_to_blood_request(request_id):
+    """Откликнуться на запрос крови"""
+    user_id = g.session['user_id']
+    data = request.json
+    
+    # Проверяем, существует ли запрос
+    req = query_db(
+        "SELECT id, medical_center_id, blood_type, urgency FROM blood_requests WHERE id = %s AND status = 'active'",
+        (request_id,), one=True
+    )
+    
+    if not req:
+        return jsonify({'error': 'Запрос не найден или неактивен'}), 404
+    
+    # Проверяем, не откликался ли уже донор
+    existing = query_db(
+        "SELECT id FROM donation_responses WHERE request_id = %s AND user_id = %s",
+        (request_id, user_id), one=True
+    )
+    
+    if existing:
+        return jsonify({'error': 'Вы уже откликнулись на этот запрос'}), 400
+    
+    # Создаём отклик
+    response_id = query_db(
+        """INSERT INTO donation_responses 
+           (request_id, user_id, status, message, responded_at)
+           VALUES (%s, %s, 'pending', %s, NOW())
+           RETURNING id""",
+        (request_id, user_id, data.get('message', '')),
+        commit=True, one=True
+    )['id']
+    
+    # Получаем информацию для ответа
+    donor = query_db("""
+        SELECT full_name FROM users WHERE id = %s
+    """, (user_id,), one=True)
+    
+    return jsonify({
+        'message': 'Ваш отклик отправлен. Медицинский центр свяжется с вами.',
+        'response_id': response_id
+    }), 201
+
+@app.route('/api/donor/blood-requests/<int:request_id>/respond', methods=['DELETE'])
+@require_auth('donor')
+def cancel_blood_request_response(request_id):
+    """Отменить отклик на запрос крови"""
+    user_id = g.session['user_id']
+    
+    # Проверяем существование отклика
+    response = query_db(
+        "SELECT id FROM donation_responses WHERE request_id = %s AND user_id = %s",
+        (request_id, user_id), one=True
+    )
+    
+    if not response:
+        return jsonify({'error': 'Отклик не найден'}), 404
+    
+    # Удаляем отклик
+    query_db(
+        "DELETE FROM donation_responses WHERE id = %s",
+        (response['id'],), commit=True
+    )
+    
+    return jsonify({'message': 'Отклик отменён'})
+
+# ============================================
+# API: Сообщения для доноров
+# ============================================
+
+@app.route('/api/donor/messages', methods=['GET'])
+@require_auth('donor')
+def get_donor_messages():
+    """Получить сообщения донора от медцентров"""
+    user_id = g.session['user_id']
+    
+    messages = query_db(
+        """SELECT m.id, m.subject, m.message, m.is_read, m.created_at, m.read_at,
+                  mc.name as from_medcenter_name
+           FROM messages m
+           JOIN medical_centers mc ON m.from_medcenter_id = mc.id
+           WHERE m.to_user_id = %s
+           ORDER BY m.created_at DESC""",
+        (user_id,)
+    )
+    
+    return jsonify(messages or [])
+
+@app.route('/api/donor/messages/<int:message_id>/read', methods=['POST'])
+@require_auth('donor')
+def mark_donor_message_read(message_id):
+    """Отметить сообщение как прочитанное"""
+    user_id = g.session['user_id']
+    
+    # Проверяем принадлежность сообщения
+    msg = query_db(
+        "SELECT id FROM messages WHERE id = %s AND to_user_id = %s",
+        (message_id, user_id), one=True
+    )
+    
+    if not msg:
+        return jsonify({'error': 'Сообщение не найдено'}), 404
+    
+    query_db(
+        "UPDATE messages SET is_read = TRUE, read_at = NOW() WHERE id = %s",
+        (message_id,), commit=True
+    )
+    
+    return jsonify({'message': 'Сообщение прочитано'})
+
+@app.route('/api/donor/messages/unread-count', methods=['GET'])
+@require_auth('donor')
+def get_donor_unread_count():
+    """Получить количество непрочитанных сообщений"""
+    user_id = g.session['user_id']
+    
+    result = query_db(
+        "SELECT COUNT(*) as count FROM messages WHERE to_user_id = %s AND is_read = FALSE",
+        (user_id,), one=True
+    )
+    
+    return jsonify({'unread': result['count'] if result else 0})
 
 # ============================================
 # Выход
