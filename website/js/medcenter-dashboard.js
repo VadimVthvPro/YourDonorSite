@@ -5,8 +5,8 @@
 
 console.log('==== medcenter-dashboard.js ЗАГРУЖЕН ====');
 
-// Используем MC_API_URL из app.js или определяем свой
-const MC_MC_API_URL = window.MC_API_URL || 'http://localhost:5001/api';
+// Используем API_URL из app.js или определяем свой
+const MC_API_URL = window.API_URL || 'http://localhost:5001/api';
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('=== Инициализация dashboard медцентра ===');
@@ -31,11 +31,6 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch (e) { console.error('✗ Ошибка initMobileSidebar:', e); }
     
     try {
-        loadMedcenterData();
-        console.log('✓ Данные медцентра загружены');
-    } catch (e) { console.error('✗ Ошибка loadMedcenterData:', e); }
-    
-    try {
         initModals();
         console.log('✓ Модальные окна инициализированы');
     } catch (e) { console.error('✗ Ошибка initModals:', e); }
@@ -51,6 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch (e) { console.error('✗ Ошибка initLogout:', e); }
     
     // Асинхронные функции - загрузка данных (не блокируют)
+    loadMedcenterData().then(() => console.log('✓ Данные медцентра загружены')).catch(e => console.error('✗ Ошибка данных медцентра:', e));
     loadTrafficLightFromAPI().then(() => console.log('✓ Светофор загружен')).catch(e => console.error('✗ Ошибка светофора:', e));
     loadResponsesFromAPI().then(() => console.log('✓ Отклики загружены')).catch(e => console.error('✗ Ошибка откликов:', e));
     loadDonorsFromAPI().then(() => console.log('✓ Доноры загружены')).catch(e => console.error('✗ Ошибка доноров:', e));
