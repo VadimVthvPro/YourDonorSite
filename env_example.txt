@@ -1,0 +1,9 @@
+# Telegram Bot Token (получите у @BotFather)
+TELEGRAM_TOKEN=your_telegram_bot_token_here
+
+# Database Configuration
+DB_HOST=localhost
+DB_NAME=blood_donor_bot
+DB_USER=postgres
+DB_PASSWORD=your_database_password
+DB_PORT=5432 
