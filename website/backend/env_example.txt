@@ -1,0 +1,27 @@
+# ============================================
+# ДонорБай - Конфигурация окружения
+# ============================================
+# Скопируйте этот файл в .env и заполните значения
+
+# База данных PostgreSQL
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=donorbay
+DB_USER=postgres
+DB_PASSWORD=your_secure_password
+
+# Секретный ключ для сессий (сгенерируйте уникальный)
+SECRET_KEY=your-secret-key-here-generate-random-string
+
+# Мастер-пароль для входа медцентров
+MASTER_PASSWORD=doctor2024
+
+# Telegram Bot API
+# Получите токен у @BotFather в Telegram
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+
+# Режим отладки (true/false)
+FLASK_DEBUG=true
+
+# Порт сервера
+PORT=5000

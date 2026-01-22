@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный кабинет донора | Твой Донор</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard-page">
+    <!-- Боковая навигация -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="../index.html" class="logo">
+                <svg class="logo-icon" viewBox="0 0 40 40" fill="none">
+                    <path d="M20 4C20 4 8 16 8 24C8 30.627 13.373 36 20 36C26.627 36 32 30.627 32 24C32 16 20 4 20 4Z" fill="currentColor"/>
+                    <path d="M16 22H24M20 18V26" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span>Твой Донор</span>
+            </a>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <ul>
+                <li>
+                    <a href="#dashboard" class="nav-item active" data-section="dashboard">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                        <span>Главная</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#requests" class="nav-item" data-section="requests">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 01-3.46 0"/>
+                        </svg>
+                        <span>Запросы крови</span>
+                        <span class="badge" id="requests-badge">3</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#donations" class="nav-item" data-section="donations">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 4C12 4 6 10 6 14a6 6 0 1012 0c0-4-6-10-6-10z"/>
+                        </svg>
+                        <span>Мои донации</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#donate" class="nav-item" data-section="donate">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                        </svg>
+                        <span>Хочу сдать кровь</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#certificate" class="nav-item" data-section="certificate">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                        </svg>
+                        <span>Мед. справка</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#messages" class="nav-item" data-section="messages">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                        </svg>
+                        <span>Сообщения</span>
+                        <span class="badge" id="messages-badge">0</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#info" class="nav-item" data-section="info">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                        <span>О донорстве</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#profile" class="nav-item" data-section="profile">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <span>Мой профиль</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="#" class="nav-item logout" id="logout-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                    <polyline points="16,17 21,12 16,7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <span>Выход</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Основной контент -->
+    <main class="main-content">
+        <!-- Шапка -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <button class="mobile-sidebar-toggle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12h18M3 6h18M3 18h18"/>
+                    </svg>
+                </button>
+                <h1 class="page-title">Личный кабинет</h1>
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <span id="user-initials">ИИ</span>
+                    </div>
+                    <div class="user-details">
+                        <span class="user-name" id="user-name">Загрузка...</span>
+                        <span class="user-role">Донор</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Секция: Главная -->
+        <section id="dashboard" class="dashboard-section active">
+            <div class="welcome-banner">
+                <div class="welcome-content">
+                    <h2>Добро пожаловать!</h2>
+                    <p>Ваш вклад спасает жизни. Спасибо, что вы с нами.</p>
+                </div>
+                <div class="welcome-illustration">
+                    <svg viewBox="0 0 120 120" fill="none">
+                        <circle cx="60" cy="60" r="50" fill="#fef2f2"/>
+                        <path d="M60 30C60 30 40 50 40 65C40 80 48 90 60 90C72 90 80 80 80 65C80 50 60 30 60 30Z" fill="#dc2626"/>
+                        <path d="M50 60h20M60 50v20" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 4C12 4 6 10 6 14a6 6 0 1012 0c0-4-6-10-6-10z"/>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-donations">0</span>
+                        <span class="stat-label">Всего донаций</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                            <path d="M22 4L12 14.01l-3-3"/>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-status">Готов</span>
+                        <span class="stat-label">Статус донора</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon red">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-next">—</span>
+                        <span class="stat-label">До следующей донации</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon purple">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 01-3.46 0"/>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-requests">3</span>
+                        <span class="stat-label">Активных запросов</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dashboard-grid">
+                <div class="card recent-requests">
+                    <div class="card-header">
+                        <h3>Срочные запросы</h3>
+                        <a href="#requests" class="link">Все запросы</a>
+                    </div>
+                    <div class="card-content">
+                        <div id="recent-requests-list">
+                            <!-- Заполняется динамически -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card my-info">
+                    <div class="card-header">
+                        <h3>Моя информация</h3>
+                        <a href="#profile" class="link">Редактировать</a>
+                    </div>
+                    <div class="card-content">
+                        <div class="info-row">
+                            <span class="info-label">Группа крови:</span>
+                            <span class="info-value blood-type" id="info-blood-type">—</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Медцентр:</span>
+                            <span class="info-value" id="info-medcenter">—</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Последняя донация:</span>
+                            <span class="info-value" id="info-last-donation">—</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Telegram:</span>
+                            <span class="info-value" id="info-telegram">Не привязан</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Секция: Запросы крови -->
+        <section id="requests" class="dashboard-section">
+            <div class="section-header">
+                <h2>Запросы на донорство</h2>
+                <p>Медицинские центры, которым нужна ваша группа крови</p>
+            </div>
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <label>Срочность:</label>
+                    <select id="filter-urgency">
+                        <option value="all">Все</option>
+                        <option value="urgent">Срочные</option>
+                        <option value="need">Нужно пополнить</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Расстояние:</label>
+                    <select id="filter-distance">
+                        <option value="all">Любое</option>
+                        <option value="10">До 10 км</option>
+                        <option value="25">До 25 км</option>
+                        <option value="50">До 50 км</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="requests-list" class="requests-list">
+                <!-- Заполняется динамически -->
+            </div>
+        </section>
+
+        <!-- Секция: Мои донации -->
+        <section id="donations" class="dashboard-section">
+            <div class="section-header">
+                <h2>История донаций</h2>
+                <p>Ваш вклад в спасение жизней</p>
+            </div>
+            
+            <div class="donations-stats">
+                <div class="donation-stat">
+                    <span class="donation-stat-value" id="total-volume">0</span>
+                    <span class="donation-stat-label">мл крови сдано</span>
+                </div>
+                <div class="donation-stat">
+                    <span class="donation-stat-value" id="lives-saved">0</span>
+                    <span class="donation-stat-label">жизней спасено</span>
+                </div>
+            </div>
+            
+            <div id="donations-list" class="donations-list">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M12 4C12 4 6 10 6 14a6 6 0 1012 0c0-4-6-10-6-10z"/>
+                    </svg>
+                    <h3>Пока нет донаций</h3>
+                    <p>Ваша первая донация может спасти чью-то жизнь</p>
+                    <a href="#donate" class="btn btn-primary">Найти где сдать</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Секция: Хочу сдать кровь -->
+        <section id="donate" class="dashboard-section">
+            <div class="section-header">
+                <h2>Хочу сдать кровь</h2>
+                <p>Найдите центры, которым нужна ваша группа крови</p>
+            </div>
+            
+            <div id="donate-centers" class="donate-centers">
+                <!-- Заполняется динамически -->
+            </div>
+        </section>
+
+        <!-- Секция: Мед. справка -->
+        <section id="certificate" class="dashboard-section">
+            <div class="section-header">
+                <h2>Медицинская справка</h2>
+                <p>Загрузите справку для подтверждения статуса донора</p>
+            </div>
+            
+            <div class="certificate-card">
+                <div id="certificate-status" class="certificate-status">
+                    <div class="certificate-icon not-uploaded">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                            <path d="M14 2v6h6M12 18v-6M9 15h6"/>
+                        </svg>
+                    </div>
+                    <div class="certificate-info">
+                        <h3>Справка не загружена</h3>
+                        <p>Загрузите фото медицинской справки для подтверждения вашего статуса</p>
+                    </div>
+                </div>
+                
+                <div class="certificate-upload">
+                    <label for="cert-file" class="upload-area">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                            <polyline points="17,8 12,3 7,8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <span>Нажмите или перетащите файл</span>
+                        <small>PNG, JPG до 5MB</small>
+                    </label>
+                    <input type="file" id="cert-file" accept="image/*" hidden>
+                </div>
+                
+                <div class="certificate-info-block">
+                    <h4>Важная информация</h4>
+                    <ul>
+                        <li>Справка действительна 6 месяцев с момента загрузки</li>
+                        <li>При истечении срока справка автоматически удаляется</li>
+                        <li>Справка необходима для участия в некоторых донорских программах</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Секция: Сообщения -->
+        <section id="messages" class="dashboard-section">
+            <div class="section-header">
+                <h2>Сообщения</h2>
+                <p>Связь с медцентром</p>
+            </div>
+            
+            <div class="messages-container">
+                <div id="messages-list" class="messages-list">
+                    <p class="no-data">Загрузка сообщений...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Секция: Информация о донорстве -->
+        <section id="info" class="dashboard-section">
+            <div class="section-header">
+                <h2>О донорстве</h2>
+                <p>Полезная информация для доноров</p>
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-block">
+                    <h3>Кто может стать донором?</h3>
+                    <ul>
+                        <li>Граждане Республики Беларусь в возрасте от 18 до 60 лет</li>
+                        <li>Вес не менее 55 кг</li>
+                        <li>Отсутствие противопоказаний по здоровью</li>
+                        <li>Постоянная регистрация в РБ</li>
+                    </ul>
+                </div>
+                
+                <div class="info-block">
+                    <h3>Подготовка к донации</h3>
+                    <ul>
+                        <li>Накануне не употреблять жирную, острую, копчёную пищу</li>
+                        <li>Не употреблять алкоголь за 48 часов до сдачи</li>
+                        <li>Хорошо выспаться (не менее 7-8 часов)</li>
+                        <li>Утром лёгкий завтрак (чай с сахаром, хлеб, каша)</li>
+                        <li>Не курить за 1 час до процедуры</li>
+                    </ul>
+                </div>
+                
+                <div class="info-block">
+                    <h3>Интервалы между донациями</h3>
+                    <ul>
+                        <li><strong>Цельная кровь:</strong> 60 дней для мужчин, 90 дней для женщин</li>
+                        <li><strong>Плазма:</strong> 14 дней</li>
+                        <li><strong>Тромбоциты:</strong> 14 дней</li>
+                        <li>Мужчинам не более 5 раз в год, женщинам — 4 раза</li>
+                    </ul>
+                </div>
+                
+                <div class="info-block">
+                    <h3>Льготы для доноров</h3>
+                    <ul>
+                        <li>Бесплатное питание или компенсация</li>
+                        <li>Освобождение от работы в день сдачи</li>
+                        <li>Дополнительный выходной после донации</li>
+                        <li>Звание «Почётный донор» после 40+ донаций</li>
+                        <li>Ежемесячные выплаты почётным донорам</li>
+                    </ul>
+                </div>
+                
+                <div class="info-block full-width">
+                    <h3>Противопоказания к донорству</h3>
+                    <div class="contra-columns">
+                        <div>
+                            <h4>Абсолютные</h4>
+                            <ul>
+                                <li>ВИЧ, гепатиты B и C</li>
+                                <li>Онкологические заболевания</li>
+                                <li>Туберкулёз</li>
+                                <li>Болезни крови</li>
+                                <li>Наркозависимость</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4>Временные</h4>
+                            <ul>
+                                <li>ОРВИ — 1 месяц после выздоровления</li>
+                                <li>Удаление зуба — 10 дней</li>
+                                <li>Татуировка, пирсинг — 1 год</li>
+                                <li>Беременность — 1 год после родов</li>
+                                <li>Операции — от 6 месяцев до 1 года</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-footer">
+                <a href="../index.html#info" class="btn btn-outline">Подробнее о донорстве</a>
+            </div>
+        </section>
+
+        <!-- Секция: Профиль -->
+        <section id="profile" class="dashboard-section">
+            <div class="section-header">
+                <h2>Мой профиль</h2>
+                <p>Управляйте вашими данными</p>
+            </div>
+            
+            <div class="profile-grid">
+                <div class="profile-card">
+                    <h3>Личные данные</h3>
+                    <form id="profile-form">
+                        <div class="form-group">
+                            <label>ФИО</label>
+                            <input type="text" id="profile-fio" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Год рождения</label>
+                            <input type="number" id="profile-birth" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Телефон</label>
+                            <input type="tel" id="profile-phone" placeholder="+375 29 123 45 67">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                    </form>
+                </div>
+                
+                <div class="profile-card">
+                    <h3>Медицинская информация</h3>
+                    <form id="medical-form">
+                        <div class="form-group">
+                            <label>Группа крови</label>
+                            <div class="blood-type-selector">
+                                <label class="blood-option">
+                                    <input type="radio" name="blood_type" value="A+">
+                                    <span>A+</span>
+                                </label>
+                                <label class="blood-option">
+                                    <input type="radio" name="blood_type" value="A-">
+                                    <span>A-</span>
+                                </label>
+                                <label class="blood-option">
+                                    <input type="radio" name="blood_type" value="B+">
+                                    <span>B+</span>
+                                </label>
+                                <label class="blood-option">
+                                    <input type="radio" name="blood_type" value="B-">
+                                    <span>B-</span>
+                                </label>
+                                <label class="blood-option">
+                                    <input type="radio" name="blood_type" value="AB+">
+                                    <span>AB+</span>
+                                </label>
+                                <label class="blood-option">
+                                    <input type="radio" name="blood_type" value="AB-">
+                                    <span>AB-</span>
+                                </label>
+                                <label class="blood-option">
+                                    <input type="radio" name="blood_type" value="O+">
+                                    <span>O+</span>
+                                </label>
+                                <label class="blood-option">
+                                    <input type="radio" name="blood_type" value="O-">
+                                    <span>O-</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Дата последней донации</label>
+                            <input type="date" id="profile-last-donation">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Обновить</button>
+                    </form>
+                </div>
+                
+                <div class="profile-card">
+                    <h3>Привязка Telegram</h3>
+                    <div class="telegram-link-card">
+                        <div id="telegram-status" class="telegram-status not-linked">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2s-.18-.04-.26-.02c-.12.02-1.96 1.25-5.54 3.67-.52.36-1 .53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.37-.49 1.02-.75 3.98-1.73 6.64-2.87 7.97-3.43 3.8-1.57 4.59-1.85 5.1-1.86.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .38z"/>
+                            </svg>
+                            <div class="telegram-info">
+                                <h4>Telegram не привязан</h4>
+                                <p>Привяжите аккаунт для получения уведомлений о срочных запросах крови</p>
+                            </div>
+                        </div>
+                        <div class="telegram-input">
+                            <div class="input-group">
+                                <span>@</span>
+                                <input type="text" id="telegram-username" placeholder="username">
+                            </div>
+                            <button type="button" class="btn btn-primary" id="link-telegram">Привязать</button>
+                        </div>
+                        <p class="telegram-hint">После привязки вам придёт подтверждение в Telegram от бота @BloodCollection_bot</p>
+                    </div>
+                </div>
+                
+                <div class="profile-card">
+                    <h3>Привязка к медцентру</h3>
+                    <form id="medcenter-form">
+                        <div class="form-group">
+                            <label>Область</label>
+                            <select id="profile-region">
+                                <option value="">Выберите область</option>
+                                <option value="minsk">Минск</option>
+                                <option value="minsk-region">Минская область</option>
+                                <option value="brest">Брестская область</option>
+                                <option value="vitebsk">Витебская область</option>
+                                <option value="gomel">Гомельская область</option>
+                                <option value="grodno">Гродненская область</option>
+                                <option value="mogilev">Могилёвская область</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Район</label>
+                            <select id="profile-district" disabled>
+                                <option value="">Сначала выберите область</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Медицинский центр</label>
+                            <select id="profile-medcenter" disabled>
+                                <option value="">Сначала выберите район</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Модальное окно отклика -->
+    <div id="response-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+            <div class="modal-header">
+                <div class="modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                    </svg>
+                </div>
+                <h2>Откликнуться на запрос</h2>
+            </div>
+            <div class="modal-body" id="modal-request-details">
+                <!-- Заполняется динамически -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" data-action="cancel">Отмена</button>
+                <button class="btn btn-primary" data-action="confirm">Подтвердить отклик</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/donor-dashboard.js"></script>
+</body>
+</html>

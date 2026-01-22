@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход — Твой Донор</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/auth.css">
+</head>
+<body class="auth-page">
+    <header class="header header-auth">
+        <div class="container">
+            <nav class="nav">
+                <a href="../index.html" class="logo">
+                    <svg class="logo-icon-svg" viewBox="0 0 40 40" fill="none" width="36" height="36">
+                        <path d="M20 4C20 4 8 16 8 24C8 30.627 13.373 36 20 36C26.627 36 32 30.627 32 24C32 16 20 4 20 4Z" fill="currentColor"/>
+                        <path d="M16 22H24M20 18V26" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <span class="logo-text">Твой Донор</span>
+                </a>
+                <a href="../index.html" class="back-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Назад на главную
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="auth-main">
+        <!-- Фоновые элементы -->
+        <div class="auth-background">
+            <div class="auth-blob blob-1"></div>
+            <div class="auth-blob blob-2"></div>
+        </div>
+        
+        <div class="auth-container">
+            <!-- Выбор типа пользователя -->
+            <div class="user-type-selector">
+                <button class="type-btn active" data-type="donor">
+                    <span class="type-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                    </span>
+                    <span class="type-label">Донор</span>
+                </button>
+                <button class="type-btn" data-type="medcenter">
+                    <span class="type-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                        </svg>
+                    </span>
+                    <span class="type-label">Медцентр</span>
+                </button>
+            </div>
+
+            <!-- Форма донора -->
+            <div id="donor-form" class="auth-form-container">
+                <!-- Переключатель вход/регистрация -->
+                <div class="mode-tabs">
+                    <button class="mode-tab active" data-mode="login">Вход</button>
+                    <button class="mode-tab" data-mode="register">Регистрация</button>
+                </div>
+
+                <form id="donor-login-form" class="auth-form">
+                    <h2>Вход для доноров</h2>
+                    <p class="form-subtitle">Введите данные, указанные при регистрации</p>
+
+                    <div class="form-group">
+                        <label for="donor-name">ФИО полностью</label>
+                        <input type="text" id="donor-name" name="full_name" placeholder="Иванов Иван Иванович" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="donor-year">Год рождения</label>
+                        <input type="number" id="donor-year" name="birth_year" min="1940" max="2008" placeholder="1990" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="donor-region">Область</label>
+                        <select id="donor-region" name="region_id" required>
+                            <option value="">Выберите область</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="donor-district">Район</label>
+                        <select id="donor-district" name="district_id" required disabled>
+                            <option value="">Сначала выберите область</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="donor-medcenter">Медицинский центр</label>
+                        <select id="donor-medcenter" name="medical_center_id" required disabled>
+                            <option value="">Сначала выберите район</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">Войти</button>
+                    
+                    <p class="form-note">Нет аккаунта? <a href="#" class="switch-to-register">Зарегистрируйтесь</a></p>
+                </form>
+
+                <form id="donor-register-form" class="auth-form" style="display: none;">
+                    <h2>Регистрация донора</h2>
+                    <p class="form-subtitle">Заполните все поля для регистрации</p>
+
+                    <div class="form-group">
+                        <label for="reg-donor-name">ФИО полностью</label>
+                        <input type="text" id="reg-donor-name" name="full_name" placeholder="Иванов Иван Иванович" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-donor-year">Год рождения</label>
+                        <input type="number" id="reg-donor-year" name="birth_year" min="1940" max="2008" placeholder="1990" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-donor-blood">Группа крови</label>
+                        <select id="reg-donor-blood" name="blood_type" required>
+                            <option value="">Выберите группу крови</option>
+                            <option value="O+">O(I) Rh+</option>
+                            <option value="O-">O(I) Rh-</option>
+                            <option value="A+">A(II) Rh+</option>
+                            <option value="A-">A(II) Rh-</option>
+                            <option value="B+">B(III) Rh+</option>
+                            <option value="B-">B(III) Rh-</option>
+                            <option value="AB+">AB(IV) Rh+</option>
+                            <option value="AB-">AB(IV) Rh-</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-donor-region">Область</label>
+                        <select id="reg-donor-region" name="region_id" required>
+                            <option value="">Выберите область</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-donor-district">Район</label>
+                        <select id="reg-donor-district" name="district_id" required disabled>
+                            <option value="">Сначала выберите область</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-donor-medcenter">Медицинский центр</label>
+                        <select id="reg-donor-medcenter" name="medical_center_id" required disabled>
+                            <option value="">Сначала выберите район</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-donor-phone">Телефон (необязательно)</label>
+                        <input type="tel" id="reg-donor-phone" name="phone" placeholder="+375 29 123 45 67">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-donor-email">Email (необязательно)</label>
+                        <input type="email" id="reg-donor-email" name="email" placeholder="example@mail.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-donor-telegram">Telegram username (необязательно)</label>
+                        <input type="text" id="reg-donor-telegram" name="telegram_username" placeholder="@username">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">Зарегистрироваться</button>
+                    
+                    <p class="form-note">Уже есть аккаунт? <a href="#" class="switch-to-login">Войти</a></p>
+                </form>
+            </div>
+
+            <!-- Форма медцентра -->
+            <div id="medcenter-form" class="auth-form-container" style="display: none;">
+                <!-- Переключатель вход/регистрация -->
+                <div class="mode-tabs">
+                    <button class="mode-tab active" data-mode="login">Вход</button>
+                    <button class="mode-tab" data-mode="register">Регистрация</button>
+                </div>
+
+                <form id="medcenter-login-form" class="auth-form">
+                    <h2>Вход для медцентра</h2>
+                    <p class="form-subtitle">Выберите ваш медицинский центр</p>
+
+                    <div class="form-group">
+                        <label for="mc-region">Область</label>
+                        <select id="mc-region" name="region_id" required>
+                            <option value="">Выберите область</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mc-district">Район</label>
+                        <select id="mc-district" name="district_id" required disabled>
+                            <option value="">Сначала выберите область</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mc-medcenter">Медицинский центр</label>
+                        <select id="mc-medcenter" name="medical_center_id" required disabled>
+                            <option value="">Сначала выберите район</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mc-password">Пароль</label>
+                        <input type="password" id="mc-password" name="password" placeholder="Введите пароль" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">Войти</button>
+                    
+                    <p class="form-note">Нет медцентра в списке? <a href="#" class="switch-to-register-mc">Зарегистрируйте</a></p>
+                </form>
+
+                <form id="medcenter-register-form" class="auth-form" style="display: none;">
+                    <h2>Регистрация медцентра</h2>
+                    <p class="form-subtitle">Добавьте ваш медицинский центр в систему</p>
+
+                    <div class="form-group">
+                        <label for="reg-mc-name">Название медцентра</label>
+                        <input type="text" id="reg-mc-name" name="name" placeholder="Городская больница №1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-mc-region">Область</label>
+                        <select id="reg-mc-region" name="region_id" required>
+                            <option value="">Выберите область</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-mc-district">Район</label>
+                        <select id="reg-mc-district" name="district_id" required disabled>
+                            <option value="">Сначала выберите область</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-mc-address">Адрес</label>
+                        <input type="text" id="reg-mc-address" name="address" placeholder="ул. Примерная, д. 1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-mc-email">Рабочий email</label>
+                        <input type="email" id="reg-mc-email" name="email" placeholder="hospital@mail.by" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-mc-phone">Телефон</label>
+                        <input type="tel" id="reg-mc-phone" name="phone" placeholder="+375 17 123 45 67">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="reg-mc-blood" name="is_blood_center">
+                            Станция переливания крови
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">Зарегистрировать медцентр</button>
+                    
+                    <p class="form-note">Медцентр уже есть? <a href="#" class="switch-to-login-mc">Войти</a></p>
+                </form>
+            </div>
+
+            <div id="auth-message" class="auth-message" style="display: none;"></div>
+        </div>
+    </main>
+
+    <script src="../js/auth.js"></script>
+</body>
+</html>

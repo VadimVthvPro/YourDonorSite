@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Меню медцентра | Твой Донор</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/medcenter.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard-page medcenter-page">
+    <!-- Боковая навигация -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="../index.html" class="logo">
+                <svg class="logo-icon" viewBox="0 0 40 40" fill="none">
+                    <path d="M20 4C20 4 8 16 8 24C8 30.627 13.373 36 20 36C26.627 36 32 30.627 32 24C32 16 20 4 20 4Z" fill="currentColor"/>
+                    <path d="M16 22H24M20 18V26" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span>Твой Донор</span>
+            </a>
+        </div>
+        
+        <div class="sidebar-mc-info">
+            <div class="mc-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
+            </div>
+            <div class="mc-details">
+                <span class="mc-name" id="mc-name">Загрузка...</span>
+                <span class="mc-type">Медицинский центр</span>
+            </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <ul>
+                <li>
+                    <a href="#dashboard" class="nav-item active" data-section="dashboard">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                        <span>Главная</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#traffic-light" class="nav-item" data-section="traffic-light">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="6" y="2" width="12" height="20" rx="2"/>
+                            <circle cx="12" cy="7" r="2"/>
+                            <circle cx="12" cy="12" r="2"/>
+                            <circle cx="12" cy="17" r="2"/>
+                        </svg>
+                        <span>Донорский светофор</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#responses" class="nav-item" data-section="responses">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                        </svg>
+                        <span>Отклики доноров</span>
+                        <span class="badge" id="responses-badge">5</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#donors" class="nav-item" data-section="donors">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 4C12 4 6 10 6 14a6 6 0 1012 0c0-4-6-10-6-10z"/>
+                        </svg>
+                        <span>База доноров</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#statistics" class="nav-item" data-section="statistics">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 20V10M12 20V4M6 20v-6"/>
+                        </svg>
+                        <span>Статистика</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#settings" class="nav-item" data-section="settings">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+                        </svg>
+                        <span>Настройки</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="#" class="nav-item logout" id="logout-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                    <polyline points="16,17 21,12 16,7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <span>Выход</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Основной контент -->
+    <main class="main-content">
+        <!-- Шапка -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <button class="mobile-sidebar-toggle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12h18M3 6h18M3 18h18"/>
+                    </svg>
+                </button>
+                <h1 class="page-title">Меню медцентра</h1>
+            </div>
+            <div class="header-right">
+                <button class="btn btn-primary" id="urgent-request-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 01-3.46 0"/>
+                    </svg>
+                    Срочный запрос
+                </button>
+            </div>
+        </header>
+
+        <!-- Секция: Главная -->
+        <section id="dashboard" class="dashboard-section active">
+            <div class="mc-welcome-banner">
+                <div class="welcome-content">
+                    <h2>Панель управления</h2>
+                    <p>Управляйте донорством в вашем медцентре</p>
+                </div>
+                <div class="quick-actions">
+                    <button class="quick-btn" data-action="traffic-light">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="6" y="2" width="12" height="20" rx="2"/>
+                            <circle cx="12" cy="7" r="2"/>
+                            <circle cx="12" cy="12" r="2"/>
+                            <circle cx="12" cy="17" r="2"/>
+                        </svg>
+                        Светофор
+                    </button>
+                    <button class="quick-btn" data-action="urgent">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        Срочный запрос
+                    </button>
+                </div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-total-donors">128</span>
+                        <span class="stat-label">Всего доноров</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                            <path d="M22 4L12 14.01l-3-3"/>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-available">67</span>
+                        <span class="stat-label">Доступны сейчас</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon purple">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 01-3.46 0"/>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-pending">5</span>
+                        <span class="stat-label">Ожидают отклика</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon red">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 4C12 4 6 10 6 14a6 6 0 1012 0c0-4-6-10-6-10z"/>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-donations-month">23</span>
+                        <span class="stat-label">Донаций за месяц</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Мини-светофор -->
+            <div class="dashboard-grid">
+                <div class="card traffic-light-mini">
+                    <div class="card-header">
+                        <h3>Статус крови</h3>
+                        <a href="#traffic-light" class="link">Управление</a>
+                    </div>
+                    <div class="card-content">
+                        <div class="blood-status-grid" id="mini-traffic-light">
+                            <!-- Заполняется динамически -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card recent-responses">
+                    <div class="card-header">
+                        <h3>Последние отклики</h3>
+                        <a href="#responses" class="link">Все отклики</a>
+                    </div>
+                    <div class="card-content">
+                        <div id="recent-responses-list">
+                            <!-- Заполняется динамически -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Секция: Донорский светофор -->
+        <section id="traffic-light" class="dashboard-section">
+            <div class="section-header">
+                <h2>Донорский светофор</h2>
+                <p>Управляйте статусом потребности в крови по группам</p>
+            </div>
+            
+            <div class="traffic-light-info">
+                <div class="status-legend">
+                    <div class="legend-item">
+                        <span class="status-dot ok"></span>
+                        <span>Достаточно</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="status-dot need"></span>
+                        <span>Нужно пополнить</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="status-dot urgent"></span>
+                        <span>Срочно нужна (рассылка)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="traffic-light-grid" id="traffic-light-full">
+                <!-- Заполняется динамически -->
+            </div>
+            
+            <div class="traffic-light-note">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 8v4M12 16h.01"/>
+                </svg>
+                <p>При установке статуса "Срочно" система автоматически отправит уведомления всем донорам с подходящей группой крови в Telegram.</p>
+            </div>
+        </section>
+
+        <!-- Секция: Отклики доноров -->
+        <section id="responses" class="dashboard-section">
+            <div class="section-header">
+                <h2>Отклики доноров</h2>
+                <p>Управляйте заявками от доноров</p>
+            </div>
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <label>Статус:</label>
+                    <select id="filter-status">
+                        <option value="all">Все</option>
+                        <option value="pending">Ожидают</option>
+                        <option value="approved">Подтверждены</option>
+                        <option value="completed">Завершены</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Группа крови:</label>
+                    <select id="filter-blood">
+                        <option value="all">Все группы</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="responses-list" class="responses-list">
+                <!-- Заполняется динамически -->
+            </div>
+        </section>
+
+        <!-- Секция: База доноров -->
+        <section id="donors" class="dashboard-section">
+            <div class="section-header">
+                <h2>База доноров</h2>
+                <p>Просмотр зарегистрированных доноров</p>
+            </div>
+            
+            <div class="donors-filters">
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    <input type="text" id="donor-search" placeholder="Поиск по имени...">
+                </div>
+                <div class="filter-group">
+                    <select id="donor-blood-filter">
+                        <option value="all">Все группы</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <select id="donor-status-filter">
+                        <option value="all">Все статусы</option>
+                        <option value="available">Доступны</option>
+                        <option value="recovery">Восстановление</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="donors-list" class="donors-table-container">
+                <!-- Заполняется динамически -->
+            </div>
+        </section>
+
+        <!-- Секция: Статистика -->
+        <section id="statistics" class="dashboard-section">
+            <div class="section-header">
+                <h2>Статистика</h2>
+                <p>Аналитика донорской активности</p>
+            </div>
+            
+            <div class="stats-overview">
+                <div class="stat-block">
+                    <h3>По группам крови</h3>
+                    <div id="blood-stats" class="blood-stats-chart">
+                        <!-- Заполняется динамически -->
+                    </div>
+                </div>
+                
+                <div class="stat-block">
+                    <h3>Донации за последние 6 месяцев</h3>
+                    <div id="donations-chart" class="donations-chart">
+                        <!-- Заполняется динамически -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Секция: Настройки -->
+        <section id="settings" class="dashboard-section">
+            <div class="section-header">
+                <h2>Настройки медцентра</h2>
+                <p>Управление информацией о центре</p>
+            </div>
+            
+            <div class="settings-grid">
+                <div class="settings-card">
+                    <h3>Информация о центре</h3>
+                    <form id="mc-settings-form">
+                        <div class="form-group">
+                            <label>Название</label>
+                            <input type="text" id="setting-name" placeholder="Название медцентра">
+                        </div>
+                        <div class="form-group">
+                            <label>Адрес</label>
+                            <input type="text" id="setting-address" placeholder="Адрес">
+                        </div>
+                        <div class="form-group">
+                            <label>Контактный телефон</label>
+                            <input type="tel" id="setting-phone" placeholder="+375 XX XXX XX XX">
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="setting-email" placeholder="email@example.com">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                    </form>
+                </div>
+                
+                <div class="settings-card">
+                    <h3>Безопасность</h3>
+                    <form id="password-form">
+                        <div class="form-group">
+                            <label>Текущий пароль</label>
+                            <input type="password" id="current-password">
+                        </div>
+                        <div class="form-group">
+                            <label>Новый пароль</label>
+                            <input type="password" id="new-password">
+                        </div>
+                        <div class="form-group">
+                            <label>Подтверждение пароля</label>
+                            <input type="password" id="confirm-password">
+                        </div>
+                        <button type="submit" class="btn btn-outline">Изменить пароль</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Модальное окно срочного запроса -->
+    <div id="urgent-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+            <div class="modal-header">
+                <div class="modal-icon urgent">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                </div>
+                <h2>Срочный запрос крови</h2>
+            </div>
+            <div class="modal-body">
+                <form id="urgent-request-form">
+                    <div class="form-group">
+                        <label>Группа крови</label>
+                        <div class="blood-type-selector urgent-blood">
+                            <label class="blood-option">
+                                <input type="radio" name="urgent_blood" value="A+" required>
+                                <span>A+</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="urgent_blood" value="A-">
+                                <span>A-</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="urgent_blood" value="B+">
+                                <span>B+</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="urgent_blood" value="B-">
+                                <span>B-</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="urgent_blood" value="AB+">
+                                <span>AB+</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="urgent_blood" value="AB-">
+                                <span>AB-</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="urgent_blood" value="O+">
+                                <span>O+</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="urgent_blood" value="O-">
+                                <span>O-</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Описание ситуации (опционально)</label>
+                        <textarea id="urgent-description" rows="3" placeholder="Дополнительная информация для доноров..."></textarea>
+                    </div>
+                </form>
+                <div class="urgent-warning">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 8v4M12 16h.01"/>
+                    </svg>
+                    <p>После отправки всем подходящим донорам придёт уведомление в Telegram с просьбой срочно связаться с вашим центром.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" data-action="cancel">Отмена</button>
+                <button class="btn btn-danger" data-action="send">Отправить срочный запрос</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно донора -->
+    <div id="donor-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+            <div class="modal-header">
+                <div class="modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <h2>Информация о доноре</h2>
+            </div>
+            <div class="modal-body" id="donor-modal-content">
+                <!-- Заполняется динамически -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" data-action="close">Закрыть</button>
+                <button class="btn btn-primary" data-action="contact">Связаться</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/medcenter-dashboard.js"></script>
+</body>
+</html>
