@@ -1003,23 +1003,51 @@ def send_telegram_message(chat_id, text):
         return False
 
 def send_urgent_notifications(mc_id, blood_type, request_id=None, target_district_id=None):
-    mc = query_db("SELECT name, address FROM medical_centers WHERE id = %s", (mc_id,), one=True)
+    """Отправка срочных уведомлений донорам через Telegram"""
+    print(f"[TELEGRAM] Вызов send_urgent_notifications: mc_id={mc_id}, blood_type={blood_type}")
+    
+    mc = query_db("SELECT name, address, district_id FROM medical_centers WHERE id = %s", (mc_id,), one=True)
+    
+    if not mc:
+        print(f"[TELEGRAM] Медцентр {mc_id} не найден")
+        return
+    
+    # Используем район медцентра, если не указан target_district_id
+    if not target_district_id:
+        target_district_id = mc.get('district_id')
     
     query = """
-        SELECT telegram_id, full_name FROM users
-        WHERE blood_type = %s AND telegram_id IS NOT NULL AND is_active = TRUE
-        AND (notify_urgent = TRUE)
+        SELECT telegram_id, full_name, id FROM users
+        WHERE blood_type = %s AND is_active = TRUE
     """
     params = [blood_type]
     
+    # Фильтр: либо привязан к медцентру, либо из того же района
     if target_district_id:
-        query += " AND district_id = %s"
-        params.append(target_district_id)
+        query += " AND (medical_center_id = %s OR district_id = %s)"
+        params.extend([mc_id, target_district_id])
+    else:
+        query += " AND medical_center_id = %s"
+        params.append(mc_id)
     
     donors = query_db(query, tuple(params))
     
+    print(f"[TELEGRAM] Найдено доноров с группой {blood_type}: {len(donors) if donors else 0}")
+    
     if not donors:
+        print(f"[TELEGRAM] Нет подходящих доноров для уведомления")
         return
+    
+    # Создаём запрос крови в БД, если ещё не создан
+    if not request_id:
+        request_id = query_db(
+            """INSERT INTO blood_requests 
+               (medical_center_id, blood_type, status, created_at) 
+               VALUES (%s, %s, 'active', NOW()) 
+               RETURNING id""",
+            (mc_id, blood_type), commit=True, one=True
+        )['id']
+        print(f"[TELEGRAM] Создан новый запрос крови ID: {request_id}")
     
     message = f"""🚨 <b>Срочно нужна кровь!</b>
 
@@ -1027,10 +1055,82 @@ def send_urgent_notifications(mc_id, blood_type, request_id=None, target_distric
 🏥 <b>Медцентр:</b> {mc['name']}
 📍 <b>Адрес:</b> {mc['address'] or 'не указан'}
 
-Подробности на сайте Твой Донор."""
+Откликнитесь на сайте Твой Донор или свяжитесь с медцентром."""
+    
+    sent_count = 0
+    donors_without_telegram = []
     
     for donor in donors:
-        send_telegram_message(donor['telegram_id'], message)
+        if donor['telegram_id']:
+            success = send_telegram_message(donor['telegram_id'], message)
+            if success:
+                sent_count += 1
+                print(f"[TELEGRAM] ✓ Отправлено: {donor['full_name']} (ID: {donor['telegram_id']})")
+            else:
+                print(f"[TELEGRAM] ✗ Ошибка отправки: {donor['full_name']}")
+        else:
+            donors_without_telegram.append(donor['full_name'])
+    
+    print(f"[TELEGRAM] Итого отправлено: {sent_count}/{len(donors)}")
+    if donors_without_telegram:
+        print(f"[TELEGRAM] Доноры без Telegram: {', '.join(donors_without_telegram[:5])}")
+    
+    return sent_count
+
+# ============================================
+# API: Telegram интеграция
+# ============================================
+
+@app.route('/api/donor/telegram/link-code', methods=['GET'])
+@require_auth('donor')
+def generate_telegram_link_code():
+    """Генерация кода для привязки Telegram"""
+    donor_id = g.session['user_id']
+    
+    # Генерируем 6-значный код
+    import random
+    code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    
+    # Сохраняем код в БД (срок действия 10 минут)
+    query_db(
+        """INSERT INTO telegram_link_codes (user_id, code, expires_at, created_at)
+           VALUES (%s, %s, NOW() + INTERVAL '10 minutes', NOW())
+           ON CONFLICT (user_id) DO UPDATE 
+           SET code = EXCLUDED.code, expires_at = EXCLUDED.expires_at, created_at = EXCLUDED.created_at""",
+        (donor_id, code), commit=True
+    )
+    
+    return jsonify({'code': code, 'expires_in': 600})
+
+@app.route('/api/donor/telegram/status', methods=['GET'])
+@require_auth('donor')
+def get_telegram_status():
+    """Проверка статуса привязки Telegram"""
+    donor_id = g.session['user_id']
+    
+    donor = query_db(
+        "SELECT telegram_id, telegram_username FROM users WHERE id = %s",
+        (donor_id,), one=True
+    )
+    
+    return jsonify({
+        'linked': donor['telegram_id'] is not None,
+        'telegram_id': donor['telegram_id'],
+        'telegram_username': donor['telegram_username']
+    })
+
+@app.route('/api/donor/telegram/unlink', methods=['POST'])
+@require_auth('donor')
+def unlink_telegram():
+    """Отвязка Telegram от аккаунта"""
+    donor_id = g.session['user_id']
+    
+    query_db(
+        "UPDATE users SET telegram_id = NULL, telegram_username = NULL WHERE id = %s",
+        (donor_id,), commit=True
+    )
+    
+    return jsonify({'message': 'Telegram отвязан'})
 
 # ============================================
 # Выход

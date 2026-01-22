@@ -35,9 +35,9 @@ logger = logging.getLogger(__name__)
 # Конфигурация БД
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
-    'database': os.getenv('DB_NAME', 'donorbay'),
+    'database': os.getenv('DB_NAME', 'your_donor'),
     'user': os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', ''),
+    'password': os.getenv('DB_PASSWORD', 'vadamahjkl'),
     'port': os.getenv('DB_PORT', 5432)
 }
 
@@ -121,14 +121,16 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "<b>🩸 Твой Донор - Справка</b>\n\n"
         "<b>Доступные команды:</b>\n"
         "/start - Начать работу с ботом\n"
+        "/link КОД - Привязать аккаунт по коду\n"
         "/status - Проверить статус привязки\n"
         "/myid - Получить Telegram ID\n"
         "/unsubscribe - Отписаться от уведомлений\n"
         "/help - Эта справка\n\n"
         "<b>Как это работает:</b>\n"
         "1. Зарегистрируйтесь на сайте Твой Донор\n"
-        "2. Укажите свой Telegram ID в профиле\n"
-        "3. Получайте уведомления о срочных запросах\n\n"
+        "2. В личном кабинете получите код привязки\n"
+        "3. Отправьте команду /link КОД\n"
+        "4. Получайте уведомления о срочных запросах\n\n"
         f"🌐 Сайт: {WEBSITE_URL}"
     )
 
@@ -209,6 +211,95 @@ async def unsubscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_html(
             "❌ <b>Аккаунт не найден</b>\n\n"
             "Ваш Telegram не привязан к аккаунту Твой Донор."
+        )
+
+async def link_by_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Привязка аккаунта по 6-значному коду"""
+    telegram_id = update.effective_user.id
+    telegram_username = update.effective_user.username
+    
+    # Проверяем, уже привязан ли
+    existing = query_db(
+        "SELECT id, full_name FROM users WHERE telegram_id = %s",
+        (telegram_id,), one=True
+    )
+    
+    if existing:
+        await update.message.reply_html(
+            f"✅ Ваш аккаунт уже привязан: <b>{existing['full_name']}</b>\n\n"
+            "Если хотите привязать другой аккаунт, сначала отвяжите текущий на сайте."
+        )
+        return
+    
+    # Проверяем формат кода
+    if not context.args or len(context.args) == 0:
+        await update.message.reply_html(
+            "❌ <b>Неверный формат</b>\n\n"
+            "Использование: <code>/link КОД</code>\n\n"
+            "Где КОД - 6-значный код из личного кабинета на сайте.\n\n"
+            "<b>Как получить код:</b>\n"
+            "1. Войдите на сайт в личный кабинет донора\n"
+            "2. Откройте раздел \"Настройки\" → \"Telegram\"\n"
+            "3. Нажмите \"Получить код привязки\"\n"
+            "4. Введите код командой /link КОД"
+        )
+        return
+    
+    code = context.args[0].strip()
+    
+    if not code.isdigit() or len(code) != 6:
+        await update.message.reply_html(
+            "❌ Код должен содержать 6 цифр.\n"
+            "Пример: <code>/link 123456</code>"
+        )
+        return
+    
+    # Ищем код в БД
+    link_data = query_db(
+        """SELECT tlc.user_id, u.full_name, u.blood_type 
+           FROM telegram_link_codes tlc
+           JOIN users u ON tlc.user_id = u.id
+           WHERE tlc.code = %s AND tlc.expires_at > NOW() AND tlc.used_at IS NULL""",
+        (code,), one=True
+    )
+    
+    if not link_data:
+        await update.message.reply_html(
+            "❌ <b>Код не найден или истёк</b>\n\n"
+            "Возможные причины:\n"
+            "• Код введён неверно\n"
+            "• Код уже использован\n"
+            "• Прошло более 10 минут с момента генерации\n\n"
+            "Получите новый код на сайте в разделе \"Настройки\"."
+        )
+        return
+    
+    # Привязываем
+    try:
+        query_db(
+            "UPDATE users SET telegram_id = %s, telegram_username = %s WHERE id = %s",
+            (telegram_id, telegram_username, link_data['user_id']), commit=True
+        )
+        
+        query_db(
+            "UPDATE telegram_link_codes SET used_at = NOW() WHERE user_id = %s",
+            (link_data['user_id'],), commit=True
+        )
+        
+        await update.message.reply_html(
+            f"✅ <b>Аккаунт успешно привязан!</b>\n\n"
+            f"👤 <b>Имя:</b> {link_data['full_name']}\n"
+            f"🩸 <b>Группа крови:</b> {link_data['blood_type']}\n\n"
+            f"Теперь вы будете получать уведомления о срочных запросах на донацию крови.\n\n"
+            f"🌐 <a href='{WEBSITE_URL}'>Перейти на сайт</a>"
+        )
+        
+        logger.info(f"Telegram привязан: user_id={link_data['user_id']}, telegram_id={telegram_id}")
+        
+    except Exception as e:
+        logger.error(f"Ошибка привязки Telegram: {e}")
+        await update.message.reply_html(
+            "❌ Ошибка при привязке аккаунта. Попробуйте ещё раз или обратитесь в поддержку."
         )
 
 # ============================================
@@ -361,6 +452,7 @@ def main():
     application.add_handler(CommandHandler("status", status_command))
     application.add_handler(CommandHandler("myid", myid_command))
     application.add_handler(CommandHandler("unsubscribe", unsubscribe_command))
+    application.add_handler(CommandHandler("link", link_by_code))
     
     # Обработчик кнопок
     application.add_handler(CallbackQueryHandler(button_callback))
