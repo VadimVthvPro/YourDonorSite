@@ -253,7 +253,7 @@ def register_donor():
         print("[DONOR REGISTER] Пустой запрос!")
         return jsonify({'error': 'Данные не получены'}), 400
     
-    required = ['full_name', 'birth_year', 'blood_type', 'medical_center_id', 'password']
+    required = ['full_name', 'birth_year', 'blood_type', 'medical_center_id', 'password', 'phone']
     missing_fields = []
     for field in required:
         if not data.get(field):
@@ -270,11 +270,14 @@ def register_donor():
     if data['blood_type'] not in valid_blood:
         return jsonify({'error': 'Неверная группа крови'}), 400
     
+    # Очищаем ФИО от лишних пробелов
+    full_name = data['full_name'].strip()
+    
     # Проверяем существует ли
     existing = query_db(
         """SELECT id FROM users 
            WHERE full_name = %s AND birth_year = %s AND medical_center_id = %s""",
-        (data['full_name'], data['birth_year'], data['medical_center_id']),
+        (full_name, data['birth_year'], data['medical_center_id']),
         one=True
     )
     
@@ -304,7 +307,7 @@ def register_donor():
             region_id, district_id, city, phone, email, telegram_username, password_hash)
            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
         (
-            data['full_name'],
+            full_name,
             data['birth_year'],
             data['blood_type'],
             data['medical_center_id'],
@@ -347,12 +350,13 @@ def register_donor():
     )
     
     return jsonify({
-        'message': 'Регистрация успешна. Подтвердите Telegram.',
+        'message': 'Регистрация успешна! Привяжите Telegram бота @TvoyDonorZdesBot',
         'token': token,
         'user': user,
         'telegram_verification_required': True,
         'telegram_code': code,
-        'telegram_username': data.get('telegram_username')
+        'telegram_bot_username': 'TvoyDonorZdesBot',
+        'telegram_bot_url': 'https://t.me/TvoyDonorZdesBot'
     }), 201
 
 @app.route('/api/donor/login', methods=['POST'])
@@ -364,10 +368,13 @@ def login_donor():
         if not data.get(field):
             return jsonify({'error': f'Поле {field} обязательно'}), 400
     
+    # Очищаем ФИО от лишних пробелов
+    full_name = data['full_name'].strip()
+    
     user = query_db(
         """SELECT id, full_name, blood_type, password_hash FROM users 
            WHERE full_name = %s AND birth_year = %s AND medical_center_id = %s AND is_active = TRUE""",
-        (data['full_name'], data['birth_year'], data['medical_center_id']),
+        (full_name, data['birth_year'], data['medical_center_id']),
         one=True
     )
     
@@ -2145,6 +2152,31 @@ def generate_telegram_link_code():
     )
     
     return jsonify({'code': code, 'expires_in': 600})
+
+@app.route('/api/donor/telegram/save-code', methods=['POST'])
+@require_auth('donor')
+def save_telegram_code():
+    """Сохранение кода верификации (после регистрации)"""
+    donor_id = g.session['user_id']
+    data = request.json
+    
+    if not data or not data.get('code'):
+        return jsonify({'error': 'Код не указан'}), 400
+    
+    code = data['code']
+    
+    # Сохраняем код в БД (срок действия 15 минут)
+    query_db(
+        """INSERT INTO telegram_link_codes (user_id, code, expires_at, created_at)
+           VALUES (%s, %s, NOW() + INTERVAL '15 minutes', NOW())
+           ON CONFLICT (user_id) DO UPDATE 
+           SET code = EXCLUDED.code, expires_at = EXCLUDED.expires_at, created_at = EXCLUDED.created_at""",
+        (donor_id, code), commit=True
+    )
+    
+    print(f"[TELEGRAM] Код {code} сохранён для user_id={donor_id}")
+    
+    return jsonify({'success': True, 'code': code, 'expires_in': 900})
 
 @app.route('/api/donor/telegram/status', methods=['GET'])
 @require_auth('donor')
