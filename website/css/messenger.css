@@ -372,9 +372,26 @@
 
 /* Типы сообщений */
 .message-notification {
-    background: #e3f2fd !important;
+    background: #e3f2fd;
     border-left: 4px solid var(--color-info);
     padding: var(--spacing-md);
+}
+
+/* Для "своих" notification (справа у медцентра) - более тёмный цвет */
+.message.own .message-notification {
+    background: var(--color-primary) !important;
+    color: white !important;
+    border-left: 4px solid rgba(255, 255, 255, 0.5) !important;
+}
+
+.message.own .message-notification .notification-header {
+    color: white !important;
+    opacity: 0.95;
+}
+
+.message.own .message-notification .notification-content {
+    color: white !important;
+    opacity: 0.9;
 }
 
 .message-notification .notification-header {
