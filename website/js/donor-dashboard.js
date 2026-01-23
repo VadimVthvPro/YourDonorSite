@@ -2156,3 +2156,245 @@ function showRequestDetails(requestId) {
     console.log('Показать детали запроса:', requestId);
     showNotification('Детали запроса (в разработке)', 'info');
 }
+
+// ============================================
+// СТАТИСТИКА ДОНАЦИЙ
+// ============================================
+
+/**
+ * Загрузить статистику донаций
+ */
+async function loadDonationStatistics() {
+    try {
+        const response = await fetch(`${DONOR_API_URL}/donor/statistics`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            console.error('Ошибка загрузки статистики:', response.status);
+            return;
+        }
+        
+        const stats = await response.json();
+        console.log('Статистика загружена:', stats);
+        
+        renderDonationStatistics(stats);
+    } catch (error) {
+        console.error('Ошибка загрузки статистики:', error);
+    }
+}
+
+/**
+ * Отобразить статистику донаций
+ */
+function renderDonationStatistics(stats) {
+    // Анимация заполнения капельки
+    animateBloodDrop(stats.total_donations);
+    
+    // Герой-блок
+    document.getElementById('drop-donations').textContent = stats.total_donations || 0;
+    document.getElementById('lives-saved-hero').textContent = stats.lives_saved_estimate || 0;
+    document.getElementById('hero-donations').textContent = stats.total_donations || 0;
+    
+    const volumeLiters = ((stats.total_volume_ml || 0) / 1000).toFixed(1);
+    document.getElementById('hero-volume').textContent = volumeLiters;
+    
+    // Обратный отсчёт
+    renderCountdown(stats);
+    
+    // Карточки статистики
+    document.getElementById('stat-total-donations').textContent = stats.total_donations || 0;
+    document.getElementById('stat-total-volume').textContent = volumeLiters + ' л';
+    
+    if (stats.last_donation_date) {
+        document.getElementById('stat-last-date').textContent = formatDateShort(stats.last_donation_date);
+    }
+    
+    if (stats.days_until_next !== null) {
+        const daysCard = document.getElementById('days-card');
+        const daysValue = document.getElementById('stat-days-until');
+        
+        if (stats.can_donate) {
+            daysValue.textContent = 'Можно сдать!';
+            daysValue.style.color = '#059669';
+            daysCard.classList.add('highlight');
+        } else {
+            daysValue.textContent = stats.days_until_next + ' дней';
+        }
+    }
+    
+    // Уровень
+    renderLevel(stats.level);
+    
+    // Достижения
+    renderAchievements(stats.achievements);
+    
+    // История
+    renderDonationsHistory(stats.donations_history);
+}
+
+/**
+ * Анимация заполнения капли крови
+ */
+function animateBloodDrop(donations) {
+    const fillElement = document.getElementById('bloodFill');
+    if (!fillElement) return;
+    
+    // Рассчитываем процент заполнения (20 донаций = 100%)
+    const maxDonations = 20;
+    const fillPercent = Math.min((donations / maxDonations) * 100, 100);
+    
+    // Высота капли примерно 190 пикселей
+    const dropHeight = 190;
+    const fillHeight = (fillPercent / 100) * dropHeight;
+    
+    // Анимация
+    setTimeout(() => {
+        fillElement.setAttribute('y', 210 - fillHeight);
+        fillElement.setAttribute('height', fillHeight);
+    }, 100);
+}
+
+/**
+ * Отобразить обратный отсчёт
+ */
+function renderCountdown(stats) {
+    const container = document.getElementById('countdown-container');
+    const value = document.getElementById('countdown-value');
+    const progressBar = document.getElementById('countdown-progress-bar');
+    const ctaButton = document.getElementById('donate-cta');
+    
+    if (stats.days_until_next === null || stats.days_until_next === undefined) {
+        value.textContent = 'Нет данных';
+        progressBar.style.width = '0%';
+        return;
+    }
+    
+    if (stats.can_donate) {
+        value.textContent = '✅ Вы можете сдать кровь!';
+        value.classList.add('can-donate');
+        progressBar.style.width = '100%';
+        progressBar.classList.add('complete');
+        ctaButton.classList.add('pulse');
+    } else if (stats.days_until_next <= 5) {
+        value.textContent = `Ещё немного! ${stats.days_until_next} дней`;
+        value.classList.add('almost-ready');
+        const progress = ((60 - stats.days_until_next) / 60) * 100;
+        progressBar.style.width = progress + '%';
+    } else {
+        value.textContent = `${stats.days_until_next} дней`;
+        const progress = ((60 - stats.days_until_next) / 60) * 100;
+        progressBar.style.width = progress + '%';
+    }
+}
+
+/**
+ * Отобразить уровень донора
+ */
+function renderLevel(level) {
+    if (!level) return;
+    
+    const iconMap = {
+        'drop_small': '💧',
+        'drop': '🩸',
+        'drop_plus': '🩸➕',
+        'drop_star': '🩸⭐',
+        'drop_crown': '🩸👑',
+        'drop_laurel': '🩸🏆',
+        'drop_halo': '🩸✨'
+    };
+    
+    document.getElementById('level-icon').textContent = iconMap[level.icon] || '🩸';
+    document.getElementById('level-name').textContent = level.name;
+    document.getElementById('level-number').textContent = level.current;
+    
+    const progress = level.donations_to_next > 0 
+        ? (level.donations_in_level / (level.donations_in_level + level.donations_to_next)) * 100 
+        : 100;
+    
+    document.getElementById('level-progress-fill').style.width = progress + '%';
+    document.getElementById('level-progress-text').textContent = 
+        `${level.donations_in_level} / ${level.donations_in_level + level.donations_to_next}`;
+    
+    if (level.next_level_name) {
+        document.getElementById('level-next').textContent = `Следующий: ${level.next_level_name}`;
+    } else {
+        document.getElementById('level-next').textContent = 'Максимальный уровень достигнут! 🎉';
+    }
+}
+
+/**
+ * Отобразить достижения
+ */
+function renderAchievements(achievements) {
+    const grid = document.getElementById('achievements-grid');
+    if (!grid || !achievements) return;
+    
+    grid.innerHTML = achievements.map(ach => `
+        <div class="achievement-card ${ach.unlocked ? 'unlocked' : 'locked'}" 
+             title="${ach.name}${ach.date ? ' (получено ' + formatDateShort(ach.date) + ')' : ''}">
+            <span class="achievement-icon">${ach.icon}</span>
+            <div class="achievement-name">${ach.name}</div>
+            <div class="achievement-progress">${ach.progress}</div>
+            ${ach.unlocked ? '<div class="achievement-check">✓</div>' : ''}
+        </div>
+    `).join('');
+}
+
+/**
+ * Отобразить историю донаций
+ */
+function renderDonationsHistory(history) {
+    const container = document.getElementById('donations-history');
+    if (!container) return;
+    
+    if (!history || history.length === 0) {
+        container.innerHTML = `
+            <div class="empty-history">
+                <div class="empty-history-icon">🩸</div>
+                <h3>История донаций пуста</h3>
+                <p>Ваша первая донация может спасти чью-то жизнь</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = history.map(donation => `
+        <div class="donation-history-item">
+            <div class="donation-date">
+                <div class="donation-date-icon">📅</div>
+                <div class="donation-date-text">${formatDateShort(donation.donation_date)}</div>
+            </div>
+            <div class="donation-info">
+                <div class="donation-center">${donation.medical_center_name || 'Медицинский центр'}</div>
+                <div class="donation-details">${donation.volume_ml} мл</div>
+            </div>
+            <div class="donation-blood-type">
+                🩸 ${donation.blood_type}
+            </div>
+            <div class="donation-status completed">✅ Успешно</div>
+        </div>
+    `).join('');
+}
+
+// Инициализация статистики при загрузке секции
+document.addEventListener('DOMContentLoaded', () => {
+    // Загрузить статистику при открытии секции "Мои донации"
+    const donationsNav = document.querySelector('[data-section="donations"]');
+    if (donationsNav) {
+        donationsNav.addEventListener('click', () => {
+            loadDonationStatistics();
+        });
+    }
+    
+    // CTA кнопка
+    const ctaButton = document.getElementById('donate-cta');
+    if (ctaButton) {
+        ctaButton.addEventListener('click', () => {
+            // Переход к секции "Хочу сдать кровь"
+            const donateSection = document.querySelector('[data-section="donate"]');
+            if (donateSection) donateSection.click();
+        });
+    }
+});
+

@@ -421,6 +421,209 @@ def get_donor_profile():
     
     return jsonify(user)
 
+@app.route('/api/donor/statistics', methods=['GET'])
+@require_auth('donor')
+def get_donor_statistics():
+    from datetime import date, timedelta
+    
+    user_id = g.session['user_id']
+    
+    # Получаем данные донора
+    user = query_db("SELECT * FROM users WHERE id = %s", (user_id,), one=True)
+    if not user:
+        return jsonify({'error': 'Пользователь не найден'}), 404
+    
+    # Основная статистика
+    total_donations = user.get('total_donations', 0) or 0
+    total_volume_ml = user.get('total_volume_ml', 0) or 0
+    last_donation_date = user.get('last_donation_date')
+    
+    # Рассчитываем дни до следующей донации
+    days_until_next = None
+    next_donation_date = None
+    can_donate = True
+    
+    if last_donation_date:
+        if isinstance(last_donation_date, str):
+            from datetime import datetime as dt
+            last_donation_date = dt.strptime(last_donation_date, '%Y-%m-%d').date()
+        
+        days_since = (date.today() - last_donation_date).days
+        days_until_next = max(0, 60 - days_since)
+        next_donation_date = last_donation_date + timedelta(days=60)
+        can_donate = days_since >= 60
+    
+    # Определяем уровень донора
+    level_data = get_donor_level(total_donations)
+    
+    # Получаем достижения
+    achievements = get_donor_achievements(user_id, user, total_donations)
+    
+    # Получаем историю донаций
+    donations_history = query_db(
+        """SELECT dh.*, mc.name as medical_center_name
+           FROM donation_history dh
+           LEFT JOIN medical_centers mc ON dh.medical_center_id = mc.id
+           WHERE dh.donor_id = %s
+           ORDER BY dh.donation_date DESC
+           LIMIT 20""",
+        (user_id,)
+    )
+    
+    # Подготовка данных для графика (донации по месяцам)
+    donations_by_month = query_db(
+        """SELECT 
+               TO_CHAR(donation_date, 'YYYY-MM') as month,
+               COUNT(*) as count
+           FROM donation_history
+           WHERE donor_id = %s
+           GROUP BY TO_CHAR(donation_date, 'YYYY-MM')
+           ORDER BY month ASC""",
+        (user_id,)
+    )
+    
+    # Рассчитываем "спасённые жизни"
+    lives_saved_estimate = total_donations * 3
+    
+    # Дата первой донации
+    donor_since = None
+    if donations_history:
+        first_donation = query_db(
+            """SELECT MIN(donation_date) as first_date
+               FROM donation_history
+               WHERE donor_id = %s""",
+            (user_id,), one=True
+        )
+        donor_since = first_donation['first_date'] if first_donation else None
+    
+    return jsonify({
+        'total_donations': total_donations,
+        'total_volume_ml': total_volume_ml,
+        'last_donation_date': last_donation_date.isoformat() if last_donation_date else None,
+        'next_donation_date': next_donation_date.isoformat() if next_donation_date else None,
+        'days_until_next': days_until_next,
+        'can_donate': can_donate,
+        'level': level_data,
+        'achievements': achievements,
+        'donations_by_month': donations_by_month,
+        'donations_history': donations_history,
+        'blood_type': user.get('blood_type'),
+        'lives_saved_estimate': lives_saved_estimate,
+        'donor_since': donor_since.isoformat() if donor_since else None
+    })
+
+def get_donor_level(donations):
+    """Определяет уровень донора на основе количества донаций"""
+    levels = [
+        {'level': 1, 'name': 'Новичок', 'min': 0, 'max': 0, 'icon': 'drop_small', 'color': '#9e9e9e'},
+        {'level': 2, 'name': 'Донор', 'min': 1, 'max': 2, 'icon': 'drop', 'color': '#ef9a9a'},
+        {'level': 3, 'name': 'Активный донор', 'min': 3, 'max': 5, 'icon': 'drop_plus', 'color': '#e53935'},
+        {'level': 4, 'name': 'Опытный донор', 'min': 6, 'max': 10, 'icon': 'drop_star', 'color': '#b71c1c'},
+        {'level': 5, 'name': 'Почётный донор', 'min': 11, 'max': 20, 'icon': 'drop_crown', 'color': '#ffa726'},
+        {'level': 6, 'name': 'Герой', 'min': 21, 'max': 40, 'icon': 'drop_laurel', 'color': '#78909c'},
+        {'level': 7, 'name': 'Легенда', 'min': 41, 'max': 999, 'icon': 'drop_halo', 'color': '#d32f2f'},
+    ]
+    
+    current_level = levels[0]
+    for level in levels:
+        if level['min'] <= donations <= level['max']:
+            current_level = level
+            break
+        elif donations > level['max']:
+            current_level = level
+    
+    # Находим следующий уровень
+    next_level = None
+    for level in levels:
+        if level['level'] == current_level['level'] + 1:
+            next_level = level
+            break
+    
+    donations_in_level = donations - current_level['min']
+    donations_to_next = next_level['min'] - donations if next_level else 0
+    
+    return {
+        'current': current_level['level'],
+        'name': current_level['name'],
+        'icon': current_level['icon'],
+        'color': current_level['color'],
+        'donations_in_level': donations_in_level,
+        'donations_to_next': donations_to_next,
+        'next_level_name': next_level['name'] if next_level else None
+    }
+
+def get_donor_achievements(user_id, user, total_donations):
+    """Определяет полученные и доступные достижения"""
+    achievements = []
+    
+    # Получаем историю донаций для проверки условий
+    donations = query_db(
+        """SELECT donation_date, blood_type
+           FROM donation_history
+           WHERE donor_id = %s
+           ORDER BY donation_date ASC""",
+        (user_id,)
+    )
+    
+    # Количественные достижения
+    qty_achievements = [
+        {'id': 'first_drop', 'name': 'Первая капля', 'icon': '🩸', 'condition': 1},
+        {'id': 'five', 'name': 'Пятёрочка', 'icon': '🩸🩸', 'condition': 5},
+        {'id': 'ten', 'name': 'Десятка', 'icon': '🩸🩸🩸', 'condition': 10},
+        {'id': 'twenty', 'name': 'Двадцатка', 'icon': '🏆', 'condition': 20},
+        {'id': 'fifty', 'name': 'Полтинник', 'icon': '💎', 'condition': 50},
+    ]
+    
+    for ach in qty_achievements:
+        unlocked = total_donations >= ach['condition']
+        date_unlocked = None
+        if unlocked and len(donations) >= ach['condition']:
+            date_unlocked = donations[ach['condition'] - 1]['donation_date']
+        
+        achievements.append({
+            'id': ach['id'],
+            'name': ach['name'],
+            'icon': ach['icon'],
+            'unlocked': unlocked,
+            'date': date_unlocked.isoformat() if date_unlocked else None,
+            'progress': f"{min(total_donations, ach['condition'])}/{ach['condition']}"
+        })
+    
+    # Сезонные достижения
+    winter_donation = any(d['donation_date'].month in [12, 1, 2] for d in donations if d['donation_date'])
+    achievements.append({
+        'id': 'winter_hero',
+        'name': 'Зимний герой',
+        'icon': '❄️',
+        'unlocked': winter_donation,
+        'date': None,
+        'progress': '1/1' if winter_donation else '0/1'
+    })
+    
+    summer_donation = any(d['donation_date'].month in [6, 7, 8] for d in donations if d['donation_date'])
+    achievements.append({
+        'id': 'summer_savior',
+        'name': 'Летний спаситель',
+        'icon': '🌞',
+        'unlocked': summer_donation,
+        'date': None,
+        'progress': '1/1' if summer_donation else '0/1'
+    })
+    
+    # Редкая кровь
+    rare_blood = user.get('blood_type') in ['AB-', 'B-']
+    if rare_blood:
+        achievements.append({
+            'id': 'rare_blood',
+            'name': 'Редкая кровь',
+            'icon': '💎',
+            'unlocked': True,
+            'date': None,
+            'progress': '1/1'
+        })
+    
+    return achievements
+
 @app.route('/api/donor/profile', methods=['PUT'])
 @require_auth('donor')
 def update_donor_profile():
