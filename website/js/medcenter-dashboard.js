@@ -1585,6 +1585,7 @@ function renderResponsesTable(responses, page = 1) {
                         <th>№</th>
                         <th>Донор</th>
                         <th>Группа крови</th>
+                        <th>Статистика</th>
                         <th>Контакты</th>
                         <th>Статус</th>
                         <th>Дата отклика</th>
@@ -1592,8 +1593,32 @@ function renderResponsesTable(responses, page = 1) {
                     </tr>
                 </thead>
                 <tbody>
-                    ${pageResponses.map((r, idx) => `
-                        <tr>
+                    ${pageResponses.map((r, idx) => {
+                        // Вычисляем дни с последней донации
+                        let daysSinceLastDonation = null;
+                        let canDonate = true;
+                        let validationWarning = '';
+                        
+                        if (r.donor_last_donation_date) {
+                            const lastDate = new Date(r.donor_last_donation_date);
+                            const today = new Date();
+                            daysSinceLastDonation = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+                            
+                            if (daysSinceLastDonation < 60) {
+                                canDonate = false;
+                                validationWarning = `⚠️ Прошло только ${daysSinceLastDonation} дней (нужно 60)`;
+                            }
+                        }
+                        
+                        // Проверка группы крови
+                        const bloodTypeMatch = r.donor_blood_type === r.request_blood_type;
+                        if (!bloodTypeMatch) {
+                            canDonate = false;
+                            validationWarning = `⚠️ Группа крови не совпадает`;
+                        }
+                        
+                        return `
+                        <tr ${!canDonate && r.status === 'pending' ? 'style="background-color: #fff3cd;"' : ''}>
                             <td>${startIndex + idx + 1}</td>
                             <td>
                                 <div class="donor-cell">
@@ -1601,10 +1626,24 @@ function renderResponsesTable(responses, page = 1) {
                                     <div>
                                         <div class="donor-name">${r.donor_name || 'Донор'}</div>
                                         ${r.donor_comment ? `<div class="donor-comment-small">"${r.donor_comment}"</div>` : ''}
+                                        ${validationWarning ? `<div style="color: #856404; font-size: 11px; margin-top: 4px;">${validationWarning}</div>` : ''}
                                     </div>
                                 </div>
                             </td>
-                            <td><span class="blood-badge">${r.donor_blood_type || '-'}</span></td>
+                            <td>
+                                <span class="blood-badge" style="${!bloodTypeMatch ? 'border: 2px solid #dc3545;' : ''}">${r.donor_blood_type || '-'}</span>
+                            </td>
+                            <td>
+                                <div style="font-size: 12px; white-space: nowrap;">
+                                    <div><strong>Донаций:</strong> ${r.donor_total_donations || 0}</div>
+                                    ${r.donor_last_donation_date ? `
+                                        <div><strong>Последняя:</strong> ${formatDateShort(r.donor_last_donation_date)}</div>
+                                        <div style="color: ${canDonate ? '#28a745' : '#dc3545'};">
+                                            <strong>${daysSinceLastDonation}</strong> дней назад
+                                        </div>
+                                    ` : '<div style="color: #28a745;">✓ Не сдавал ранее</div>'}
+                                </div>
+                            </td>
                             <td>
                                 ${r.donor_phone ? `<div>📞 ${r.donor_phone}</div>` : ''}
                                 ${r.donor_email ? `<div>📧 ${r.donor_email}</div>` : ''}
@@ -1621,7 +1660,7 @@ function renderResponsesTable(responses, page = 1) {
                                         ✉️
                                     </button>
                                     ${r.status === 'pending' ? `
-                                        <button class="btn btn-sm btn-success" onclick="confirmResponse(${r.id})" title="Подтвердить">
+                                        <button class="btn btn-sm btn-success" onclick="confirmResponse(${r.id})" title="Подтвердить${!canDonate ? ' (есть предупреждения!)' : ''}">
                                             ✓
                                         </button>
                                         <button class="btn btn-sm btn-ghost" onclick="rejectResponse(${r.id})" title="Отклонить">
@@ -1639,7 +1678,8 @@ function renderResponsesTable(responses, page = 1) {
                                 </div>
                             </td>
                         </tr>
-                    `).join('')}
+                    `;
+                    }).join('')}
                 </tbody>
             </table>
         </div>
@@ -1793,7 +1833,7 @@ async function recordDonation(donorId, responseId = null) {
  * Подтвердить отклик донора
  */
 async function confirmResponse(responseId) {
-    if (!confirm('Подтвердить отклик донора?')) return;
+    if (!confirm('Подтвердить отклик донора?\n\nБудет выполнена валидация группы крови и времени с последней донации.')) return;
     
     try {
         const response = await fetch(`${MC_API_URL}/responses/${responseId}`, {
@@ -1806,10 +1846,23 @@ async function confirmResponse(responseId) {
         });
         
         if (response.ok) {
+            const data = await response.json();
             showNotification('✅ Отклик подтверждён', 'success');
+            
+            // Перезагрузить запросы, чтобы увидеть автозакрытие
+            await loadBloodRequestsFromAPI();
             await showAllResponses(currentResponsesData[0]?.request_id);
         } else {
-            showNotification('❌ Ошибка подтверждения', 'error');
+            // Показываем ошибку валидации
+            const error = await response.json();
+            const errorMsg = error.error || 'Ошибка подтверждения';
+            
+            // Если это ошибка валидации - показываем подробно
+            if (response.status === 400) {
+                alert(`❌ ВАЛИДАЦИЯ НЕ ПРОЙДЕНА\n\n${errorMsg}`);
+            } else {
+                showNotification(`❌ ${errorMsg}`, 'error');
+            }
         }
     } catch (error) {
         console.error('Ошибка:', error);

@@ -1273,9 +1273,17 @@ def get_responses():
     user_id = request.args.get('user_id')
     
     query = """
-        SELECT dr.*, u.full_name as donor_name, u.blood_type as donor_blood_type,
-               u.phone as donor_phone, u.email as donor_email, u.telegram_username,
-               req.blood_type as request_blood_type, req.urgency,
+        SELECT dr.*, 
+               u.full_name as donor_name, 
+               u.blood_type as donor_blood_type,
+               u.phone as donor_phone, 
+               u.email as donor_email, 
+               u.telegram_username,
+               u.total_donations as donor_total_donations,
+               u.last_donation_date as donor_last_donation_date,
+               u.total_volume_ml as donor_total_volume_ml,
+               req.blood_type as request_blood_type, 
+               req.urgency,
                mc.name as medical_center_name
         FROM donation_responses dr
         JOIN users u ON dr.user_id = u.id
@@ -1417,9 +1425,50 @@ def update_response(response_id):
     data = request.json
     new_status = data.get('status')
     
-    if new_status not in ['pending', 'confirmed', 'completed', 'cancelled', 'no_show']:
+    if new_status not in ['pending', 'confirmed', 'completed', 'cancelled', 'no_show', 'rejected']:
         return jsonify({'error': 'Неверный статус'}), 400
     
+    # ВАЛИДАЦИЯ ПРИ ПОДТВЕРЖДЕНИИ
+    if new_status == 'confirmed':
+        # Получаем данные донора
+        donor = query_db(
+            "SELECT * FROM users WHERE id = %s",
+            (resp['user_id'],), one=True
+        )
+        
+        if not donor:
+            return jsonify({'error': 'Донор не найден'}), 404
+        
+        # Получаем данные запроса
+        blood_request = query_db(
+            "SELECT * FROM blood_requests WHERE id = %s",
+            (resp['request_id'],), one=True
+        )
+        
+        if not blood_request:
+            return jsonify({'error': 'Запрос не найден'}), 404
+        
+        # ПРОВЕРКА 1: Группа крови совпадает
+        if donor['blood_type'] != blood_request['blood_type']:
+            return jsonify({
+                'error': f"Группа крови донора ({donor['blood_type']}) не совпадает с запросом ({blood_request['blood_type']})"
+            }), 400
+        
+        # ПРОВЕРКА 2: Прошло 60 дней с последней донации
+        if donor.get('last_donation_date'):
+            from datetime import date, timedelta
+            last_date = donor['last_donation_date']
+            if isinstance(last_date, str):
+                from datetime import datetime as dt
+                last_date = dt.strptime(last_date, '%Y-%m-%d').date()
+            
+            days_since = (date.today() - last_date).days
+            if days_since < 60:
+                return jsonify({
+                    'error': f'С последней донации прошло только {days_since} дней (минимум 60 дней)'
+                }), 400
+    
+    # Обновляем статус
     query_db(
         """UPDATE donation_responses 
            SET status = %s, medcenter_comment = %s,
@@ -1434,14 +1483,69 @@ def update_response(response_id):
         ), commit=True
     )
     
+    # При завершении обновляем статистику донора
     if new_status == 'completed':
         query_db(
-            """UPDATE users SET last_donation_date = CURRENT_DATE, 
-                   total_donations = total_donations + 1 WHERE id = %s""",
+            """UPDATE users SET 
+               last_donation_date = CURRENT_DATE, 
+               total_donations = COALESCE(total_donations, 0) + 1,
+               total_volume_ml = COALESCE(total_volume_ml, 0) + 450
+               WHERE id = %s""",
             (resp['user_id'],), commit=True
         )
     
-    return jsonify({'message': 'Статус обновлён'})
+    # АВТОЗАКРЫТИЕ: проверяем, достигнут ли лимит
+    if new_status == 'confirmed':
+        blood_request = query_db(
+            "SELECT * FROM blood_requests WHERE id = %s",
+            (resp['request_id'],), one=True
+        )
+        
+        if blood_request and blood_request.get('auto_close') and blood_request.get('needed_donors'):
+            # Считаем подтверждённых доноров
+            confirmed_count = query_db(
+                """SELECT COUNT(*) as count FROM donation_responses 
+                   WHERE request_id = %s AND status = 'confirmed'""",
+                (resp['request_id'],), one=True
+            )['count']
+            
+            if confirmed_count >= blood_request['needed_donors']:
+                # Закрываем запрос
+                query_db(
+                    """UPDATE blood_requests 
+                       SET status = 'closed' 
+                       WHERE id = %s""",
+                    (resp['request_id'],), commit=True
+                )
+                app.logger.info(f"Запрос {resp['request_id']} автоматически закрыт (лимит достигнут)")
+    
+    # АВТООТКРЫТИЕ: при отмене подтверждения
+    if resp['status'] == 'confirmed' and new_status in ['pending', 'cancelled', 'rejected']:
+        blood_request = query_db(
+            "SELECT * FROM blood_requests WHERE id = %s",
+            (resp['request_id'],), one=True
+        )
+        
+        if blood_request and blood_request['status'] == 'closed':
+            # Считаем подтверждённых доноров
+            confirmed_count = query_db(
+                """SELECT COUNT(*) as count FROM donation_responses 
+                   WHERE request_id = %s AND status = 'confirmed'""",
+                (resp['request_id'],), one=True
+            )['count']
+            
+            # Если было закрытие из-за лимита и теперь доноров меньше
+            if blood_request.get('needed_donors') and confirmed_count < blood_request['needed_donors']:
+                # Открываем запрос обратно
+                query_db(
+                    """UPDATE blood_requests 
+                       SET status = 'active' 
+                       WHERE id = %s""",
+                    (resp['request_id'],), commit=True
+                )
+                app.logger.info(f"Запрос {resp['request_id']} автоматически открыт")
+    
+    return jsonify({'message': 'Статус обновлён', 'status': new_status})
 
 # ============================================
 # API: Доноры медцентра
