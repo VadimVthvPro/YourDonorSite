@@ -425,8 +425,12 @@ class Messenger {
     renderNotificationMessage(msg) {
         const title = msg.type === 'invitation' ? '✅ Приглашение на донацию' : '📢 Уведомление';
         
+        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Определяем, своё ли это сообщение
+        const isOwn = msg.sender_role === this.userRole;
+        const messageClass = isOwn ? 'own' : 'other';
+        
         return `
-            <div class="message other">
+            <div class="message ${messageClass}">
                 <div class="message-bubble message-notification">
                     <div class="notification-header">
                         ${title}

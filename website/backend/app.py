@@ -2502,7 +2502,7 @@ def approve_donor_response(response_id):
     query_db(
         """INSERT INTO messages 
            (conversation_id, sender_id, sender_role, content, message_type, metadata, created_at)
-           VALUES (%s, NULL, 'system', %s, 'notification', %s, NOW())""",
+           VALUES (%s, NULL, 'medical_center', %s, 'notification', %s, NOW())""",
         (conversation['id'], notification_content, {
             'type': 'approval',
             'response_id': response_id,
@@ -2602,7 +2602,7 @@ def reject_donor_response(response_id):
     query_db(
         """INSERT INTO messages 
            (conversation_id, sender_id, sender_role, content, message_type, metadata, created_at)
-           VALUES (%s, NULL, 'system', %s, 'notification', %s, NOW())""",
+           VALUES (%s, NULL, 'medical_center', %s, 'notification', %s, NOW())""",
         (conversation['id'], notification_content, {
             'type': 'rejection',
             'response_id': response_id,
