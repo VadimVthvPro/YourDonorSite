@@ -128,7 +128,7 @@
             <div class="header-right">
                 <div class="user-info">
                     <div class="user-avatar">
-                        <span id="user-initials">ИИ</span>
+                        <span id="user-initials">??</span>
                     </div>
                     <div class="user-details">
                         <span class="user-name" id="user-name">Загрузка...</span>
@@ -343,16 +343,16 @@
                 </div>
                 
                 <div class="certificate-upload">
-                    <label for="cert-file" class="upload-area">
+                    <div id="cert-drop-zone" class="upload-area">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
                             <polyline points="17,8 12,3 7,8"/>
                             <line x1="12" y1="3" x2="12" y2="15"/>
                         </svg>
                         <span>Нажмите или перетащите файл</span>
-                        <small>PNG, JPG до 5MB</small>
-                    </label>
-                    <input type="file" id="cert-file" accept="image/*" hidden>
+                        <small>PNG, JPG, PDF до 5MB</small>
+                    </div>
+                    <input type="file" id="cert-file" accept="image/*,.pdf" hidden>
                 </div>
                 
                 <div class="certificate-info-block">

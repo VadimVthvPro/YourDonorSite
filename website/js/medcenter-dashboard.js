@@ -795,6 +795,27 @@ function renderBloodRequests(requests) {
         
         // Отклики доноров для этого запроса
         const responses = req.donor_responses || [];
+        const neededDonors = req.needed_donors;
+        const currentDonors = req.current_donors || responses.length;
+        
+        // Прогресс откликов
+        const progressHtml = neededDonors ? `
+            <div class="request-progress-bar">
+                <div class="progress-header">
+                    <span>Откликов:</span>
+                    <span><strong>${currentDonors}</strong> из ${neededDonors}</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${Math.min((currentDonors / neededDonors) * 100, 100)}%"></div>
+                </div>
+            </div>
+        ` : `
+            <div class="request-progress-info">
+                <span>Откликов: <strong>${currentDonors}</strong></span>
+                <span class="text-muted">(без ограничения)</span>
+            </div>
+        `;
+        
         const responsesHtml = responses.length > 0 ? `
             <div class="request-responses-list">
                 <h4>Отклики доноров (${responses.length}):</h4>
@@ -806,7 +827,9 @@ function renderBloodRequests(requests) {
                             <div class="response-contact">${r.donor_phone || r.donor_email || '-'}</div>
                             ${r.donor_comment ? `<div class="response-comment">"${r.donor_comment}"</div>` : ''}
                         </div>
-                        <div class="response-status-badge ${r.status}">${getResponseStatusText(r.status)}</div>
+                        <button class="btn btn-sm btn-primary" onclick="openDonorModal({donor_id: ${r.user_id}, donor_name: '${r.donor_name}', blood_type: '${r.donor_blood_type}', donor_phone: '${r.donor_phone || ''}', donor_email: '${r.donor_email || ''}'})">
+                            Написать
+                        </button>
                     </div>
                 `).join('')}
                 ${responses.length > 3 ? `<button class="btn btn-outline btn-sm" onclick="showAllResponses(${req.id})">Показать все (${responses.length})</button>` : ''}
@@ -1117,6 +1140,22 @@ function initModals() {
     // Срочный запрос
     document.getElementById('urgent-request-btn')?.addEventListener('click', openUrgentModal);
     
+    // Переключение учёта доноров
+    const donorLimitRadios = document.querySelectorAll('input[name="donor_limit"]');
+    const donorCountInput = document.getElementById('donor-count-input');
+    
+    donorLimitRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.value === 'limited') {
+                donorCountInput.style.display = 'block';
+                document.getElementById('needed-donors').required = true;
+            } else {
+                donorCountInput.style.display = 'none';
+                document.getElementById('needed-donors').required = false;
+            }
+        });
+    });
+    
     // Создание запроса крови
     const createRequestBtn = document.querySelector('[data-action="create-request"]');
     if (createRequestBtn) {
@@ -1130,11 +1169,21 @@ function initModals() {
                 return;
             }
             
+            const donorLimit = formData.get('donor_limit');
+            const neededDonors = donorLimit === 'limited' ? parseInt(formData.get('needed_donors')) : null;
+            
+            if (donorLimit === 'limited' && (!neededDonors || neededDonors < 1)) {
+                showNotification('Укажите количество доноров', 'error');
+                return;
+            }
+            
             const data = {
                 blood_type: bloodType,
                 urgency: formData.get('urgency'),
                 description: formData.get('description'),
-                expires_days: parseInt(formData.get('expires_days')) || 7
+                expires_days: parseInt(formData.get('expires_days')) || 7,
+                needed_donors: neededDonors,
+                auto_close: donorLimit === 'limited'
             };
             
             createRequestBtn.classList.add('loading');

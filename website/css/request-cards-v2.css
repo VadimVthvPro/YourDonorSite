@@ -1,0 +1,359 @@
+/* ============================================
+   РЕДИЗАЙН КАРТОЧЕК ЗАПРОСОВ КРОВИ
+   Элегантный дизайн без лишних эмоджи
+   ============================================ */
+
+.request-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+    padding: 24px;
+    margin-bottom: 20px;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.request-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+}
+
+.request-card.normal::before {
+    background: #28a745;
+}
+
+.request-card.urgent::before {
+    background: #ff9800;
+}
+
+.request-card.critical::before {
+    background: #f44336;
+    animation: pulse-border 2s infinite;
+}
+
+@keyframes pulse-border {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.request-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Хэдер карточки */
+.request-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.request-blood {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #c62828;
+}
+
+.request-blood svg {
+    width: 24px;
+    height: 24px;
+    color: #c62828;
+}
+
+.request-urgency {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.request-urgency.normal {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.request-urgency.urgent {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.request-urgency.critical {
+    background: #ffebee;
+    color: #c62828;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.request-status-badge {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.request-status-badge.active {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.request-status-badge.fulfilled {
+    background: #f1f8e9;
+    color: #558b2f;
+}
+
+.request-status-badge.cancelled {
+    background: #fafafa;
+    color: #757575;
+}
+
+/* Тело карточки */
+.request-body {
+    margin-bottom: 20px;
+}
+
+.request-description {
+    color: #666;
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+}
+
+.request-meta {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+}
+
+.request-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #999;
+    font-size: 14px;
+}
+
+.request-meta-item svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Список откликов */
+.request-responses-list {
+    margin-top: 16px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.request-responses-list h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 12px;
+}
+
+.mini-response-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #ffffff;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.mini-response-card:last-child {
+    margin-bottom: 0;
+}
+
+.response-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.response-info {
+    flex: 1;
+}
+
+.response-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.response-contact {
+    font-size: 13px;
+    color: #999;
+}
+
+.response-comment {
+    font-size: 13px;
+    color: #666;
+    font-style: italic;
+    margin-top: 4px;
+}
+
+.no-responses {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+    font-size: 14px;
+}
+
+/* Футер карточки */
+.request-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.request-stats {
+    display: flex;
+    gap: 24px;
+}
+
+.request-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: #666;
+}
+
+.request-stat svg {
+    width: 18px;
+    height: 18px;
+    color: #999;
+}
+
+.request-stat strong {
+    color: #333;
+    font-weight: 700;
+}
+
+.request-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* Кнопки */
+.btn-sm {
+    padding: 8px 16px;
+    font-size: 13px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-sm svg {
+    width: 16px;
+    height: 16px;
+}
+
+.btn-primary {
+    background: #1976d2;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1565c0;
+    transform: translateY(-1px);
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #218838;
+}
+
+.btn-outline {
+    background: transparent;
+    color: #666;
+    border: 1px solid #ddd;
+}
+
+.btn-outline:hover {
+    background: #f5f5f5;
+    border-color: #ccc;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+/* Адаптив */
+@media (max-width: 768px) {
+    .request-card {
+        padding: 16px;
+    }
+    
+    .request-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .request-meta {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .request-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+    
+    .request-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    .btn-sm {
+        width: 100%;
+        justify-content: center;
+    }
+}

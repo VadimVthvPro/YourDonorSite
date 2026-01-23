@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initForms();
     initModal();
     initLogout();
+    initCertificateUpload();  // Инициализация drag-n-drop
     
     // Асинхронная загрузка данных (последовательно)
     (async () => {
@@ -138,6 +139,12 @@ function displayUserData(user) {
     // Имя пользователя в шапке
     const userName = document.getElementById('user-name');
     if (userName) userName.textContent = user.full_name || 'Донор';
+    
+    // ИНИЦИАЛЫ в аватаре (ИСПРАВЛЕНИЕ)
+    const userInitials = document.getElementById('user-initials');
+    if (userInitials && user.full_name) {
+        userInitials.textContent = getInitials(user.full_name);
+    }
     
     // Группа крови в шапке
     const bloodType = document.getElementById('user-blood-type');
@@ -878,10 +885,23 @@ function loadUserData() {
  * Получение инициалов
  */
 function getInitials(fio) {
-    const parts = fio.trim().split(' ');
-    if (parts.length >= 2) {
-        return (parts[0][0] + parts[1][0]).toUpperCase();
+    if (!fio || typeof fio !== 'string') return '??';
+    
+    const parts = fio.trim().split(/\s+/).filter(p => p.length > 0);
+    
+    if (parts.length === 0) return '??';
+    
+    // Если 3 слова или больше (Фамилия Имя Отчество) — берём первые буквы всех
+    if (parts.length >= 3) {
+        return parts.slice(0, 3).map(p => p[0].toUpperCase()).join('');
     }
+    
+    // Если 2 слова (Фамилия Имя) — берём первые буквы обоих
+    if (parts.length === 2) {
+        return parts.map(p => p[0].toUpperCase()).join('');
+    }
+    
+    // Если 1 слово — берём первые 2 буквы
     return fio.slice(0, 2).toUpperCase();
 }
 
@@ -900,11 +920,11 @@ function formatDate(dateString) {
             return dateString; // Возвращаем исходную строку
         }
         
-        return date.toLocaleDateString('ru-RU', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        });
+    return date.toLocaleDateString('ru-RU', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
     } catch (error) {
         console.error('Ошибка форматирования даты:', error, dateString);
         return dateString;
@@ -1143,7 +1163,7 @@ function initForms() {
                     startCodeTimer(result.expires_in || 600);
                     
                     showNotification('✅ Код сгенерирован! Откройте Telegram бота.', 'success');
-                } else {
+            } else {
                     showNotification('❌ ' + (result.error || 'Ошибка генерации кода'), 'error');
                 }
             } catch (error) {
@@ -1742,8 +1762,98 @@ function showNotification(message, type = 'info') {
     
     document.body.appendChild(notification);
     
-    // Автоматическое скрытие через 4 секунды
+    // Автоматическое скрытие через 4 секунды    
     setTimeout(() => {
         notification.remove();
     }, 4000);
+}
+
+/**
+ * Инициализация загрузки мед.справки с drag-n-drop
+ */
+function initCertificateUpload() {
+    const dropZone = document.getElementById('cert-drop-zone');
+    const fileInput = document.getElementById('cert-file');
+    
+    if (!dropZone || !fileInput) return;
+    
+    // Обработчики drag-n-drop
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    // Визуальная индикация
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.add('drag-over');
+        });
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.remove('drag-over');
+        });
+    });
+    
+    // Обработка drop
+    dropZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) uploadCertificate(files[0]);
+    });
+    
+    // Клик по зоне = выбор файла
+    dropZone.addEventListener('click', () => fileInput.click());
+    
+    // Выбор файла через input
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) uploadCertificate(e.target.files[0]);
+    });
+}
+
+async function uploadCertificate(file) {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+        return showNotification('Разрешены только JPG, PNG, PDF', 'error');
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+        return showNotification('Максимальный размер: 5MB', 'error');
+    }
+    
+    const formData = new FormData();
+    formData.append('certificate', file);
+    
+    try {
+        showNotification('Загрузка...', 'info');
+        
+        const response = await fetch(`${DONOR_API_URL}/donor/medical-certificate`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${getToken()}` },
+            body: formData
+        });
+        
+        if (!response.ok) throw new Error('Ошибка загрузки');
+        
+        showNotification('✅ Справка загружена!', 'success');
+        
+        document.getElementById('certificate-status').innerHTML = `
+            <div class="certificate-icon uploaded">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                    <path d="M14 2v6h6M12 18v-6M9 15h6"/>
+                </svg>
+            </div>
+            <div class="certificate-info">
+                <h3>Справка загружена</h3>
+                <p>${file.name}</p>
+            </div>
+        `;
+    } catch (error) {
+        showNotification('❌ Ошибка загрузки', 'error');
+    }
 }

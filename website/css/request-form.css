@@ -2,6 +2,25 @@
    ДИЗАЙН ФОРМЫ СОЗДАНИЯ ЗАПРОСА КРОВИ
    ============================================ */
 
+/* БЕЛЫЙ ФОН МОДАЛЬНОГО ОКНА */
+.modal-dialog {
+    background-color: #ffffff !important;
+    color: #333333;
+}
+
+.modal-content {
+    background-color: #ffffff !important;
+    color: #333333;
+}
+
+.modal-body {
+    background-color: #ffffff;
+}
+
+.modal-overlay {
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
 /* Улучшенные лейблы с иконками */
 .form-label-enhanced {
     display: flex;
@@ -214,4 +233,49 @@
     .blood-type-grid {
         grid-template-columns: repeat(4, 1fr);
     }
+}
+
+/* Прогресс-бар откликов */
+.request-progress-bar {
+    margin: 16px 0;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #666;
+}
+
+.progress-bar {
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #28a745, #20c997);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.request-progress-info {
+    margin: 16px 0;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.text-muted {
+    color: #999;
 }

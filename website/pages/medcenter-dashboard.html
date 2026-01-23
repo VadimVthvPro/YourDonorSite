@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="../css/medcenter.css">
     <link rel="stylesheet" href="../css/request-form.css">
     <link rel="stylesheet" href="../css/request-cards.css">
+    <link rel="stylesheet" href="../css/request-cards-v2.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -729,6 +730,35 @@
                         <textarea name="description" rows="4" placeholder="Укажите дополнительные детали запроса..." class="form-textarea"></textarea>
                     </div>
                     
+                    <!-- Количество доноров -->
+                    <div class="form-group">
+                        <label class="form-label-enhanced">
+                            <span class="label-icon">👥</span>
+                            <span>Количество доноров</span>
+                        </label>
+                        <div class="urgency-selector">
+                            <label class="urgency-card urgency-normal">
+                                <input type="radio" name="donor_limit" value="unlimited" checked>
+                                <span class="urgency-content">
+                                    <span class="urgency-icon">∞</span>
+                                    <span class="urgency-title">Без ограничения</span>
+                                    <span class="urgency-desc">Принимать отклики до ручной остановки</span>
+                                </span>
+                            </label>
+                            <label class="urgency-card urgency-urgent">
+                                <input type="radio" name="donor_limit" value="limited">
+                                <span class="urgency-content">
+                                    <span class="urgency-icon">🎯</span>
+                                    <span class="urgency-title">Конкретное количество</span>
+                                    <span class="urgency-desc">Автоматически закрыть при достижении</span>
+                                </span>
+                            </label>
+                        </div>
+                        <div id="donor-count-input" style="display: none; margin-top: 12px;">
+                            <input type="number" name="needed_donors" id="needed-donors" min="1" max="100" placeholder="Сколько доноров нужно?" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px;">
+                        </div>
+                    </div>
+                    
                     <!-- Срок действия -->
                     <div class="form-group">
                         <label class="form-label-enhanced">
@@ -757,6 +787,45 @@
     </div>
 
     <!-- Модалка: Написать донору -->
+    <div id="donor-modal" class="modal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>✉️ Отправить сообщение донору</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="donor-info" style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                    <!-- Заполняется динамически -->
+                </div>
+                <form id="message-form">
+                    <input type="hidden" id="donor-id">
+                    <div class="form-group">
+                        <label>Тип сообщения *</label>
+                        <select id="message-type" required>
+                            <option value="invitation">Приглашение на донацию</option>
+                            <option value="confirmation">Подтверждение записи</option>
+                            <option value="other">Другое</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Текст сообщения *</label>
+                        <textarea id="message-text" rows="5" placeholder="Введите сообщение..." required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" id="send-telegram" style="margin-right: 10px;">
+                            <span>Также отправить в Telegram (если подключён)</span>
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" data-action="cancel">Отмена</button>
+                <button class="btn btn-primary" data-action="send-message">Отправить ➤</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Модальное окно: Редактирование запроса -->
     <div id="edit-request-modal" class="modal">
         <div class="modal-dialog modal-lg">

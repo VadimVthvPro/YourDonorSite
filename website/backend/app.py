@@ -917,14 +917,18 @@ def create_blood_request():
     
     # Вычисляем expires_at
     expires_days = data.get('expires_days', 7)
+    needed_donors = data.get('needed_donors')  # None если без ограничения
+    auto_close = data.get('auto_close', False)
     
     # Создаём запрос
     request_id = query_db(
         """INSERT INTO blood_requests 
-           (medical_center_id, blood_type, urgency, status, description, expires_at, created_at)
-           VALUES (%s, %s, %s, 'active', %s, NOW() + INTERVAL '%s days', NOW())
+           (medical_center_id, blood_type, urgency, status, description, expires_at, created_at,
+            needed_donors, current_donors, auto_close)
+           VALUES (%s, %s, %s, 'active', %s, NOW() + INTERVAL '%s days', NOW(), %s, 0, %s)
            RETURNING id""",
-        (mc_id, data['blood_type'], data['urgency'], data.get('description', ''), expires_days),
+        (mc_id, data['blood_type'], data['urgency'], data.get('description', ''), 
+         expires_days, needed_donors, auto_close),
         commit=True, one=True
     )['id']
     
@@ -949,6 +953,38 @@ def create_blood_request():
             logger.error(f"Ошибка отправки Telegram уведомления о запросе: {e}")
     
     return jsonify({'message': 'Запрос создан', 'request_id': request_id}), 201
+
+@app.route('/api/blood-requests/<int:request_id>', methods=['GET'])
+@require_auth('medcenter')
+def get_blood_request(request_id):
+    """Получить один запрос крови для редактирования"""
+    mc_id = g.session['medical_center_id']
+    
+    # Проверяем принадлежность запроса медцентру
+    req = query_db(
+        """SELECT br.*, 
+                  (SELECT COUNT(*) FROM donation_responses WHERE request_id = br.id) as responses_count
+           FROM blood_requests br
+           WHERE br.id = %s AND br.medical_center_id = %s""",
+        (request_id, mc_id), one=True
+    )
+    
+    if not req:
+        return jsonify({'error': 'Запрос не найден'}), 404
+    
+    return jsonify({
+        'id': req['id'],
+        'blood_type': req['blood_type'],
+        'urgency': req['urgency'],
+        'description': req['description'],
+        'expires_at': req['expires_at'].isoformat() if req.get('expires_at') else None,
+        'status': req['status'],
+        'created_at': req['created_at'].isoformat() if req.get('created_at') else None,
+        'needed_donors': req.get('needed_donors'),
+        'current_donors': req.get('current_donors', 0),
+        'auto_close': req.get('auto_close', False),
+        'responses_count': req.get('responses_count', 0)
+    })
 
 @app.route('/api/blood-requests/<int:request_id>', methods=['PUT'])
 @require_auth('medcenter')
@@ -1787,6 +1823,125 @@ def health():
         db_status = 'error'
     
     return jsonify({'status': 'ok', 'database': db_status})
+
+# ============================================
+# API: Просмотр мед.справки медцентром
+# ============================================
+
+@app.route('/api/medcenter/donors/<int:donor_id>/certificate', methods=['GET'])
+@require_auth('medcenter')
+def get_donor_certificate_info(donor_id):
+    """Получить информацию о мед.справке донора"""
+    donor = query_db(
+        "SELECT medical_certificate_path, certificate_uploaded_at, medical_certificate_filename FROM users WHERE id = %s",
+        (donor_id,), one=True
+    )
+    
+    if not donor:
+        return jsonify({'error': 'Донор не найден'}), 404
+    
+    if not donor.get('medical_certificate_path'):
+        return jsonify({'has_certificate': False}), 200
+    
+    return jsonify({
+        'has_certificate': True,
+        'uploaded_at': donor['certificate_uploaded_at'].isoformat() if donor.get('certificate_uploaded_at') else None,
+        'filename': donor.get('medical_certificate_filename', 'certificate.pdf'),
+        'view_url': f'/api/medcenter/donors/{donor_id}/certificate/view'
+    })
+
+@app.route('/api/medcenter/donors/<int:donor_id>/certificate/view', methods=['GET'])
+@require_auth('medcenter')
+def view_donor_certificate(donor_id):
+    """Просмотр/скачивание мед.справки донора"""
+    donor = query_db(
+        "SELECT medical_certificate_path, medical_certificate_filename FROM users WHERE id = %s",
+        (donor_id,), one=True
+    )
+    
+    if not donor or not donor.get('medical_certificate_path'):
+        return jsonify({'error': 'Справка не найдена'}), 404
+    
+    cert_path = donor['medical_certificate_path']
+    
+    # Проверяем существование файла
+    import os
+    if not os.path.exists(cert_path):
+        return jsonify({'error': 'Файл не найден на сервере'}), 404
+    
+    from flask import send_file
+    
+    # Определяем mimetype по расширению
+    import mimetypes
+    mimetype = mimetypes.guess_type(cert_path)[0] or 'application/octet-stream'
+    
+    return send_file(
+        cert_path,
+        mimetype=mimetype,
+        as_attachment=False,
+        download_name=donor.get('medical_certificate_filename', 'certificate.pdf')
+    )
+
+# ============================================
+# API: Учёт донаций медцентром
+# ============================================
+
+@app.route('/api/medcenter/donations', methods=['POST'])
+@require_auth('medcenter')
+def record_donation():
+    """Отметить донацию"""
+    mc_id = g.session['medical_center_id']
+    data = request.json
+    
+    donor_id = data.get('donor_id')
+    response_id = data.get('response_id')
+    volume_ml = data.get('volume_ml', 450)
+    notes = data.get('notes', '')
+    
+    if not donor_id:
+        return jsonify({'error': 'donor_id обязателен'}), 400
+    
+    # Получаем данные донора
+    donor = query_db("SELECT blood_type FROM users WHERE id = %s", (donor_id,), one=True)
+    if not donor:
+        return jsonify({'error': 'Донор не найден'}), 404
+    
+    try:
+        # Создаём запись о донации
+        query_db(
+            """INSERT INTO donation_history 
+               (donor_id, medical_center_id, response_id, donation_date, blood_type, volume_ml, notes)
+               VALUES (%s, %s, %s, CURRENT_DATE, %s, %s, %s)""",
+            (donor_id, mc_id, response_id, donor['blood_type'], volume_ml, notes),
+            commit=True
+        )
+        
+        # Обновляем статистику донора
+        query_db(
+            """UPDATE users 
+               SET total_donations = COALESCE(total_donations, 0) + 1,
+                   last_donation_date = CURRENT_DATE,
+                   total_volume_ml = COALESCE(total_volume_ml, 0) + %s
+               WHERE id = %s""",
+            (volume_ml, donor_id), commit=True
+        )
+        
+        # Если был отклик — помечаем как завершённый
+        if response_id:
+            query_db(
+                "UPDATE donation_responses SET status = 'completed' WHERE id = %s",
+                (response_id,), commit=True
+            )
+        
+        return jsonify({'message': 'Донация учтена', 'success': True}), 201
+        
+    except Exception as e:
+        app.logger.error(f"Ошибка учёта донации: {e}")
+        return jsonify({'error': 'Ошибка сохранения'}), 500
+
+# ============================================
+# Запуск сервера
+# ============================================
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5001))
