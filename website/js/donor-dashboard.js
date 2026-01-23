@@ -21,7 +21,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initForms();
     initModal();
     initLogout();
-    initCertificateUpload();  // Инициализация drag-n-drop
     
     // Асинхронная загрузка данных (последовательно)
     (async () => {
@@ -871,7 +870,8 @@ function updatePageTitle(sectionId) {
         'requests': 'Запросы крови',
         'donations': 'Мои донации',
         'donate': 'Хочу сдать кровь',
-        'certificate': 'Медицинская справка',
+        'messages': 'Сообщения',
+        'info': 'О донорстве',
         'profile': 'Мой профиль'
     };
     
@@ -1296,19 +1296,6 @@ function initForms() {
         });
     }
     
-    // Загрузка справки
-    const certFile = document.getElementById('cert-file');
-    if (certFile) {
-        certFile.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                // В реальном приложении здесь будет загрузка на сервер
-                showNotification('✅ Справка загружена!', 'success');
-                updateCertificateStatus(true);
-            }
-        });
-    }
-    
     // ============================================
     // Форма привязки к медцентру
     // ============================================
@@ -1495,27 +1482,6 @@ function updateTelegramStatus(linked, username) {
             });
         }
     }
-}
-
-/**
- * Обновление статуса справки
- */
-function updateCertificateStatus(uploaded) {
-    const statusEl = document.getElementById('certificate-status');
-    if (!statusEl || !uploaded) return;
-    
-    statusEl.innerHTML = `
-        <div class="certificate-icon uploaded">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
-                <path d="M22 4L12 14.01l-3-3"/>
-            </svg>
-        </div>
-        <div class="certificate-info">
-            <h3>Справка загружена</h3>
-            <p>Действительна до ${formatDate(new Date(Date.now() + 180 * 24 * 60 * 60 * 1000))}</p>
-        </div>
-    `;
 }
 
 /**
@@ -1864,155 +1830,6 @@ function showNotification(message, type = 'info') {
     setTimeout(() => {
         notification.remove();
     }, 4000);
-}
-
-/**
- * Инициализация загрузки мед.справки с drag-n-drop
- */
-function initCertificateUpload() {
-    const dropZone = document.getElementById('cert-drop-zone');
-    const fileInput = document.getElementById('cert-file');
-    
-    if (!dropZone || !fileInput) return;
-    
-    // Обработчики drag-n-drop
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, preventDefaults, false);
-    });
-    
-    function preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-    
-    // Визуальная индикация
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => {
-            dropZone.classList.add('drag-over');
-        });
-    });
-    
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => {
-            dropZone.classList.remove('drag-over');
-        });
-    });
-    
-    // Обработка drop
-    dropZone.addEventListener('drop', (e) => {
-        const files = e.dataTransfer.files;
-        if (files.length > 0) uploadCertificate(files[0]);
-    });
-    
-    // Клик по зоне = выбор файла
-    dropZone.addEventListener('click', () => fileInput.click());
-    
-    // Выбор файла через input
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) uploadCertificate(e.target.files[0]);
-    });
-}
-
-async function uploadCertificate(file) {
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-    if (!allowedTypes.includes(file.type)) {
-        return showNotification('Разрешены только JPG, PNG, PDF', 'error');
-    }
-    
-    if (file.size > 5 * 1024 * 1024) {
-        return showNotification('Максимальный размер: 5MB', 'error');
-    }
-    
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    try {
-        showNotification('Загрузка...', 'info');
-        
-        const response = await fetch(`${DONOR_API_URL}/donor/medical-certificate`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${getToken()}` },
-            body: formData
-        });
-        
-        if (!response.ok) throw new Error('Ошибка загрузки');
-        
-        showNotification('✅ Справка загружена!', 'success');
-        
-        // Обновляем статус справки
-        await displayCertificateStatus();
-    } catch (error) {
-        console.error('Ошибка загрузки справки:', error);
-        showNotification('Ошибка загрузки справки', 'error');
-    }
-}
-
-/**
- * Показать статус загруженной справки
- */
-async function displayCertificateStatus() {
-    try {
-        const response = await fetch(`${DONOR_API_URL}/donor/medical-certificate`, {
-            headers: { 'Authorization': `Bearer ${getToken()}` }
-        });
-        
-        const data = await response.json();
-        
-        const statusDiv = document.getElementById('certificate-status');
-        if (!statusDiv) return;
-        
-        if (data.has_certificate) {
-            const uploadDate = new Date(data.uploaded_at).toLocaleDateString('ru-RU');
-            statusDiv.innerHTML = `
-                <div class="certificate-uploaded">
-                    <div class="certificate-icon uploaded">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                            <path d="M14 2v6h6M9 10h6M9 14h6M9 18h6"/>
-                            <circle cx="12" cy="12" r="10" stroke="#28a745" fill="none"/>
-                            <path d="M9 12l2 2 4-4" stroke="#28a745"/>
-                        </svg>
-                    </div>
-                    <div class="certificate-info">
-                        <p><strong>Справка загружена</strong></p>
-                        <p class="text-muted">Дата: ${uploadDate}</p>
-                    </div>
-                    <button class="btn btn-sm btn-outline" onclick="viewCertificate()">
-                        Просмотреть
-                    </button>
-                </div>
-            `;
-        } else {
-            // Показываем зону загрузки
-            statusDiv.innerHTML = `
-                <div class="upload-area" id="cert-drop-zone">
-                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-                    </svg>
-                    <p><strong>Перетащите файл сюда</strong></p>
-                    <p class="text-muted">или нажмите для выбора</p>
-                    <p class="text-small">PDF, JPG, PNG (макс. 5 МБ)</p>
-                    <input type="file" id="cert-file" accept=".pdf,.jpg,.jpeg,.png" style="display: none;">
-                </div>
-            `;
-            // Переинициализируем drag-n-drop после обновления HTML
-            setTimeout(initCertificateUpload, 100);
-        }
-    } catch (error) {
-        console.error('Ошибка загрузки статуса справки:', error);
-    }
-}
-
-/**
- * Открыть справку для просмотра
- */
-function viewCertificate() {
-    const token = getToken();
-    if (!token) return;
-    
-    // Открываем в новой вкладке
-    const url = `${DONOR_API_URL}/donor/medical-certificate/view?token=${token}`;
-    window.open(url, '_blank');
 }
 
 // ============================================

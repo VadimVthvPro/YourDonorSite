@@ -65,15 +65,6 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#certificate" class="nav-item" data-section="certificate">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
-                        </svg>
-                        <span>Мед. справка</span>
-                    </a>
-                </li>
-                <li>
                     <a href="#messages" class="nav-item" data-section="messages">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
@@ -432,51 +423,6 @@
             
             <div id="donate-centers" class="donate-centers">
                 <!-- Заполняется динамически -->
-            </div>
-        </section>
-
-        <!-- Секция: Мед. справка -->
-        <section id="certificate" class="dashboard-section">
-            <div class="section-header">
-                <h2>Медицинская справка</h2>
-                <p>Загрузите справку для подтверждения статуса донора</p>
-            </div>
-            
-            <div class="certificate-card">
-                <div id="certificate-status" class="certificate-status">
-                    <div class="certificate-icon not-uploaded">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                            <path d="M14 2v6h6M12 18v-6M9 15h6"/>
-                        </svg>
-                    </div>
-                    <div class="certificate-info">
-                        <h3>Справка не загружена</h3>
-                        <p>Загрузите фото медицинской справки для подтверждения вашего статуса</p>
-                    </div>
-                </div>
-                
-                <div class="certificate-upload">
-                    <div id="cert-drop-zone" class="upload-area">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                            <polyline points="17,8 12,3 7,8"/>
-                            <line x1="12" y1="3" x2="12" y2="15"/>
-                        </svg>
-                        <span>Нажмите или перетащите файл</span>
-                        <small>PNG, JPG, PDF до 5MB</small>
-                    </div>
-                    <input type="file" id="cert-file" accept="image/*,.pdf" hidden>
-                </div>
-                
-                <div class="certificate-info-block">
-                    <h4>Важная информация</h4>
-                    <ul>
-                        <li>Справка действительна 6 месяцев с момента загрузки</li>
-                        <li>При истечении срока справка автоматически удаляется</li>
-                        <li>Справка необходима для участия в некоторых донорских программах</li>
-                    </ul>
-                </div>
             </div>
         </section>
 
