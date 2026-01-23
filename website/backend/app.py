@@ -3515,6 +3515,8 @@ def get_conversations():
     user_id = g.session.get('user_id')
     medical_center_id = g.session.get('medical_center_id')
     
+    app.logger.info(f"📥 Запрос диалогов: user_type={user_type}, user_id={user_id}, medical_center_id={medical_center_id}")
+    
     status = request.args.get('status', 'active')
     limit = min(int(request.args.get('limit', 50)), 100)
     offset = int(request.args.get('offset', 0))
@@ -3549,6 +3551,7 @@ def get_conversations():
         return jsonify({'conversations': result, 'total': len(result)})
     
     elif user_type == 'medcenter':
+        app.logger.info(f"🔍 Ищем диалоги для медцентра {medical_center_id}")
         conversations = query_db(
             """SELECT c.*, 
                       c.medcenter_unread_count as unread_count,
@@ -3564,6 +3567,8 @@ def get_conversations():
             (medical_center_id, status, limit, offset)
         )
         
+        app.logger.info(f"📊 Найдено диалогов: {len(conversations) if conversations else 0}")
+        
         result = []
         for conv in conversations:
             partner_info = {
@@ -3575,6 +3580,7 @@ def get_conversations():
             }
             result.append(format_conversation(conv, partner_info, conv['unread_count'], query_db))
         
+        app.logger.info(f"✅ Возвращаем {len(result)} диалогов медцентру")
         return jsonify({'conversations': result, 'total': len(result)})
     
     return jsonify({'error': 'Неизвестный тип пользователя'}), 400
@@ -3845,7 +3851,41 @@ def send_conversation_message(conversation_id):
     
     app.logger.info(f"✅ Сообщение отправлено: {sender_role} -> conversation {conversation_id}")
     
-    # TODO: Отправка в Telegram
+    # Отправка в Telegram если сообщение от медцентра донору
+    if sender_role == 'medical_center':
+        # Получаем telegram_id донора
+        donor = query_db(
+            """SELECT u.telegram_id, u.full_name 
+               FROM users u
+               JOIN conversations c ON u.id = c.donor_id
+               WHERE c.id = %s AND u.telegram_id IS NOT NULL""",
+            (conversation_id,), one=True
+        )
+        
+        if donor and donor.get('telegram_id'):
+            try:
+                # Получаем название медцентра
+                mc = query_db(
+                    """SELECT mc.name 
+                       FROM medical_centers mc
+                       JOIN conversations c ON mc.id = c.medical_center_id
+                       WHERE c.id = %s""",
+                    (conversation_id,), one=True
+                )
+                
+                mc_name = mc['name'] if mc else 'Медицинский центр'
+                
+                # Формируем сообщение для Telegram
+                telegram_text = f"""💬 Новое сообщение от {mc_name}
+
+{content}
+
+📱 Ответить: {APP_URL}/pages/donor-dashboard.html#messages"""
+                
+                send_telegram_message(donor['telegram_id'], telegram_text)
+                app.logger.info(f"📱 Telegram отправлен донору {donor['full_name']}")
+            except Exception as e:
+                app.logger.error(f"❌ Ошибка отправки в Telegram: {e}")
     
     return jsonify(format_message(message)), 201
 

@@ -3,39 +3,28 @@
    Современный UI для чата донор ↔ медцентр
    ============================================ */
 
-/* Специальное правило для секции с мессенджером */
-.dashboard-section#messages {
-    padding: 0 !important;
-    margin: 0 !important;
-    height: calc(100vh - 80px);
-    min-height: 500px;
-}
-
-/* Явное правило для донора */
-.dashboard-page:not(.medcenter-page) .dashboard-section#messages {
-    padding: 0 !important;
-    margin: 0 !important;
-    height: calc(100vh - 80px);
-    min-height: 500px;
-}
-
-/* Для медцентра (такие же размеры) */
-.medcenter-page .dashboard-section#messages {
-    padding: 0 !important;
-    margin: 0 !important;
-    height: calc(100vh - 80px);
-    min-height: 500px;
-}
-
 /* Скрываем section-header внутри мессенджера */
 .dashboard-section#messages .section-header {
     display: none;
 }
 
+/* Специальное правило для секции с мессенджером */
+.dashboard-section#messages {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Когда секция активна - занимает всю высоту экрана */
+.dashboard-section#messages.active {
+    display: flex !important;
+    flex-direction: column;
+    height: calc(100vh - 80px);
+    min-height: 500px;
+}
+
 /* Для планшетов */
 @media (max-width: 768px) {
-    .dashboard-section#messages,
-    .medcenter-page .dashboard-section#messages {
+    .dashboard-section#messages.active {
         height: calc(100vh - 60px);
     }
 }
