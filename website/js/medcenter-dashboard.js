@@ -239,11 +239,11 @@ async function loadTrafficLightFromAPI() {
 function initTrafficLightFallback() {
     bloodNeedsData = [
         { blood_type: 'O+', status: 'normal' },
-        { blood_type: 'O-', status: 'low' },
+        { blood_type: 'O-', status: 'needed' },
         { blood_type: 'A+', status: 'normal' },
-        { blood_type: 'A-', status: 'critical' },
+        { blood_type: 'A-', status: 'urgent' },
         { blood_type: 'B+', status: 'normal' },
-        { blood_type: 'B-', status: 'low' },
+        { blood_type: 'B-', status: 'needed' },
         { blood_type: 'AB+', status: 'normal' },
         { blood_type: 'AB-', status: 'normal' }
     ];
@@ -252,12 +252,12 @@ function initTrafficLightFallback() {
 }
 
 function getStatusClass(status) {
-    const map = { 'normal': 'ok', 'low': 'need', 'critical': 'urgent' };
+    const map = { 'normal': 'ok', 'needed': 'need', 'urgent': 'urgent' };
     return map[status] || 'ok';
 }
 
 function getStatusText(status) {
-    const map = { 'normal': 'Достаточно', 'low': 'Нужно пополнить', 'critical': 'Срочно нужна' };
+    const map = { 'normal': 'Достаточно', 'needed': 'Нужно пополнить', 'urgent': 'Срочно нужна' };
     return map[status] || status;
 }
 
@@ -279,23 +279,23 @@ function renderFullTrafficLight() {
     
     const statusColors = {
         'normal': '#10b981',
-        'low': '#f59e0b', 
-        'critical': '#ef4444'
+        'needed': '#f59e0b', 
+        'urgent': '#ef4444'
     };
     
     const statusLabels = {
         'normal': 'Достаточно',
-        'low': 'Нужно пополнить',
-        'critical': 'Срочно нужна'
+        'needed': 'Нужно пополнить',
+        'urgent': 'Срочно нужна'
     };
     
     container.innerHTML = bloodNeedsData.map(item => `
         <div class="blood-panel ${item.status}" 
              data-type="${item.blood_type}" 
              data-status="${item.status}"
-             style="background: ${statusColors[item.status]};">
+             style="background: ${statusColors[item.status] || '#10b981'};">
             <div class="blood-panel-type">${item.blood_type}</div>
-            <div class="blood-panel-status">${statusLabels[item.status]}</div>
+            <div class="blood-panel-status">${statusLabels[item.status] || item.status}</div>
             <div class="blood-panel-buttons">
                 <button class="panel-btn ${item.status === 'normal' ? 'active' : ''}" 
                         onclick="setBloodStatus('${item.blood_type}', 'normal')"
@@ -304,16 +304,16 @@ function renderFullTrafficLight() {
                         <path d="M5 13l4 4L19 7"/>
                     </svg>
                 </button>
-                <button class="panel-btn ${item.status === 'low' ? 'active' : ''}" 
-                        onclick="setBloodStatus('${item.blood_type}', 'low')"
+                <button class="panel-btn ${item.status === 'needed' ? 'active' : ''}" 
+                        onclick="setBloodStatus('${item.blood_type}', 'needed')"
                         title="Нужно пополнить">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
                         <path d="M12 8v4"/>
                     </svg>
                 </button>
-                <button class="panel-btn ${item.status === 'critical' ? 'active' : ''}" 
-                        onclick="setBloodStatus('${item.blood_type}', 'critical')"
+                <button class="panel-btn ${item.status === 'urgent' ? 'active' : ''}" 
+                        onclick="setBloodStatus('${item.blood_type}', 'urgent')"
                         title="Срочно (рассылка в Telegram)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
@@ -350,7 +350,7 @@ async function setBloodStatus(bloodType, status) {
             renderMiniTrafficLight();
             renderFullTrafficLight();
             
-            if (status === 'critical') {
+            if (status === 'urgent') {
                 showNotification(`Срочный запрос на ${bloodType} отправлен донорам!`, 'success');
             } else {
                 showNotification(`Статус ${bloodType} обновлён`, 'success');

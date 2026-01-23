@@ -18,12 +18,16 @@ from dotenv import load_dotenv
 
 # Импорт функции уведомлений из telegram_bot
 try:
-    from telegram_bot import send_notification
+    from telegram_bot import send_notification, send_urgent_blood_request
 except ImportError:
     # Если telegram_bot недоступен, создаём заглушку
     def send_notification(telegram_id, message):
         print(f"[TELEGRAM] Уведомление для {telegram_id}: {message}")
         return False
+    
+    def send_urgent_blood_request(blood_type, medical_center_name, address=None):
+        print(f"[TELEGRAM] Срочный запрос: {blood_type}, {medical_center_name}")
+        return 0
 
 load_dotenv()
 
@@ -91,6 +95,7 @@ def require_auth(user_type=None):
         def decorated(*args, **kwargs):
             token = request.headers.get('Authorization', '').replace('Bearer ', '')
             if not token:
+                app.logger.warning(f"❌ Нет токена для {f.__name__}")
                 return jsonify({'error': 'Требуется авторизация'}), 401
             
             session = query_db(
@@ -100,9 +105,11 @@ def require_auth(user_type=None):
             )
             
             if not session:
+                app.logger.warning(f"❌ Сессия не найдена или истекла для {f.__name__}, token={token[:10]}...")
                 return jsonify({'error': 'Сессия истекла'}), 401
             
             if user_type and session['user_type'] != user_type:
+                app.logger.warning(f"❌ Неверный тип пользователя для {f.__name__}: ожидается '{user_type}', получен '{session['user_type']}'")
                 return jsonify({'error': 'Нет доступа'}), 403
             
             g.session = session
@@ -600,7 +607,8 @@ def update_blood_needs(mc_id):
     blood_type = data.get('blood_type')
     status = data.get('status')
     
-    if not blood_type or status not in ['normal', 'low', 'critical']:
+    # Стандартизированные статусы: normal, needed, urgent
+    if not blood_type or status not in ['normal', 'needed', 'urgent']:
         return jsonify({'error': 'Неверные данные'}), 400
     
     # Upsert
@@ -620,9 +628,38 @@ def update_blood_needs(mc_id):
             (mc_id, blood_type, status), commit=True
         )
     
-    # Уведомления при критическом статусе
-    if status == 'critical':
-        send_urgent_notifications(mc_id, blood_type)
+    # Логика уведомлений при статусе urgent
+    if status == 'urgent':
+        # 1. Проверяем, есть ли активный запрос крови
+        active_request = query_db(
+            """SELECT id FROM blood_requests 
+               WHERE medical_center_id = %s AND blood_type = %s AND status = 'active' AND expires_at > NOW()""",
+            (mc_id, blood_type), one=True
+        )
+        
+        request_id = None
+        if not active_request:
+            # 2. Если нет, создаём автоматический запрос
+            request_id = query_db(
+                """INSERT INTO blood_requests 
+                   (medical_center_id, blood_type, urgency, status, description, expires_at, created_at)
+                   VALUES (%s, %s, 'urgent', 'active', 'Автоматический запрос из светофора', NOW() + INTERVAL '2 days', NOW())
+                   RETURNING id""",
+                (mc_id, blood_type), commit=True, one=True
+            )['id']
+            print(f"[AUTO-REQUEST] Создан запрос ID {request_id} для {blood_type}")
+        else:
+            request_id = active_request['id']
+            # Обновляем срочность существующего запроса
+            query_db(
+                "UPDATE blood_requests SET urgency = 'urgent' WHERE id = %s",
+                (request_id,), commit=True
+            )
+            
+        # 3. Отправляем уведомления
+        mc = query_db("SELECT name, address FROM medical_centers WHERE id = %s", (mc_id,), one=True)
+        if mc:
+            send_urgent_blood_request(blood_type, mc['name'], mc.get('address'))
     
     return jsonify({'message': 'Статус обновлён', 'blood_type': blood_type, 'status': status})
 
@@ -815,7 +852,7 @@ def create_blood_request():
         return jsonify({'error': 'Неверная группа крови'}), 400
     
     # Проверяем срочность
-    if data['urgency'] not in ['normal', 'urgent', 'critical']:
+    if data['urgency'] not in ['normal', 'urgent', 'critical']: # critical оставим для совместимости, но лучше urgent
         return jsonify({'error': 'Неверная срочность'}), 400
     
     # Вычисляем expires_at
@@ -832,18 +869,20 @@ def create_blood_request():
     )['id']
     
     # Обновляем светофор если критическая срочность
-    if data['urgency'] == 'critical':
+    if data['urgency'] in ['urgent', 'critical']:
+        status_to_set = 'urgent' # Унификация
         query_db(
             """INSERT INTO blood_needs (medical_center_id, blood_type, status, last_updated)
-               VALUES (%s, %s, 'critical', NOW())
+               VALUES (%s, %s, %s, NOW())
                ON CONFLICT (medical_center_id, blood_type)
-               DO UPDATE SET status = 'critical', last_updated = NOW()""",
-            (mc_id, data['blood_type']), commit=True
+               DO UPDATE SET status = %s, last_updated = NOW()""",
+            (mc_id, data['blood_type'], status_to_set, status_to_set), commit=True
         )
         
         # Отправляем уведомления
-        mc = query_db("SELECT district_id FROM medical_centers WHERE id = %s", (mc_id,), one=True)
-        send_urgent_notifications(mc_id, data['blood_type'], request_id, mc.get('district_id'))
+        mc = query_db("SELECT name, address FROM medical_centers WHERE id = %s", (mc_id,), one=True)
+        if mc:
+            send_urgent_blood_request(data['blood_type'], mc['name'], mc.get('address'))
     
     return jsonify({'message': 'Запрос создан', 'request_id': request_id}), 201
 
@@ -1441,10 +1480,10 @@ def respond_to_blood_request(request_id):
     # Создаём отклик
     response_id = query_db(
         """INSERT INTO donation_responses 
-           (request_id, user_id, status, message, responded_at)
-           VALUES (%s, %s, 'pending', %s, NOW())
+           (request_id, user_id, medical_center_id, status, donor_comment)
+           VALUES (%s, %s, %s, 'pending', %s)
            RETURNING id""",
-        (request_id, user_id, data.get('message', '')),
+        (request_id, user_id, req['medical_center_id'], data.get('message', '')),
         commit=True, one=True
     )['id']
     
@@ -1503,6 +1542,64 @@ def get_donor_messages():
     
     return jsonify(messages or [])
 
+@app.route('/api/donor/schedule-donation', methods=['POST'])
+@require_auth('donor')
+def schedule_donation():
+    """Записаться на плановую донацию"""
+    user_id = g.session['user_id']
+    data = request.json
+    
+    medical_center_id = data.get('medical_center_id')
+    if not medical_center_id:
+        return jsonify({'error': 'Не указан медицинский центр'}), 400
+    
+    # Получаем информацию о доноре
+    donor = query_db(
+        """SELECT full_name, blood_type, phone, email FROM users WHERE id = %s""",
+        (user_id,), one=True
+    )
+    
+    if not donor:
+        return jsonify({'error': 'Донор не найден'}), 404
+    
+    # Получаем информацию о медцентре
+    mc = query_db(
+        """SELECT name FROM medical_centers WHERE id = %s""",
+        (medical_center_id,), one=True
+    )
+    
+    if not mc:
+        return jsonify({'error': 'Медицинский центр не найден'}), 404
+    
+    # Формируем сообщение для медцентра
+    planned_date = data.get('planned_date')
+    comment = data.get('comment')
+    
+    message_text = f"""Заявка на плановую донацию от донора:
+
+ФИО: {donor['full_name']}
+Группа крови: {donor['blood_type']}
+Телефон: {donor['phone'] or 'не указан'}
+Email: {donor['email'] or 'не указан'}
+Предпочтительная дата: {planned_date if planned_date else 'любая'}
+
+{f'Комментарий донора: {comment}' if comment else ''}
+
+Донор готов сдать кровь в удобное для медцентра время. Пожалуйста, свяжитесь с ним для уточнения деталей."""
+    
+    # Отправляем сообщение медцентру
+    query_db(
+        """INSERT INTO messages (from_user_id, to_medcenter_id, subject, message)
+           VALUES (%s, %s, %s, %s)""",
+        (user_id, medical_center_id, 'Заявка на плановую донацию', message_text),
+        commit=True
+    )
+    
+    return jsonify({
+        'message': 'Заявка отправлена',
+        'medical_center_name': mc['name']
+    }), 201
+
 @app.route('/api/donor/messages/<int:message_id>/read', methods=['POST'])
 @require_auth('donor')
 def mark_donor_message_read(message_id):
@@ -1519,7 +1616,7 @@ def mark_donor_message_read(message_id):
         return jsonify({'error': 'Сообщение не найдено'}), 404
     
     query_db(
-        "UPDATE messages SET is_read = TRUE, read_at = NOW() WHERE id = %s",
+        "UPDATE messages SET is_read = TRUE WHERE id = %s",
         (message_id,), commit=True
     )
     

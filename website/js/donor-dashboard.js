@@ -227,6 +227,15 @@ function displayBloodRequests(requests) {
                         ` : ''}
                     </div>
                     
+                    <div class="request-recommendations">
+                        <div class="rec-title">📋 Рекомендации перед сдачей:</div>
+                        <ul class="rec-list">
+                            <li>Поесть за 2-3 часа до сдачи</li>
+                            <li>Выспаться накануне</li>
+                            <li>Взять паспорт и выписку</li>
+                        </ul>
+                    </div>
+                    
                     <div class="request-meta">
                         <span>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -450,6 +459,7 @@ async function cancelResponse(requestId) {
 function getUrgencyText(urgency) {
     const map = { 
         'normal': 'Обычный', 
+        'needed': 'Нужно пополнить', 
         'urgent': 'Срочно', 
         'critical': 'Критично' 
     };
@@ -788,104 +798,8 @@ function getMedcenterName(id) {
     return centers[id] || `Центр #${id}`;
 }
 
-/**
- * Загрузка запросов
- */
-function loadRequests() {
-    const userData = JSON.parse(localStorage.getItem('donor_user') || '{}');
-    const bloodType = userData.blood_type;
-    
-    // Демо-данные запросов
-    const requests = [
-        {
-            id: 1,
-            center: 'РНПЦ трансфузиологии',
-            address: 'ул. Долгиновский тракт, 160',
-            bloodType: bloodType || 'A+',
-            urgency: 'urgent',
-            distance: '5.2 км',
-            date: new Date()
-        },
-        {
-            id: 2,
-            center: '6-я ГКБ',
-            address: 'ул. Уральская, 5',
-            bloodType: bloodType || 'A+',
-            urgency: 'need',
-            distance: '8.1 км',
-            date: new Date(Date.now() - 86400000)
-        },
-        {
-            id: 3,
-            center: 'ГКБСМП',
-            address: 'ул. Кижеватова, 58',
-            bloodType: bloodType || 'A+',
-            urgency: 'urgent',
-            distance: '12.3 км',
-            date: new Date(Date.now() - 172800000)
-        }
-    ];
-    
-    // Обновление счётчика
-    document.getElementById('requests-badge').textContent = requests.length;
-    document.getElementById('stat-requests').textContent = requests.length;
-    
-    // Отображение последних запросов на главной
-    const recentList = document.getElementById('recent-requests-list');
-    if (recentList) {
-        recentList.innerHTML = requests.slice(0, 3).map(req => `
-            <div class="request-item" data-id="${req.id}">
-                <div class="request-urgency ${req.urgency}"></div>
-                <div class="request-info">
-                    <div class="request-name">${req.center}</div>
-                    <div class="request-location">${req.distance}</div>
-                </div>
-                <span class="request-blood">${req.bloodType}</span>
-            </div>
-        `).join('');
-        
-        // Обработчики кликов
-        recentList.querySelectorAll('.request-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const id = item.dataset.id;
-                openRequestModal(requests.find(r => r.id == id));
-            });
-        });
-    }
-    
-    // Полный список запросов
-    const requestsList = document.getElementById('requests-list');
-    if (requestsList) {
-        requestsList.innerHTML = requests.map(req => `
-            <div class="request-card ${req.urgency}" data-id="${req.id}">
-                <div class="request-card-icon">${req.bloodType}</div>
-                <div class="request-card-content">
-                    <h4 class="request-card-title">${req.center}</h4>
-                    <p class="request-card-address">${req.address}</p>
-                    <div class="request-card-meta">
-                        <span>${req.distance}</span>
-                        <span>${req.urgency === 'urgent' ? 'Срочно' : 'Нужно пополнить'}</span>
-                    </div>
-                </div>
-                <div class="request-card-action">
-                    <button class="btn btn-primary respond-btn" data-id="${req.id}">Откликнуться</button>
-                </div>
-            </div>
-        `).join('');
-        
-        // Обработчики кнопок
-        requestsList.querySelectorAll('.respond-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const id = btn.dataset.id;
-                openRequestModal(requests.find(r => r.id == id));
-            });
-        });
-    }
-    
-    // Центры для донации
-    loadDonateCenters(requests);
-}
+// Mock function removed
+// loadRequestsFromAPI handles the data loading
 
 /**
  * Загрузка центров для донации
@@ -1264,13 +1178,27 @@ async function loadDonateCenters() {
     try {
         console.log('Загрузка центров донации...');
         
-        // Получаем данные донора из localStorage
-        const donorUser = JSON.parse(localStorage.getItem('donor_user') || '{}');
-        const bloodType = donorUser.blood_type;
-        const districtId = donorUser.district_id;
+        // Получаем АКТУАЛЬНЫЕ данные донора из API, а не из localStorage
+        const profileResponse = await fetch(`${DONOR_API_URL}/donor/profile`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!profileResponse.ok) {
+            throw new Error(`Ошибка загрузки профиля: ${profileResponse.status}`);
+        }
+        
+        const donor = await profileResponse.json();
+        const bloodType = donor.blood_type;
+        const districtId = donor.district_id;
+        
+        console.log('Данные донора:', { bloodType, districtId });
         
         if (!bloodType || !districtId) {
             console.warn('Нет информации о группе крови или районе донора');
+            const container = document.getElementById('donate-centers');
+            if (container) {
+                container.innerHTML = '<p class="no-data">Заполните профиль для просмотра центров донации</p>';
+            }
             return;
         }
         
@@ -1284,7 +1212,7 @@ async function loadDonateCenters() {
         }
         
         const centers = await response.json();
-        console.log('Центры донации загружены:', centers);
+        console.log('Центры донации загружены:', centers.length, 'шт.');
         
         displayDonateCenters(centers, bloodType);
     } catch (error) {
@@ -1381,9 +1309,126 @@ function displayDonateCenters(centers, userBloodType) {
                         </div>
                     </div>
                 ` : ''}
+                
+                <div class="center-actions">
+                    <button class="btn-schedule-donation" data-center-id="${center.id}" data-center-name="${center.name}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        Записаться на плановую донацию
+                    </button>
+                </div>
             </div>
         `;
     }).join('');
+    
+    // Добавляем обработчики для кнопок записи
+    container.querySelectorAll('.btn-schedule-donation').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const centerId = btn.dataset.centerId;
+            const centerName = btn.dataset.centerName;
+            openScheduleDonationModal(centerId, centerName);
+        });
+    });
+}
+
+/**
+ * Открыть модальное окно для записи на донацию
+ */
+function openScheduleDonationModal(centerId, centerName) {
+    // Создаём модальное окно
+    const modal = document.createElement('div');
+    modal.className = 'modal-respond active';
+    modal.innerHTML = `
+        <div class="modal-respond-content">
+            <div class="modal-respond-header">
+                <h3>Записаться на донацию</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-respond-body">
+                <p><strong>Медицинский центр:</strong> ${centerName}</p>
+                <p style="margin-top: 12px; font-size: var(--text-sm); color: var(--color-gray-600);">
+                    Медицинский центр получит информацию о вашей готовности сдать кровь и свяжется с вами для уточнения деталей.
+                </p>
+                
+                <div style="margin-top: 16px;">
+                    <label for="donation-date" style="display: block; margin-bottom: 8px; font-weight: 500;">
+                        Предпочтительная дата (необязательно):
+                    </label>
+                    <input type="date" id="donation-date" 
+                           style="width: 100%; padding: 12px; border: 1px solid var(--color-gray-300); border-radius: var(--radius-md);"
+                           min="${new Date().toISOString().split('T')[0]}">
+                </div>
+                
+                <div style="margin-top: 16px;">
+                    <label for="donation-comment" style="display: block; margin-bottom: 8px; font-weight: 500;">
+                        Комментарий (необязательно):
+                    </label>
+                    <textarea id="donation-comment" placeholder="Дополнительная информация или пожелания" 
+                              style="width: 100%; padding: 12px; border: 1px solid var(--color-gray-300); border-radius: var(--radius-md); min-height: 80px; resize: vertical;"></textarea>
+                </div>
+            </div>
+            <div class="modal-respond-footer">
+                <button class="btn-cancel-response" onclick="this.closest('.modal-respond').remove()">
+                    Отмена
+                </button>
+                <button class="btn-respond" id="confirm-schedule-btn">
+                    Отправить заявку
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Закрытие по клику вне
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    // Закрытие по кнопке
+    modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+    
+    // Подтверждение
+    modal.querySelector('#confirm-schedule-btn').addEventListener('click', () => {
+        const date = document.getElementById('donation-date').value;
+        const comment = document.getElementById('donation-comment').value;
+        scheduleDonation(centerId, centerName, date, comment);
+        modal.remove();
+    });
+}
+
+/**
+ * Отправить заявку на плановую донацию
+ */
+async function scheduleDonation(centerId, centerName, plannedDate, comment) {
+    try {
+        const response = await fetch(`${DONOR_API_URL}/donor/schedule-donation`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                medical_center_id: parseInt(centerId),
+                planned_date: plannedDate || null,
+                comment: comment || null
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showNotification(`✅ Заявка отправлена в "${centerName}". Медицинский центр свяжется с вами для уточнения деталей.`, 'success');
+        } else {
+            showNotification('❌ ' + (result.error || 'Ошибка отправки заявки'), 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка отправки заявки:', error);
+        showNotification('❌ Ошибка соединения', 'error');
+    }
 }
 
 /**
