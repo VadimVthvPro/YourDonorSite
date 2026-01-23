@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // После загрузки профиля загружаем остальное
             await Promise.all([
                 loadRequestsFromAPI(),
-                loadMessagesFromAPI(),
+                // loadMessagesFromAPI(), // Старый API, теперь используется мессенджер
                 loadDonateCenters()
             ]);
             console.log('✓ Все данные загружены');

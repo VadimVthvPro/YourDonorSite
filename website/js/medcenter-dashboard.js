@@ -2100,41 +2100,8 @@ async function recordDonation(donorId, responseId = null) {
  * Подтвердить отклик донора
  */
 async function confirmResponse(responseId) {
-    if (!confirm('Подтвердить отклик донора?\n\nБудет выполнена валидация группы крови и времени с последней донации.')) return;
-    
-    try {
-        const response = await fetch(`${MC_API_URL}/responses/${responseId}`, {
-            method: 'PUT',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ 
-                status: 'confirmed',
-                comment: 'Подтверждён медцентром'
-            })
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            showNotification('✅ Отклик подтверждён', 'success');
-            
-            // Перезагрузить запросы, чтобы увидеть автозакрытие
-            await loadBloodRequestsFromAPI();
-            await showAllResponses(currentResponsesData[0]?.request_id);
-        } else {
-            // Показываем ошибку валидации
-            const error = await response.json();
-            const errorMsg = error.error || 'Ошибка подтверждения';
-            
-            // Если это ошибка валидации - показываем подробно
-            if (response.status === 400) {
-                alert(`❌ ВАЛИДАЦИЯ НЕ ПРОЙДЕНА\n\n${errorMsg}`);
-            } else {
-                showNotification(`❌ ${errorMsg}`, 'error');
-            }
-        }
-    } catch (error) {
-        console.error('Ошибка:', error);
-        showNotification('❌ Ошибка соединения', 'error');
-    }
+    // Открываем модальное окно для ввода даты и времени
+    openConfirmDonationModal(responseId);
 }
 
 /**
@@ -2596,5 +2563,125 @@ function initMessenger() {
     // Используем функцию из messenger.js, если она доступна
     if (typeof initMessengerUI === 'function') {
         initMessengerUI();
+    }
+}
+
+/**
+ * Открыть модальное окно для подтверждения донации с вводом даты/времени
+ */
+function openConfirmDonationModal(responseId) {
+    // Создаём модальное окно
+    const modal = document.createElement('div');
+    modal.className = 'modal-respond active';
+    modal.innerHTML = `
+        <div class="modal-respond-content">
+            <div class="modal-respond-header">
+                <h3>📅 Назначить дату донации</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-respond-body">
+                <p style="margin-bottom: 20px; color: #666;">
+                    Укажите дату и время, когда донор должен прийти для сдачи крови.
+                </p>
+                
+                <div class="form-group">
+                    <label for="donation-date-input">Дата донации *</label>
+                    <input type="date" id="donation-date-input" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="donation-time-input">Время донации *</label>
+                    <input type="time" id="donation-time-input" class="form-control" 
+                           value="10:00" required>
+                </div>
+                
+                <div class="info-block" style="margin-top: 16px; padding: 12px; background: #e3f2fd; border-left: 3px solid #2196f3; border-radius: 8px;">
+                    <p style="margin: 0; font-size: 14px;">
+                        ℹ️ После подтверждения донору будет отправлено уведомление с датой, временем и полными правилами подготовки к донации.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-respond-footer">
+                <button class="btn-cancel-response" onclick="this.closest('.modal-respond').remove()">
+                    Отмена
+                </button>
+                <button class="btn-respond" id="confirm-donation-btn">
+                    ✅ Подтвердить донацию
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Устанавливаем минимальную дату (сегодня + 1 день)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('donation-date-input').min = tomorrow.toISOString().split('T')[0];
+    
+    // Устанавливаем дату по умолчанию (через 3 дня)
+    const defaultDate = new Date();
+    defaultDate.setDate(defaultDate.getDate() + 3);
+    document.getElementById('donation-date-input').value = defaultDate.toISOString().split('T')[0];
+    
+    // Обработчик закрытия
+    modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+    
+    // Обработчик подтверждения
+    document.getElementById('confirm-donation-btn').addEventListener('click', async () => {
+        const donationDate = document.getElementById('donation-date-input').value;
+        const donationTime = document.getElementById('donation-time-input').value;
+        
+        if (!donationDate || !donationTime) {
+            alert('Пожалуйста, укажите дату и время донации');
+            return;
+        }
+        
+        // Закрываем модальное окно
+        modal.remove();
+        
+        // Отправляем запрос на подтверждение
+        await submitConfirmDonation(responseId, donationDate, donationTime);
+    });
+}
+
+/**
+ * Отправить запрос на подтверждение донации с датой и временем
+ */
+async function submitConfirmDonation(responseId, donationDate, donationTime) {
+    try {
+        const response = await fetch(`${MC_API_URL}/responses/${responseId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ 
+                status: 'confirmed',
+                comment: 'Подтверждён медцентром',
+                donation_date: donationDate,
+                donation_time: donationTime
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            showNotification('✅ Донация подтверждена! Донор получит уведомление с правилами подготовки.', 'success');
+            
+            // Перезагрузить запросы, чтобы увидеть автозакрытие
+            await loadBloodRequestsFromAPI();
+            await showAllResponses(currentResponsesData[0]?.request_id);
+        } else {
+            // Показываем ошибку валидации
+            const error = await response.json();
+            const errorMsg = error.error || 'Ошибка подтверждения';
+            
+            // Если это ошибка валидации - показываем подробно
+            if (response.status === 400) {
+                alert(`❌ ВАЛИДАЦИЯ НЕ ПРОЙДЕНА\n\n${errorMsg}`);
+            } else {
+                showNotification(`❌ ${errorMsg}`, 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка подтверждения донации:', error);
+        showNotification('❌ Ошибка при подтверждении донации', 'error');
     }
 }

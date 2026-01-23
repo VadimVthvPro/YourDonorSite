@@ -3,15 +3,42 @@
    Современный UI для чата донор ↔ медцентр
    ============================================ */
 
+/* Специальное правило для секции с мессенджером */
+.dashboard-section#messages {
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    height: calc(100vh - 80px);
+    min-height: 500px;
+}
+
+/* Для медцентра (такие же размеры) */
+.medcenter-page .dashboard-section#messages {
+    height: calc(100vh - 80px);
+}
+
+/* Скрываем section-header внутри мессенджера */
+.dashboard-section#messages .section-header {
+    display: none;
+}
+
+/* Для планшетов */
+@media (max-width: 768px) {
+    .dashboard-section#messages,
+    .medcenter-page .dashboard-section#messages {
+        height: calc(100vh - 60px);
+    }
+}
+
 /* Контейнер мессенджера */
 .messenger-container {
     display: grid;
     grid-template-columns: 350px 1fr;
-    height: calc(100vh - 200px);
-    min-height: 600px;
+    height: 100%;
+    flex: 1;
     background: var(--color-white);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-lg);
+    border-radius: 0;
+    box-shadow: none;
     overflow: hidden;
 }
 
@@ -176,6 +203,8 @@
     display: flex;
     flex-direction: column;
     background: var(--color-white);
+    height: 100%;
+    overflow: hidden;
 }
 
 .chat-header {
@@ -185,6 +214,8 @@
     align-items: center;
     gap: var(--spacing-md);
     background: var(--color-white);
+    flex-shrink: 0;
+    min-height: 72px;
 }
 
 .chat-header-avatar {
@@ -247,8 +278,12 @@
 .chat-messages {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: var(--spacing-lg);
     background: #f8f9fa;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .chat-date-divider {
@@ -392,6 +427,8 @@
     padding: var(--spacing-lg);
     border-top: 1px solid var(--color-gray-200);
     background: var(--color-white);
+    flex-shrink: 0;
+    min-height: 76px;
 }
 
 .chat-input-wrapper {
@@ -524,9 +561,20 @@
 }
 
 @media (max-width: 480px) {
+    .dashboard-section#messages,
+    .medcenter-page .dashboard-section#messages {
+        height: 100vh;
+        min-height: unset;
+    }
+    
     .messenger-container {
-        height: calc(100vh - 120px);
+        height: 100%;
         border-radius: 0;
+        grid-template-columns: 1fr;
+    }
+    
+    .conversations-panel {
+        display: block;
     }
     
     .conversations-header,
@@ -540,6 +588,10 @@
     
     .message-bubble {
         max-width: 90%;
+    }
+    
+    .chat-input {
+        padding: var(--spacing-md);
     }
 }
 
