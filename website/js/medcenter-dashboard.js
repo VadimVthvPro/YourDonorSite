@@ -467,7 +467,7 @@ function renderResponses(responses) {
         }
     }
     
-    // Полный список (с применением фильтров)
+    // Полный список (с применением фильтров) - КАРТОЧКИ С КРЕСТИКАМИ
     const listContainer = document.getElementById('responses-list');
     if (listContainer) {
         if (filtered.length === 0) {
@@ -499,6 +499,34 @@ function renderResponses(responses) {
                                 <button class="btn btn-ghost btn-sm" data-action="restore" data-id="${r.id}" title="Восстановить отклик">Восстановить</button>
                             ` : ''}
                         `}
+                        <button 
+                            class="btn btn-sm hide-response-btn" 
+                            onclick="hideResponse(${r.id}); event.stopPropagation();" 
+                            title="Скрыть отклик"
+                            style="
+                                opacity: 0.5 !important; 
+                                margin-left: 12px !important; 
+                                padding: 6px 10px !important; 
+                                font-size: 20px !important; 
+                                line-height: 1 !important; 
+                                background: transparent !important;
+                                border: 2px solid transparent !important;
+                                color: #6c757d !important;
+                                cursor: pointer !important;
+                                display: inline-flex !important;
+                                align-items: center !important;
+                                justify-content: center !important;
+                                transition: all 0.2s !important;
+                                position: absolute !important;
+                                right: 16px !important;
+                                top: 50% !important;
+                                transform: translateY(-50%) !important;
+                            "
+                            onmouseover="this.style.opacity='1'; this.style.color='#dc3545'; this.style.borderColor='#dc3545'; this.style.background='rgba(220,53,69,0.05)';"
+                            onmouseout="this.style.opacity='0.5'; this.style.color='#6c757d'; this.style.borderColor='transparent'; this.style.background='transparent';"
+                        >
+                            ✕
+                        </button>
                     </div>
                 </div>
             `).join('');
@@ -758,14 +786,14 @@ async function loadStatisticsFromAPI() {
             headers: getAuthHeaders()
         });
         const stats = await response.json();
-        renderStatistics(stats);
+        renderDashboardStatistics(stats);
     } catch (error) {
         console.error('Ошибка загрузки статистики:', error);
-        renderStatistics({});
+        renderDashboardStatistics({});
     }
 }
 
-function renderStatistics(apiStats) {
+function renderDashboardStatistics(apiStats) {
     // Обновляем счётчики на главной
     const totalDonors = document.getElementById('stat-donors');
     const activeRequests = document.getElementById('stat-requests');
@@ -1816,6 +1844,30 @@ function renderResponsesTable(responses, page = 1) {
                                             ↶
                                         </button>
                                     ` : ''}
+                                    <button 
+                                        class="btn btn-sm hide-response-btn" 
+                                        onclick="hideResponse(${r.id})" 
+                                        title="Скрыть отклик"
+                                        style="
+                                            opacity: 0.5 !important; 
+                                            margin-left: auto !important; 
+                                            padding: 6px 10px !important; 
+                                            font-size: 20px !important; 
+                                            line-height: 1 !important; 
+                                            background: transparent !important;
+                                            border: 2px solid transparent !important;
+                                            color: #6c757d !important;
+                                            cursor: pointer !important;
+                                            display: inline-flex !important;
+                                            align-items: center !important;
+                                            justify-content: center !important;
+                                            transition: all 0.2s !important;
+                                        "
+                                        onmouseover="this.style.opacity='1'; this.style.color='#dc3545'; this.style.borderColor='#dc3545'; this.style.background='rgba(220,53,69,0.05)';"
+                                        onmouseout="this.style.opacity='0.5'; this.style.color='#6c757d'; this.style.borderColor='transparent'; this.style.background='transparent';"
+                                    >
+                                        ✕
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -2138,7 +2190,7 @@ async function initStatistics() {
 
 async function loadStatistics(useCustomDates = false) {
     try {
-        let url = `${MC_API_URL}/statistics?`;
+        let url = `${API_URL}/medical-center/statistics?`;
         
         if (useCustomDates) {
             const from = document.getElementById('stats-date-from').value;
@@ -2166,17 +2218,33 @@ async function loadStatistics(useCustomDates = false) {
 }
 
 function renderStatistics(stats) {
+    console.log('Рендеринг статистики:', stats);
+    
+    // Проверка данных
+    if (!stats) {
+        console.error('Нет данных статистики');
+        showNotification('Нет данных статистики', 'error');
+        return;
+    }
+    
+    // Проверяем, есть ли полная структура
+    if (!stats.blood_requests || !stats.responses || !stats.donations) {
+        console.error('Неполные данные статистики:', stats);
+        showNotification('Ошибка: неполные данные статистики', 'error');
+        return;
+    }
+    
     // Основные метрики
-    document.getElementById('stat-requests').textContent = stats.blood_requests.total;
-    document.getElementById('stat-donors').textContent = stats.responses.unique_donors;
-    document.getElementById('stat-donations').textContent = stats.donations.total;
-    document.getElementById('stat-volume').textContent = stats.donations.total_volume_liters + ' л';
+    document.getElementById('stat-requests').textContent = stats.blood_requests.total || 0;
+    document.getElementById('stat-donors').textContent = stats.responses.unique_donors || 0;
+    document.getElementById('stat-donations').textContent = stats.donations.total || 0;
+    document.getElementById('stat-volume').textContent = (stats.donations.total_volume_liters || 0) + ' л';
     
     // Изменения
-    renderStatChange('stat-requests-change', stats.blood_requests.change_percent);
-    renderStatChange('stat-donors-change', stats.responses.change_percent);
-    renderStatChange('stat-donations-change', stats.donations.change_percent);
-    renderStatChange('stat-volume-change', stats.donations.change_percent);
+    renderStatChange('stat-requests-change', stats.blood_requests.change_percent || 0);
+    renderStatChange('stat-donors-change', stats.responses.change_percent || 0);
+    renderStatChange('stat-donations-change', stats.donations.change_percent || 0);
+    renderStatChange('stat-volume-change', stats.donations.change_percent || 0);
     
     // Диаграмма по срочности
     renderUrgencyChart(stats.blood_requests.by_urgency);
@@ -2184,15 +2252,38 @@ function renderStatistics(stats) {
     // Диаграмма по группам крови
     renderBloodTypeChart(stats.donations.by_blood_type);
     
-    // Детальная статистика
+    // Детальная статистика ЗАПРОСОВ
     document.getElementById('detail-total-requests').textContent = stats.blood_requests.total;
     document.getElementById('detail-active-requests').textContent = stats.blood_requests.active;
     document.getElementById('detail-closed-requests').textContent = stats.blood_requests.closed;
     document.getElementById('detail-cancelled-requests').textContent = stats.blood_requests.cancelled;
+    document.getElementById('detail-expired-requests').textContent = stats.blood_requests.expired || 0;
+    document.getElementById('detail-critical-requests').textContent = stats.blood_requests.by_urgency?.critical || 0;
+    document.getElementById('detail-urgent-requests').textContent = stats.blood_requests.by_urgency?.urgent || 0;
     
+    // Детальная статистика ОТКЛИКОВ
     document.getElementById('detail-total-responses').textContent = stats.responses.total_responses;
     document.getElementById('detail-confirmed-responses').textContent = stats.responses.confirmed;
+    document.getElementById('detail-pending-responses').textContent = stats.responses.pending || 0;
+    document.getElementById('detail-declined-responses').textContent = stats.responses.declined || 0;
     document.getElementById('detail-conversion-rate').textContent = stats.responses.conversion_rate + '%';
+    document.getElementById('detail-unique-donors').textContent = stats.responses.unique_donors;
+    
+    // Детальная статистика ДОНАЦИЙ
+    document.getElementById('detail-total-donations').textContent = stats.donations.total;
+    document.getElementById('detail-total-volume-ml').textContent = stats.donations.total_volume_ml + ' мл';
+    document.getElementById('detail-total-volume-liters').textContent = stats.donations.total_volume_liters + ' л';
+    
+    // Средние показатели
+    const avgResponsesPerRequest = stats.blood_requests.total > 0 
+        ? (stats.responses.total_responses / stats.blood_requests.total).toFixed(1) 
+        : 0;
+    document.getElementById('detail-avg-responses').textContent = avgResponsesPerRequest;
+    
+    const avgVolume = stats.donations.total > 0 
+        ? (stats.donations.total_volume_ml / stats.donations.total).toFixed(0) 
+        : 0;
+    document.getElementById('detail-avg-volume').textContent = avgVolume + ' мл';
 }
 
 function renderStatChange(elementId, change) {
@@ -2250,31 +2341,60 @@ function renderBloodTypeChart(bloodTypeData) {
     const container = document.getElementById('blood-type-chart');
     
     if (!bloodTypeData || bloodTypeData.length === 0) {
-        container.innerHTML = '<div class="chart-empty">Нет данных</div>';
+        container.innerHTML = '<div class="chart-empty">Нет данных о донациях</div>';
         return;
     }
     
-    const maxCount = Math.max(...bloodTypeData.map(d => d.count));
+    const maxCount = Math.max(...bloodTypeData.map(d => d.count), 1);
+    const maxVolume = Math.max(...bloodTypeData.map(d => d.total_volume || 0), 1);
+    
+    // Цвета для разных групп крови
+    const bloodColors = {
+        'O+': '#e74c3c', 'O-': '#c0392b',
+        'A+': '#3498db', 'A-': '#2980b9',
+        'B+': '#2ecc71', 'B-': '#27ae60',
+        'AB+': '#9b59b6', 'AB-': '#8e44ad'
+    };
     
     container.innerHTML = `
-        <div class="chart-bar-list">
-            ${bloodTypeData.map(d => `
-                <div class="chart-bar-item">
-                    <div class="chart-bar-label">${d.blood_type}</div>
-                    <div class="chart-bar-track">
-                        <div class="chart-bar-fill" style="width: ${(d.count / maxCount) * 100}%">
-                            ${d.count}
+        <div class="blood-type-chart-grid">
+            ${bloodTypeData.map(d => {
+                const volumeLiters = ((d.total_volume || 0) / 1000).toFixed(2);
+                const color = bloodColors[d.blood_type] || '#95a5a6';
+                
+                return `
+                    <div class="blood-type-card" style="border-left: 4px solid ${color}">
+                        <div class="blood-type-header">
+                            <div class="blood-type-icon" style="background: linear-gradient(135deg, ${color}, ${color}dd)">
+                                🩸
+                            </div>
+                            <div class="blood-type-name">${d.blood_type}</div>
+                        </div>
+                        <div class="blood-type-stats">
+                            <div class="blood-type-stat">
+                                <div class="stat-label">Донаций</div>
+                                <div class="stat-value">${d.count}</div>
+                            </div>
+                            <div class="blood-type-stat">
+                                <div class="stat-label">Объём</div>
+                                <div class="stat-value">${volumeLiters} л</div>
+                            </div>
+                        </div>
+                        <div class="blood-type-bar-container">
+                            <div class="blood-type-bar" style="width: ${(d.count / maxCount) * 100}%; background: ${color}"></div>
                         </div>
                     </div>
-                </div>
-            `).join('')}
+                `;
+            }).join('')}
         </div>
     `;
 }
 
 async function exportStatistics() {
     try {
-        let url = `${MC_API_URL}/statistics/export?`;
+        console.log('🔄 Начало экспорта статистики...');
+        
+        let url = `${API_URL}/medical-center/statistics/export?`;
         
         // Используем те же параметры, что и для текущей статистики
         const from = document.getElementById('stats-date-from').value;
@@ -2286,29 +2406,39 @@ async function exportStatistics() {
             url += `period=${currentStatsperiod}`;
         }
         
+        console.log('📡 URL экспорта:', url);
+        
         const response = await fetch(url, {
             headers: getAuthHeaders()
         });
         
+        console.log('📥 Ответ сервера:', response.status, response.statusText);
+        
         if (!response.ok) {
-            throw new Error('Ошибка экспорта');
+            const errorText = await response.text();
+            console.error('❌ Ошибка от сервера:', errorText);
+            throw new Error(`Ошибка экспорта: ${response.status} ${response.statusText}`);
         }
         
         // Скачиваем файл
         const blob = await response.blob();
+        console.log('📦 Blob получен, размер:', blob.size, 'байт');
+        
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
         
         // Получаем имя файла из заголовка
         const contentDisposition = response.headers.get('Content-Disposition');
-        let filename = 'statistics.txt';
+        let filename = `statistics_${new Date().toISOString().split('T')[0]}.txt`;
         if (contentDisposition) {
-            const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
-            if (filenameMatch) {
-                filename = filenameMatch[1];
+            const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+            if (filenameMatch && filenameMatch[1]) {
+                filename = filenameMatch[1].replace(/['"]/g, '');
             }
         }
+        
+        console.log('💾 Имя файла:', filename);
         
         a.download = filename;
         document.body.appendChild(a);
@@ -2316,11 +2446,12 @@ async function exportStatistics() {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(downloadUrl);
         
+        console.log('✅ Файл успешно скачан!');
         showNotification('Статистика успешно скачана', 'success');
         
     } catch (error) {
-        console.error('Ошибка экспорта:', error);
-        showNotification('Ошибка экспорта статистики', 'error');
+        console.error('❌ Ошибка экспорта:', error);
+        showNotification(`Ошибка экспорта статистики: ${error.message}`, 'error');
     }
 }
 
@@ -2334,3 +2465,81 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ============================================
+// ОЧИСТКА УСТАРЕВШИХ ОТКЛИКОВ
+// ============================================
+
+async function cleanupOutdatedResponses() {
+    const confirmed = confirm(
+        '⚠️ Удалить все устаревшие отклики?\n\n' +
+        'Будут удалены отклики со статусом "Ожидает", "Отклонён" и "Отменён" ' +
+        'на закрытые, отменённые или истёкшие запросы.\n\n' +
+        'Подтверждённые и завершённые отклики НЕ будут удалены.'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/medical-center/responses/cleanup`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error('Ошибка очистки');
+        }
+        
+        const result = await response.json();
+        
+        showNotification(
+            `✅ ${result.message}`,
+            'success'
+        );
+        
+        // Перезагружаем список откликов
+        await loadResponsesFromAPI();
+        
+    } catch (error) {
+        console.error('Ошибка очистки откликов:', error);
+        showNotification('❌ Ошибка при очистке откликов', 'error');
+    }
+}
+
+// Инициализация кнопки очистки
+document.addEventListener('DOMContentLoaded', () => {
+    const cleanupBtn = document.getElementById('cleanup-responses-btn');
+    if (cleanupBtn) {
+        cleanupBtn.addEventListener('click', cleanupOutdatedResponses);
+    }
+});
+
+// ============================================
+// СКРЫТИЕ ОТКЛИКОВ
+// ============================================
+
+async function hideResponse(responseId) {
+    const confirmed = confirm('Скрыть этот отклик?\n\nОтклик не будет удалён из базы данных, но исчезнет из списка.');
+    
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/responses/${responseId}/hide`, {
+            method: 'PUT',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error('Ошибка скрытия');
+        }
+        
+        showNotification('✅ Отклик скрыт', 'success');
+        
+        // Перезагружаем список
+        await loadResponsesFromAPI();
+        
+    } catch (error) {
+        console.error('Ошибка скрытия отклика:', error);
+        showNotification('❌ Ошибка при скрытии отклика', 'error');
+    }
+}

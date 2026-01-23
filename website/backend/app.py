@@ -1493,6 +1493,7 @@ def get_responses():
     request_id = request.args.get('request_id')
     mc_id = request.args.get('medical_center_id')
     user_id = request.args.get('user_id')
+    show_hidden = request.args.get('show_hidden', 'false').lower() == 'true'
     
     query = """
         SELECT dr.*, 
@@ -1514,6 +1515,10 @@ def get_responses():
         WHERE 1=1
     """
     params = []
+    
+    # Фильтр скрытых откликов
+    if not show_hidden:
+        query += " AND dr.hidden = FALSE"
     
     if request_id:
         query += " AND dr.request_id = %s"
@@ -1777,6 +1782,57 @@ def update_response(response_id):
                 app.logger.info(f"Запрос {resp['request_id']} автоматически открыт")
     
     return jsonify({'message': 'Статус обновлён', 'status': new_status})
+
+@app.route('/api/medical-center/responses/cleanup', methods=['POST'])
+@require_auth('medcenter')
+def cleanup_outdated_responses():
+    """Очистка устаревших откликов на закрытые/отменённые запросы"""
+    medical_center_id = g.session['medical_center_id']
+    
+    # Удаляем отклики со статусом pending или cancelled на неактивные запросы
+    result = query_db("""
+        DELETE FROM donation_responses 
+        WHERE id IN (
+            SELECT dr.id 
+            FROM donation_responses dr
+            JOIN blood_requests br ON dr.request_id = br.id
+            WHERE br.medical_center_id = %s
+            AND dr.status IN ('pending', 'cancelled', 'rejected')
+            AND br.status IN ('closed', 'cancelled', 'expired')
+        )
+    """, (medical_center_id,), commit=True)
+    
+    return jsonify({
+        'message': f'Удалено {result} устаревших откликов',
+        'deleted_count': result
+    }), 200
+
+@app.route('/api/responses/<int:response_id>/hide', methods=['PUT'])
+@require_auth('medcenter')
+def hide_response(response_id):
+    """Скрыть отклик (не удаляя из БД)"""
+    # Проверяем существование и доступ
+    resp = query_db(
+        """SELECT dr.*, br.medical_center_id 
+           FROM donation_responses dr
+           JOIN blood_requests br ON dr.request_id = br.id
+           WHERE dr.id = %s""",
+        (response_id,), one=True
+    )
+    
+    if not resp:
+        return jsonify({'error': 'Отклик не найден'}), 404
+    
+    if resp['medical_center_id'] != g.session['medical_center_id']:
+        return jsonify({'error': 'Нет доступа'}), 403
+    
+    # Скрываем
+    query_db(
+        "UPDATE donation_responses SET hidden = TRUE WHERE id = %s",
+        (response_id,), commit=True
+    )
+    
+    return jsonify({'message': 'Отклик скрыт'}), 200
 
 # ============================================
 # API: Доноры медцентра

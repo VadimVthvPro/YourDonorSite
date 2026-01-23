@@ -384,6 +384,11 @@
                         <option value="O-">O-</option>
                     </select>
                 </div>
+                <div class="filter-group">
+                    <button class="btn btn-outline btn-sm" id="cleanup-responses-btn" title="Удалить отклики на закрытые/отменённые запросы">
+                        🗑️ Очистить устаревшие
+                    </button>
+                </div>
             </div>
             
             <div id="responses-list" class="responses-list">
@@ -520,7 +525,7 @@
             <!-- Детальная статистика -->
             <div class="stats-detailed">
                 <div class="detailed-section">
-                    <h3>Запросы крови</h3>
+                    <h3>📋 Запросы крови</h3>
                     <table class="stats-table">
                         <tr>
                             <td>Всего запросов</td>
@@ -538,11 +543,23 @@
                             <td>Отменённых</td>
                             <td id="detail-cancelled-requests">-</td>
                         </tr>
+                        <tr>
+                            <td>Истёкших</td>
+                            <td id="detail-expired-requests">-</td>
+                        </tr>
+                        <tr>
+                            <td>⚠️ Критичных</td>
+                            <td id="detail-critical-requests">-</td>
+                        </tr>
+                        <tr>
+                            <td>🔥 Срочных</td>
+                            <td id="detail-urgent-requests">-</td>
+                        </tr>
                     </table>
                 </div>
                 
                 <div class="detailed-section">
-                    <h3>Отклики доноров</h3>
+                    <h3>👥 Отклики доноров</h3>
                     <table class="stats-table">
                         <tr>
                             <td>Всего откликов</td>
@@ -553,8 +570,46 @@
                             <td id="detail-confirmed-responses">-</td>
                         </tr>
                         <tr>
+                            <td>Ожидает</td>
+                            <td id="detail-pending-responses">-</td>
+                        </tr>
+                        <tr>
+                            <td>Отклонено</td>
+                            <td id="detail-declined-responses">-</td>
+                        </tr>
+                        <tr>
                             <td>Конверсия</td>
                             <td id="detail-conversion-rate">-</td>
+                        </tr>
+                        <tr>
+                            <td>Уникальных доноров</td>
+                            <td id="detail-unique-donors">-</td>
+                        </tr>
+                        <tr>
+                            <td>Среднее откликов на запрос</td>
+                            <td id="detail-avg-responses">-</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="detailed-section">
+                    <h3>🩸 Донации</h3>
+                    <table class="stats-table">
+                        <tr>
+                            <td>Всего донаций</td>
+                            <td id="detail-total-donations">-</td>
+                        </tr>
+                        <tr>
+                            <td>Объём (мл)</td>
+                            <td id="detail-total-volume-ml">-</td>
+                        </tr>
+                        <tr>
+                            <td>Объём (литры)</td>
+                            <td id="detail-total-volume-liters">-</td>
+                        </tr>
+                        <tr>
+                            <td>Средний объём донации</td>
+                            <td id="detail-avg-volume">-</td>
                         </tr>
                     </table>
                 </div>

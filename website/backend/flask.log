@@ -6,21 +6,316 @@
 ==================================================
  * Serving Flask app 'app'
  * Debug mode: on
-2026-01-23 17:02:47,144 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+2026-01-23 18:33:07,194 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on all addresses (0.0.0.0)
  * Running on http://127.0.0.1:5001
  * Running on http://192.168.100.29:5001
-2026-01-23 17:02:47,144 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
-2026-01-23 17:02:47,145 - werkzeug - INFO -  * Restarting with stat
-2026-01-23 17:02:47,394 - werkzeug - WARNING -  * Debugger is active!
-2026-01-23 17:02:47,400 - werkzeug - INFO -  * Debugger PIN: 566-507-184
-2026-01-23 17:04:00,199 - werkzeug - INFO -  * Detected change in '/Users/VadimVthv/Your_donor/website/backend/app.py', reloading
+2026-01-23 18:33:07,194 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-01-23 18:33:07,195 - werkzeug - INFO -  * Restarting with stat
+2026-01-23 18:33:07,466 - werkzeug - WARNING -  * Debugger is active!
+2026-01-23 18:33:07,473 - werkzeug - INFO -  * Debugger PIN: 566-507-184
+2026-01-23 18:34:07,837 - werkzeug - INFO -  * Detected change in '/Users/VadimVthv/Your_donor/website/backend/app.py', reloading
 ==================================================
 🩸 Твой Донор - API Server
 ==================================================
 Порт: 5001
 БД: your_donor
 ==================================================
-2026-01-23 17:04:00,251 - werkzeug - INFO -  * Restarting with stat
-2026-01-23 17:04:00,703 - werkzeug - WARNING -  * Debugger is active!
-2026-01-23 17:04:00,709 - werkzeug - INFO -  * Debugger PIN: 566-507-184
+2026-01-23 18:34:07,891 - werkzeug - INFO -  * Restarting with stat
+2026-01-23 18:34:08,330 - werkzeug - WARNING -  * Debugger is active!
+2026-01-23 18:34:08,337 - werkzeug - INFO -  * Debugger PIN: 566-507-184
+2026-01-23 18:34:30,682 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:30] "OPTIONS /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:34:30,741 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:30] "GET /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:34:30,745 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:30] "OPTIONS /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:34:30,746 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:30] "OPTIONS /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:34:30,747 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:30] "OPTIONS /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:34:30,747 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:30] "OPTIONS /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:34:30,748 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:30] "OPTIONS /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:34:30,763 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:30] "GET /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:34:30,773 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:30] "GET /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:34:30,785 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:30] "GET /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:34:30,785 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:30] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:34:30,788 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:30] "GET /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:34:30,793 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:30] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:34:44,972 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:44] "OPTIONS /api/medical-center/responses/cleanup HTTP/1.1" 200 -
+2026-01-23 18:34:44,995 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:44] "POST /api/medical-center/responses/cleanup HTTP/1.1" 200 -
+2026-01-23 18:34:45,000 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:45] "OPTIONS /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:34:45,020 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:34:45] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:35:51,967 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:35:51] "[33mOPTIONS /api/statistics?period=month HTTP/1.1[0m" 404 -
+2026-01-23 18:38:13,186 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:13] "OPTIONS /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:38:13,208 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:13] "GET /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:38:13,218 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:13] "OPTIONS /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:38:13,221 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:13] "OPTIONS /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:38:13,221 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:13] "OPTIONS /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:38:13,222 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:13] "OPTIONS /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:38:13,224 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:13] "OPTIONS /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:13,239 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:13] "GET /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:38:13,242 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:13] "GET /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:38:13,248 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:13] "GET /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:38:13,250 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:13] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:13,260 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:13] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:13,262 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:13] "GET /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:38:15,397 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:15] "GET /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:38:15,419 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:15] "GET /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:38:15,430 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:15] "GET /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:38:15,433 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:15] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:15,436 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:15] "GET /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:38:15,438 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:15] "GET /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:38:15,444 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:15] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:16,304 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:16] "GET /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:38:16,323 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:16] "GET /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:38:16,335 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:16] "GET /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:38:16,335 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:16] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:16,336 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:16] "GET /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:38:16,339 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:16] "GET /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:38:16,346 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:16] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:16,887 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:16] "GET /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:38:16,907 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:16] "GET /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:38:16,912 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:16] "GET /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:38:16,913 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:16] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:16,920 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:16] "GET /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:38:16,920 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:16] "GET /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:38:16,925 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:16] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:17,038 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:17] "GET /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:38:17,059 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:17] "GET /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:38:17,071 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:17] "GET /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:38:17,073 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:17] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:17,075 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:17] "GET /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:38:17,076 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:17] "GET /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:38:17,082 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:17] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:17,220 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:17] "GET /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:38:17,236 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:17] "GET /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:38:17,251 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:17] "GET /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:38:17,251 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:17] "GET /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:38:17,252 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:17] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:17,254 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:17] "GET /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:38:17,263 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:17] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:23,434 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:23] "OPTIONS /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:38:23,456 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:23] "GET /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:38:23,461 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:23] "OPTIONS /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:38:23,463 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:23] "OPTIONS /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:38:23,464 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:23] "OPTIONS /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:23,464 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:23] "OPTIONS /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:38:23,465 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:23] "OPTIONS /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:38:23,485 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:23] "GET /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:38:23,488 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:23] "GET /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:38:23,491 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:23] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:38:23,491 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:23] "GET /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:38:23,492 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:23] "GET /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:38:23,504 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:38:23] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:39:51,052 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:39:51] "OPTIONS /api/medical-center/responses/cleanup HTTP/1.1" 200 -
+2026-01-23 18:39:51,133 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:39:51] "POST /api/medical-center/responses/cleanup HTTP/1.1" 200 -
+2026-01-23 18:39:51,141 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:39:51] "OPTIONS /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:39:51,171 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:39:51] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:39:55,972 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:39:55] "[33mOPTIONS /api/statistics?period=month HTTP/1.1[0m" 404 -
+2026-01-23 18:39:58,207 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:39:58] "[33mOPTIONS /api/statistics/export?from=2025-12-23&to=2026-01-23 HTTP/1.1[0m" 404 -
+2026-01-23 18:39:58,872 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:39:58] "[33mOPTIONS /api/statistics/export?from=2025-12-23&to=2026-01-23 HTTP/1.1[0m" 404 -
+2026-01-23 18:47:25,675 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:47:25] "OPTIONS /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:47:25,702 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:47:25] "GET /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:47:25,712 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:47:25] "OPTIONS /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:47:25,714 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:47:25] "OPTIONS /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:47:25,715 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:47:25] "OPTIONS /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:47:25,716 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:47:25] "OPTIONS /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:47:25,716 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:47:25] "OPTIONS /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:47:25,737 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:47:25] "GET /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:47:25,745 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:47:25] "GET /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:47:25,745 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:47:25] "GET /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:47:25,745 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:47:25] "GET /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:47:25,745 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:47:25] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:47:25,763 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:47:25] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:49:13,582 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:49:13] "OPTIONS /api/medical-center/statistics?period=month HTTP/1.1" 200 -
+2026-01-23 18:49:13,622 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:49:13] "GET /api/medical-center/statistics?period=month HTTP/1.1" 200 -
+2026-01-23 18:49:20,407 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:49:20] "OPTIONS /api/medical-center/statistics?period=today HTTP/1.1" 200 -
+2026-01-23 18:49:20,436 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:49:20] "GET /api/medical-center/statistics?period=today HTTP/1.1" 200 -
+2026-01-23 18:49:21,373 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:49:21] "OPTIONS /api/medical-center/statistics?period=week HTTP/1.1" 200 -
+2026-01-23 18:49:21,407 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:49:21] "GET /api/medical-center/statistics?period=week HTTP/1.1" 200 -
+2026-01-23 18:49:22,807 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:49:22] "OPTIONS /api/medical-center/statistics?period=all HTTP/1.1" 200 -
+2026-01-23 18:49:22,841 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:49:22] "GET /api/medical-center/statistics?period=all HTTP/1.1" 200 -
+2026-01-23 18:49:23,522 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:49:23] "OPTIONS /api/medical-center/statistics?period=year HTTP/1.1" 200 -
+2026-01-23 18:49:23,552 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:49:23] "GET /api/medical-center/statistics?period=year HTTP/1.1" 200 -
+2026-01-23 18:49:36,738 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:49:36] "OPTIONS /api/medical-center/statistics?from=2025-12-01&to=2026-01-09 HTTP/1.1" 200 -
+2026-01-23 18:49:36,773 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:49:36] "GET /api/medical-center/statistics?from=2025-12-01&to=2026-01-09 HTTP/1.1" 200 -
+2026-01-23 18:49:44,105 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:49:44] "OPTIONS /api/medical-center/statistics?period=today HTTP/1.1" 200 -
+2026-01-23 18:49:44,124 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:49:44] "GET /api/medical-center/statistics?period=today HTTP/1.1" 200 -
+2026-01-23 18:50:13,441 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:50:13] "OPTIONS /api/medical-center/statistics/export?from=2025-12-01&to=2026-01-09 HTTP/1.1" 200 -
+2026-01-23 18:50:13,467 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:50:13] "GET /api/medical-center/statistics/export?from=2025-12-01&to=2026-01-09 HTTP/1.1" 200 -
+2026-01-23 18:50:13,481 - werkzeug - ERROR - Error on request:
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 370, in run_wsgi
+    execute(self.server.app)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 334, in execute
+    write(data)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 274, in write
+    self.send_header(key, value)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/http/server.py", line 526, in send_header
+    ("%s: %s\r\n" % (keyword, value)).encode('latin-1', 'strict'))
+UnicodeEncodeError: 'latin-1' codec can't encode characters in position 54-59: ordinal not in range(256)
+2026-01-23 18:50:17,334 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:50:17] "GET /api/medical-center/statistics/export?from=2025-12-01&to=2026-01-09 HTTP/1.1" 200 -
+2026-01-23 18:50:17,346 - werkzeug - ERROR - Error on request:
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 370, in run_wsgi
+    execute(self.server.app)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 334, in execute
+    write(data)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 274, in write
+    self.send_header(key, value)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/http/server.py", line 526, in send_header
+    ("%s: %s\r\n" % (keyword, value)).encode('latin-1', 'strict'))
+UnicodeEncodeError: 'latin-1' codec can't encode characters in position 54-59: ordinal not in range(256)
+2026-01-23 18:50:17,546 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:50:17] "GET /api/medical-center/statistics/export?from=2025-12-01&to=2026-01-09 HTTP/1.1" 200 -
+2026-01-23 18:50:17,558 - werkzeug - ERROR - Error on request:
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 370, in run_wsgi
+    execute(self.server.app)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 334, in execute
+    write(data)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 274, in write
+    self.send_header(key, value)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/http/server.py", line 526, in send_header
+    ("%s: %s\r\n" % (keyword, value)).encode('latin-1', 'strict'))
+UnicodeEncodeError: 'latin-1' codec can't encode characters in position 54-59: ordinal not in range(256)
+2026-01-23 18:50:17,708 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:50:17] "GET /api/medical-center/statistics/export?from=2025-12-01&to=2026-01-09 HTTP/1.1" 200 -
+2026-01-23 18:50:17,720 - werkzeug - ERROR - Error on request:
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 370, in run_wsgi
+    execute(self.server.app)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 334, in execute
+    write(data)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 274, in write
+    self.send_header(key, value)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/http/server.py", line 526, in send_header
+    ("%s: %s\r\n" % (keyword, value)).encode('latin-1', 'strict'))
+UnicodeEncodeError: 'latin-1' codec can't encode characters in position 54-59: ordinal not in range(256)
+2026-01-23 18:51:09,578 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:09] "OPTIONS /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:51:09,600 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:09] "GET /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:51:09,607 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:09] "OPTIONS /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:51:09,607 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:09] "OPTIONS /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:51:09,608 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:09] "OPTIONS /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:51:09,609 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:09] "OPTIONS /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:51:09,609 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:09] "OPTIONS /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:51:09,635 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:09] "GET /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:51:09,638 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:09] "GET /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:51:09,639 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:09] "GET /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:51:09,639 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:09] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:51:09,641 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:09] "GET /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:51:09,655 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:09] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:51:28,014 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:28] "OPTIONS /api/medical-center/responses/cleanup HTTP/1.1" 200 -
+2026-01-23 18:51:28,043 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:28] "POST /api/medical-center/responses/cleanup HTTP/1.1" 200 -
+2026-01-23 18:51:28,051 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:28] "OPTIONS /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:51:28,073 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:51:28] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:52:12,670 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:52:12] "OPTIONS /api/medical-center/statistics?period=month HTTP/1.1" 200 -
+2026-01-23 18:52:12,707 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:52:12] "GET /api/medical-center/statistics?period=month HTTP/1.1" 200 -
+2026-01-23 18:52:18,886 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:52:18] "OPTIONS /api/medical-center/statistics?period=quarter HTTP/1.1" 200 -
+2026-01-23 18:52:18,917 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:52:18] "GET /api/medical-center/statistics?period=quarter HTTP/1.1" 200 -
+2026-01-23 18:52:20,552 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:52:20] "OPTIONS /api/medical-center/statistics?period=year HTTP/1.1" 200 -
+2026-01-23 18:52:20,583 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:52:20] "GET /api/medical-center/statistics?period=year HTTP/1.1" 200 -
+2026-01-23 18:52:20,983 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:52:20] "OPTIONS /api/medical-center/statistics?period=all HTTP/1.1" 200 -
+2026-01-23 18:52:21,015 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:52:21] "GET /api/medical-center/statistics?period=all HTTP/1.1" 200 -
+2026-01-23 18:56:35,134 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:56:35] "OPTIONS /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:56:35,174 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:56:35] "GET /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 18:56:35,179 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:56:35] "OPTIONS /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:56:35,180 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:56:35] "OPTIONS /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:56:35,181 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:56:35] "OPTIONS /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:56:35,182 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:56:35] "OPTIONS /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:56:35,183 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:56:35] "OPTIONS /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:56:35,204 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:56:35] "GET /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 18:56:35,208 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:56:35] "GET /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 18:56:35,208 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:56:35] "GET /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 18:56:35,210 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:56:35] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 18:56:35,210 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:56:35] "GET /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 18:56:35,226 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 18:56:35] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 19:01:11,767 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:11] "OPTIONS /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 19:01:11,804 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:11] "GET /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-23 19:01:11,809 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:11] "OPTIONS /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 19:01:11,811 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:11] "OPTIONS /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 19:01:11,813 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:11] "OPTIONS /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 19:01:11,813 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:11] "OPTIONS /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 19:01:11,814 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:11] "OPTIONS /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 19:01:11,839 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:11] "GET /api/blood-needs/41 HTTP/1.1" 200 -
+2026-01-23 19:01:11,841 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:11] "GET /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-23 19:01:11,847 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:11] "GET /api/blood-requests HTTP/1.1" 200 -
+2026-01-23 19:01:11,851 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:11] "GET /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-23 19:01:11,855 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:11] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 19:01:11,866 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:11] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 19:01:20,293 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:20] "OPTIONS /api/responses/7/hide HTTP/1.1" 200 -
+2026-01-23 19:01:20,321 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:20] "PUT /api/responses/7/hide HTTP/1.1" 200 -
+2026-01-23 19:01:20,330 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:20] "OPTIONS /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 19:01:20,351 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:20] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 19:01:24,113 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:24] "OPTIONS /api/responses/6/hide HTTP/1.1" 200 -
+2026-01-23 19:01:24,139 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:24] "PUT /api/responses/6/hide HTTP/1.1" 200 -
+2026-01-23 19:01:24,164 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:24] "GET /api/responses?medical_center_id=41 HTTP/1.1" 200 -
+2026-01-23 19:01:37,221 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:37] "OPTIONS /api/medical-center/statistics?period=month HTTP/1.1" 200 -
+2026-01-23 19:01:37,260 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:01:37] "GET /api/medical-center/statistics?period=month HTTP/1.1" 200 -
+2026-01-23 19:02:22,406 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:02:22] "OPTIONS /api/medical-center/statistics/export?from=2025-12-23&to=2026-01-23 HTTP/1.1" 200 -
+2026-01-23 19:02:22,440 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:02:22] "GET /api/medical-center/statistics/export?from=2025-12-23&to=2026-01-23 HTTP/1.1" 200 -
+2026-01-23 19:02:22,452 - werkzeug - ERROR - Error on request:
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 370, in run_wsgi
+    execute(self.server.app)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 334, in execute
+    write(data)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 274, in write
+    self.send_header(key, value)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/http/server.py", line 526, in send_header
+    ("%s: %s\r\n" % (keyword, value)).encode('latin-1', 'strict'))
+UnicodeEncodeError: 'latin-1' codec can't encode characters in position 54-59: ordinal not in range(256)
+2026-01-23 19:02:23,001 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:02:23] "GET /api/medical-center/statistics/export?from=2025-12-23&to=2026-01-23 HTTP/1.1" 200 -
+2026-01-23 19:02:23,014 - werkzeug - ERROR - Error on request:
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 370, in run_wsgi
+    execute(self.server.app)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 334, in execute
+    write(data)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 274, in write
+    self.send_header(key, value)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/http/server.py", line 526, in send_header
+    ("%s: %s\r\n" % (keyword, value)).encode('latin-1', 'strict'))
+UnicodeEncodeError: 'latin-1' codec can't encode characters in position 54-59: ordinal not in range(256)
+2026-01-23 19:02:23,159 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:02:23] "GET /api/medical-center/statistics/export?from=2025-12-23&to=2026-01-23 HTTP/1.1" 200 -
+2026-01-23 19:02:23,171 - werkzeug - ERROR - Error on request:
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 370, in run_wsgi
+    execute(self.server.app)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 334, in execute
+    write(data)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 274, in write
+    self.send_header(key, value)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/http/server.py", line 526, in send_header
+    ("%s: %s\r\n" % (keyword, value)).encode('latin-1', 'strict'))
+UnicodeEncodeError: 'latin-1' codec can't encode characters in position 54-59: ordinal not in range(256)
+2026-01-23 19:02:23,278 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:02:23] "GET /api/medical-center/statistics/export?from=2025-12-23&to=2026-01-23 HTTP/1.1" 200 -
+2026-01-23 19:02:23,290 - werkzeug - ERROR - Error on request:
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 370, in run_wsgi
+    execute(self.server.app)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 334, in execute
+    write(data)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 274, in write
+    self.send_header(key, value)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/http/server.py", line 526, in send_header
+    ("%s: %s\r\n" % (keyword, value)).encode('latin-1', 'strict'))
+UnicodeEncodeError: 'latin-1' codec can't encode characters in position 54-59: ordinal not in range(256)
+2026-01-23 19:02:23,674 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:02:23] "GET /api/medical-center/statistics/export?from=2025-12-23&to=2026-01-23 HTTP/1.1" 200 -
+2026-01-23 19:02:23,687 - werkzeug - ERROR - Error on request:
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 370, in run_wsgi
+    execute(self.server.app)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 334, in execute
+    write(data)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 274, in write
+    self.send_header(key, value)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/http/server.py", line 526, in send_header
+    ("%s: %s\r\n" % (keyword, value)).encode('latin-1', 'strict'))
+UnicodeEncodeError: 'latin-1' codec can't encode characters in position 54-59: ordinal not in range(256)
+2026-01-23 19:02:23,791 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 19:02:23] "GET /api/medical-center/statistics/export?from=2025-12-23&to=2026-01-23 HTTP/1.1" 200 -
+2026-01-23 19:02:23,803 - werkzeug - ERROR - Error on request:
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 370, in run_wsgi
+    execute(self.server.app)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 334, in execute
+    write(data)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/werkzeug/serving.py", line 274, in write
+    self.send_header(key, value)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/http/server.py", line 526, in send_header
+    ("%s: %s\r\n" % (keyword, value)).encode('latin-1', 'strict'))
+UnicodeEncodeError: 'latin-1' codec can't encode characters in position 54-59: ordinal not in range(256)
