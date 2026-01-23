@@ -318,9 +318,10 @@
                     <label>Статус:</label>
                     <select id="requests-filter-status">
                         <option value="all">Все</option>
-                        <option value="active">Активные</option>
+                        <option value="active" selected>Активные</option>
                         <option value="fulfilled">Выполненные</option>
                         <option value="cancelled">Отменённые</option>
+                        <option value="closed">Закрытые</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -353,12 +354,20 @@
             
             <div class="filters">
                 <div class="filter-group">
+                    <label>Запрос:</label>
+                    <select id="filter-request">
+                        <option value="all">Все запросы</option>
+                        <!-- Заполняется динамически -->
+                    </select>
+                </div>
+                <div class="filter-group">
                     <label>Статус:</label>
                     <select id="filter-status">
                         <option value="all">Все</option>
                         <option value="pending">Ожидают</option>
-                        <option value="approved">Подтверждены</option>
+                        <option value="confirmed">Подтверждены</option>
                         <option value="completed">Завершены</option>
+                        <option value="cancelled">Отменены</option>
                     </select>
                 </div>
                 <div class="filter-group">

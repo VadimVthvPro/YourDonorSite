@@ -10,6 +10,8 @@ const MC_API_URL = window.API_URL || 'http://localhost:5001/api';
 
 // Кэш для запросов крови
 let bloodRequestsCache = [];
+// Кэш для откликов доноров
+let responsesCache = [];
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('=== Инициализация dashboard медцентра ===');
@@ -42,6 +44,11 @@ document.addEventListener('DOMContentLoaded', function() {
         initForms();
         console.log('✓ Формы инициализированы');
     } catch (e) { console.error('✗ Ошибка initForms:', e); }
+    
+    try {
+        initRequestFilters();
+        console.log('✓ Фильтры запросов инициализированы');
+    } catch (e) { console.error('✗ Ошибка initRequestFilters:', e); }
     
     try {
         initLogout();
@@ -378,19 +385,62 @@ async function loadResponsesFromAPI() {
             headers: getAuthHeaders()
         });
         const responses = await response.json();
+        
+        // Сохраняем в кэш
+        responsesCache = responses;
+        
+        // Заполняем фильтр запросов
+        populateRequestFilter(responses);
+        
         renderResponses(responses);
     } catch (error) {
         console.error('Ошибка загрузки откликов:', error);
-        // Fallback данные
-        const responses = [
-            { id: 1, donor_name: 'Нет откликов', donor_blood_type: '-', donor_phone: '-', status: 'pending', created_at: new Date().toISOString() }
-        ];
-        renderResponses(responses);
+        renderResponses([]);
     }
+}
+
+function populateRequestFilter(responses) {
+    const filterSelect = document.getElementById('filter-request');
+    if (!filterSelect) return;
+    
+    // Получаем уникальные запросы
+    const requestIds = [...new Set(responses.map(r => r.request_id).filter(id => id))];
+    
+    // Очищаем и заполняем select
+    filterSelect.innerHTML = '<option value="all">Все запросы</option>';
+    
+    requestIds.forEach(reqId => {
+        const request = bloodRequestsCache.find(r => r.id === reqId);
+        if (request) {
+            const option = document.createElement('option');
+            option.value = reqId;
+            option.textContent = `Запрос #${reqId} (${request.blood_type})`;
+            filterSelect.appendChild(option);
+        }
+    });
 }
 
 function renderResponses(responses) {
     if (!responses) responses = [];
+    
+    // Применяем фильтры
+    const filterStatus = document.getElementById('filter-status')?.value || 'all';
+    const filterBlood = document.getElementById('filter-blood')?.value || 'all';
+    const filterRequest = document.getElementById('filter-request')?.value || 'all';
+    
+    let filtered = responses;
+    
+    if (filterStatus !== 'all') {
+        filtered = filtered.filter(r => r.status === filterStatus);
+    }
+    
+    if (filterBlood !== 'all') {
+        filtered = filtered.filter(r => r.donor_blood_type === filterBlood);
+    }
+    
+    if (filterRequest !== 'all') {
+        filtered = filtered.filter(r => r.request_id == filterRequest);
+    }
     
     const pendingCount = responses.filter(r => r.status === 'pending').length;
     const badge = document.getElementById('responses-badge');
@@ -398,7 +448,7 @@ function renderResponses(responses) {
     if (badge) badge.textContent = pendingCount;
     if (statPending) statPending.textContent = pendingCount;
     
-    // Последние отклики на главной
+    // Последние отклики на главной (всегда показываем все, без фильтра)
     const recentContainer = document.getElementById('recent-responses-list');
     if (recentContainer) {
         if (responses.length === 0) {
@@ -417,13 +467,13 @@ function renderResponses(responses) {
         }
     }
     
-    // Полный список
+    // Полный список (с применением фильтров)
     const listContainer = document.getElementById('responses-list');
     if (listContainer) {
-        if (responses.length === 0) {
-            listContainer.innerHTML = '<p class="no-data">Нет откликов от доноров</p>';
+        if (filtered.length === 0) {
+            listContainer.innerHTML = '<p class="no-data">Нет откликов по выбранным фильтрам</p>';
         } else {
-            listContainer.innerHTML = responses.map(r => `
+            listContainer.innerHTML = filtered.map(r => `
                 <div class="response-card ${r.status}" data-id="${r.id}">
                     <div class="response-avatar">${getInitials(r.donor_name || 'НД')}</div>
                     <div class="response-info">
@@ -438,8 +488,16 @@ function renderResponses(responses) {
                         ${r.status === 'pending' ? `
                             <button class="btn btn-outline btn-sm" data-action="reject" data-id="${r.id}">Отклонить</button>
                             <button class="btn btn-primary btn-sm" data-action="approve" data-id="${r.id}">Подтвердить</button>
+                        ` : r.status === 'confirmed' ? `
+                            <span class="donor-status-badge available">${getResponseStatusText(r.status)}</span>
+                            <button class="btn btn-outline btn-sm" data-action="cancel" data-id="${r.id}" title="Отменить подтверждение">Отменить</button>
+                        ` : r.status === 'completed' ? `
+                            <span class="donor-status-badge completed">${getResponseStatusText(r.status)}</span>
                         ` : `
-                            <span class="donor-status-badge ${r.status === 'confirmed' ? 'available' : ''}">${getResponseStatusText(r.status)}</span>
+                            <span class="donor-status-badge">${getResponseStatusText(r.status)}</span>
+                            ${r.status === 'cancelled' ? `
+                                <button class="btn btn-ghost btn-sm" data-action="restore" data-id="${r.id}" title="Восстановить отклик">Восстановить</button>
+                            ` : ''}
                         `}
                     </div>
                 </div>
@@ -1390,6 +1448,50 @@ function initForms() {
 }
 
 /**
+ * Инициализация фильтров запросов крови
+ */
+function initRequestFilters() {
+    // Фильтры запросов крови
+    const statusFilter = document.getElementById('requests-filter-status');
+    const bloodFilter = document.getElementById('requests-filter-blood');
+    
+    if (statusFilter) {
+        statusFilter.addEventListener('change', () => {
+            renderBloodRequests(bloodRequestsCache);
+        });
+    }
+    
+    if (bloodFilter) {
+        bloodFilter.addEventListener('change', () => {
+            renderBloodRequests(bloodRequestsCache);
+        });
+    }
+    
+    // Фильтры откликов доноров
+    const responseStatusFilter = document.getElementById('filter-status');
+    const responseBloodFilter = document.getElementById('filter-blood');
+    const responseRequestFilter = document.getElementById('filter-request');
+    
+    if (responseStatusFilter) {
+        responseStatusFilter.addEventListener('change', () => {
+            renderResponses(responsesCache);
+        });
+    }
+    
+    if (responseBloodFilter) {
+        responseBloodFilter.addEventListener('change', () => {
+            renderResponses(responsesCache);
+        });
+    }
+    
+    if (responseRequestFilter) {
+        responseRequestFilter.addEventListener('change', () => {
+            renderResponses(responsesCache);
+        });
+    }
+}
+
+/**
  * Выход
  */
 function initLogout() {
@@ -1759,8 +1861,37 @@ function showRespondents(requestId) {
         return;
     }
     
-    // Использовать существующую функцию showAllResponses с фильтрацией
-    showAllResponses(requestId, request.blood_type);
+    // Переключаемся на секцию "Отклики доноров"
+    const responsesLink = document.querySelector('a[data-section="responses"]');
+    if (responsesLink) {
+        responsesLink.click();
+    }
+    
+    // Ждём отрисовки секции, затем применяем фильтр
+    setTimeout(() => {
+        // Устанавливаем фильтр по группе крови
+        const bloodFilterSelect = document.getElementById('filter-blood');
+        if (bloodFilterSelect) {
+            bloodFilterSelect.value = request.blood_type;
+            // Триггерим событие change для применения фильтра
+            bloodFilterSelect.dispatchEvent(new Event('change'));
+        }
+        
+        // Устанавливаем фильтр по запросу
+        const requestFilterSelect = document.getElementById('filter-request');
+        if (requestFilterSelect) {
+            requestFilterSelect.value = requestId;
+            requestFilterSelect.dispatchEvent(new Event('change'));
+        }
+        
+        // Прокручиваем к секции
+        const responsesSection = document.getElementById('responses');
+        if (responsesSection) {
+            responsesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        showNotification(`Фильтр: ${request.blood_type} для запроса #${requestId}`, 'info');
+    }, 300);
 }
 
 /**
