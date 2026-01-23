@@ -2182,3 +2182,35 @@
         font-size: 12px;
     }
 }
+
+/* Стили для статусов откликов доноров */
+.donor-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+.donor-status-badge.available {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.donor-status-badge.completed {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.response-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.response-actions .btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+}

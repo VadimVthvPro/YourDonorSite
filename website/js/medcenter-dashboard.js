@@ -508,7 +508,33 @@ function renderResponses(responses) {
                 btn.addEventListener('click', async () => {
                     const action = btn.dataset.action;
                     const id = btn.dataset.id;
-                    const newStatus = action === 'approve' ? 'confirmed' : 'cancelled';
+                    
+                    let newStatus;
+                    let confirmMessage;
+                    
+                    switch(action) {
+                        case 'approve':
+                            newStatus = 'confirmed';
+                            confirmMessage = 'Подтвердить донора?';
+                            break;
+                        case 'reject':
+                            newStatus = 'cancelled';
+                            confirmMessage = 'Отклонить донора?';
+                            break;
+                        case 'cancel':
+                            newStatus = 'pending';
+                            confirmMessage = 'Отменить подтверждение? Донор вернётся в статус "Ожидает".';
+                            break;
+                        case 'restore':
+                            newStatus = 'pending';
+                            confirmMessage = 'Восстановить отклик донора?';
+                            break;
+                        default:
+                            return;
+                    }
+                    
+                    // Запрашиваем подтверждение
+                    if (!confirm(confirmMessage)) return;
                     
                     await updateResponseStatus(id, newStatus);
                 });
@@ -536,14 +562,27 @@ async function updateResponseStatus(responseId, status) {
         });
         
         if (response.ok) {
-            showNotification(status === 'confirmed' ? 'Донор подтверждён!' : 'Заявка отклонена', 'success');
-            loadResponsesFromAPI();
+            // Сообщения в зависимости от статуса
+            const messages = {
+                'confirmed': '✅ Донор подтверждён!',
+                'cancelled': '❌ Отклик отменён',
+                'pending': '🔄 Статус изменён на "Ожидает"',
+                'completed': '✅ Донация завершена'
+            };
+            showNotification(messages[status] || 'Статус обновлён', 'success');
+            
+            // Перезагружаем список
+            await loadResponsesFromAPI();
+            
+            // Также обновляем запросы (для счётчика доноров)
+            await loadBloodRequestsFromAPI();
         } else {
             const result = await response.json();
-            showNotification(result.error || 'Ошибка', 'error');
+            showNotification(result.error || 'Ошибка обновления статуса', 'error');
         }
     } catch (error) {
-        showNotification('Ошибка соединения', 'error');
+        console.error('Ошибка updateResponseStatus:', error);
+        showNotification('Ошибка соединения с сервером', 'error');
     }
 }
 
