@@ -1345,8 +1345,10 @@
 }
 
 .request-urgency.urgent {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    color: white;
+    background: #ff9800;
+    color: #ffffff;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
 }
 
 .request-urgency.normal {

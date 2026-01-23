@@ -273,100 +273,98 @@ function displayBloodRequests(requests) {
     container.innerHTML = requests.map(r => {
         const isResponded = r.response_id !== null;
         const responseStatus = r.response_status;
+        const urgency = r.urgency || 'normal';
+        
+        const urgencyLabels = {
+            'normal': 'Обычный',
+            'needed': 'Нужна кровь',
+            'urgent': 'Срочный',
+            'critical': 'Критичный'
+        };
+        
+        const timeAgo = formatTimeAgo(r.created_at);
+        const expiresDate = r.expires_at ? formatDateShort(r.expires_at) : null;
+        
+        // Дополнительная информация
+        const neededDonors = r.needed_donors;
+        const currentDonors = r.current_donors || 0;
         
         return `
-            <div class="request-card urgency-${r.urgency}" data-id="${r.id}" data-urgency="${r.urgency}" data-responded="${isResponded}">
-                <div class="request-card-header">
-                    <div class="request-blood-type">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 4C12 4 6 10 6 14a6 6 0 1012 0c0-4-6-10-6-10z"/>
-                        </svg>
-                        ${r.blood_type}
-                    </div>
-                    <div class="request-urgency ${r.urgency}">
-                        ${getUrgencyText(r.urgency)}
-                    </div>
-                </div>
-                
-                <div class="request-card-body">
-                    ${r.description ? `<div class="request-description">${r.description}</div>` : ''}
-                    
-                    <div class="request-medcenter-info">
-                        <div class="info-row">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                            </svg>
-                            <strong>${r.medical_center_name}</strong>
+            <article class="blood-request-card blood-request-card--${urgency}" data-id="${r.id}" data-urgency="${urgency}" data-responded="${isResponded}">
+                <!-- Шапка -->
+                <header class="card-header">
+                    <div class="urgency-badge urgency-badge--${urgency}">
+                        <span class="urgency-dot"></span>
+                        <span class="urgency-text">${urgencyLabels[urgency]}</span>
                         </div>
+                    <time class="card-time">${timeAgo}</time>
+                </header>
+                
+                <!-- Контент -->
+                <div class="card-body">
+                    <!-- Основная инфа: группа + центр -->
+                    <div class="request-main">
+                        <div class="blood-type-large">${r.blood_type}</div>
+                        <div class="center-info">
+                            <div class="center-name">${r.medical_center_name}</div>
                         ${r.medical_center_address ? `
-                            <div class="info-row">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                    <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                </svg>
+                                <div class="center-address">
+                                    <span class="icon">📍</span>
                                 ${r.medical_center_address}
                             </div>
                         ` : ''}
                         ${r.medical_center_phone ? `
-                            <div class="info-row">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-                                </svg>
+                                <div class="center-phone">
+                                    <span class="icon">📞</span>
                                 ${r.medical_center_phone}
                             </div>
                         ` : ''}
+                        </div>
                     </div>
                     
-                    <div class="request-recommendations">
-                        <div class="rec-title">📋 Рекомендации перед сдачей:</div>
-                        <ul class="rec-list">
-                            <li>Поесть за 2-3 часа до сдачи</li>
-                            <li>Выспаться накануне</li>
-                            <li>Взять паспорт и выписку</li>
-                        </ul>
+                    <!-- Дополнительная инфа -->
+                    <div class="request-meta-donor">
+                        ${expiresDate ? `
+                            <div class="meta-chip">
+                                <span class="meta-chip-label">Действует до</span>
+                                <span class="meta-chip-value">${expiresDate}</span>
                     </div>
-                    
-                    <div class="request-meta">
-                        <span>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M12 6v6l4 2"/>
-                            </svg>
-                            ${formatDate(r.created_at)}
-                        </span>
-                        <span>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M12 8v4M12 16h.01"/>
-                            </svg>
-                            Действителен до ${formatDate(r.expires_at)}
-                        </span>
-                    </div>
+                        ` : ''}
+                        ${neededDonors && !isResponded ? `
+                            <div class="meta-chip meta-chip--accent">
+                                <span class="meta-chip-label">Нужно ещё</span>
+                                <span class="meta-chip-value">${neededDonors - currentDonors} доноров</span>
+                            </div>
+                        ` : ''}
                 </div>
                 
-                <div class="request-card-footer">
+                    ${r.description ? `<div class="request-description-donor">${r.description}</div>` : ''}
+                </div>
+                
+                <!-- Футер -->
+                <footer class="card-footer card-footer--donor">
                     ${isResponded ? `
                         <div class="request-response-status ${responseStatus}">
-                            <svg viewBox="0 0 24 24" fill="currentColor">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
                                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                             ${getResponseStatusText(responseStatus)}
                         </div>
                         ${responseStatus === 'pending' ? `
-                            <button class="btn-cancel-response" data-id="${r.id}">
+                            <button class="btn btn-ghost btn-sm btn-cancel-response" data-id="${r.id}">
                                 Отменить отклик
                             </button>
                         ` : ''}
                     ` : `
-                        <button class="btn-respond" data-id="${r.id}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 4C12 4 6 10 6 14a6 6 0 1012 0c0-4-6-10-6-10z"/>
-                            </svg>
+                        <button class="btn btn-ghost btn-sm" onclick="showRequestDetails(${r.id})">
+                            Подробнее
+                        </button>
+                        <button class="btn btn-primary btn-sm btn-respond" data-id="${r.id}">
                             Откликнуться
                         </button>
                     `}
-                </div>
-            </div>
+                </footer>
+            </article>
         `;
     }).join('');
     
@@ -2023,7 +2021,7 @@ async function openChat(medcenterId, medcenterName) {
         renderChatMessages(data.messages);
         
         // Автоматическая прокрутка вниз
-        setTimeout(() => {
+    setTimeout(() => {
             const messagesDiv = document.getElementById('chat-messages');
             if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }, 100);
@@ -2112,4 +2110,49 @@ async function sendChatMessage(medcenterId) {
 function closeChatModal() {
     const modal = document.getElementById('chat-modal');
     if (modal) modal.remove();
+}
+
+/**
+ * Форматировать время "X назад"
+ */
+function formatTimeAgo(dateString) {
+    if (!dateString) return '-';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Только что';
+    if (diffMins < 60) return `${diffMins} мин. назад`;
+    if (diffHours < 24) return `${diffHours} ч. назад`;
+    if (diffDays === 1) return 'Вчера';
+    if (diffDays < 7) return `${diffDays} дн. назад`;
+    return formatDateShort(dateString);
+}
+
+/**
+ * Форматировать дату компактно
+ */
+function formatDateShort(dateString) {
+    if (!dateString) return '-';
+    
+    const date = new Date(dateString);
+    const months = [
+        'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+        'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+    ];
+    
+    return `${date.getDate()} ${months[date.getMonth()]}`;
+}
+
+/**
+ * Показать детали запроса
+ */
+function showRequestDetails(requestId) {
+    // TODO: Открыть модальное окно с подробной информацией о запросе
+    console.log('Показать детали запроса:', requestId);
+    showNotification('Детали запроса (в разработке)', 'info');
 }

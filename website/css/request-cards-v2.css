@@ -86,9 +86,11 @@
 }
 
 .request-urgency.urgent {
-    background: #fff3e0;
-    color: #e65100;
-    border: 2px solid #ff9800;
+    background: #ff9800;
+    color: #ffffff;
+    border: 2px solid #f57c00;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
 }
 
 .request-urgency.critical {

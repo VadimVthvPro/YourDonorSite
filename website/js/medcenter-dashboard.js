@@ -8,6 +8,9 @@ console.log('==== medcenter-dashboard.js ЗАГРУЖЕН ====');
 // Используем API_URL из app.js или определяем свой
 const MC_API_URL = window.API_URL || 'http://localhost:5001/api';
 
+// Кэш для запросов крови
+let bloodRequestsCache = [];
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('=== Инициализация dashboard медцентра ===');
     
@@ -746,6 +749,9 @@ async function loadBloodRequestsFromAPI() {
             req.approved_count = req.donor_responses.filter(r => r.status === 'confirmed' || r.status === 'completed').length;
         });
         
+        // Сохраняем в кэш
+        bloodRequestsCache = requests;
+        
         renderBloodRequests(requests);
         updateRequestsBadge(requests);
     } catch (error) {
@@ -779,139 +785,90 @@ function renderBloodRequests(requests) {
     
     container.innerHTML = filteredRequests.map(req => {
         const urgencyLabels = {
-            'normal': 'Обычная',
-            'urgent': 'Срочная',
-            'critical': 'Критическая'
+            'normal': 'Обычный',
+            'needed': 'Нужна кровь',
+            'urgent': 'Срочный',
+            'critical': 'Критичный'
         };
         
-        const statusLabels = {
-            'active': 'Активный',
-            'fulfilled': 'Выполнен',
-            'cancelled': 'Отменён'
-        };
+        // Время создания
+        const timeAgo = formatTimeAgo(req.created_at);
+        const expiresDate = req.expires_at ? formatDateShort(req.expires_at) : null;
         
-        const createdDate = new Date(req.created_at).toLocaleDateString('ru-RU');
-        const expiresDate = req.expires_at ? new Date(req.expires_at).toLocaleDateString('ru-RU') : '—';
-        
-        // Отклики доноров для этого запроса
+        // Отклики доноров
         const responses = req.donor_responses || [];
         const neededDonors = req.needed_donors;
         const currentDonors = req.current_donors || responses.length;
+        const progress = neededDonors > 0 ? Math.round((currentDonors / neededDonors) * 100) : 0;
         
-        // Прогресс откликов
-        const progressHtml = neededDonors ? `
-            <div class="request-progress-bar">
-                <div class="progress-header">
-                    <span>Откликов:</span>
-                    <span><strong>${currentDonors}</strong> из ${neededDonors}</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${Math.min((currentDonors / neededDonors) * 100, 100)}%"></div>
-                </div>
-            </div>
-        ` : `
-            <div class="request-progress-info">
-                <span>Откликов: <strong>${currentDonors}</strong></span>
-                <span class="text-muted">(без ограничения)</span>
-            </div>
-        `;
-        
-        const responsesHtml = responses.length > 0 ? `
-            <div class="request-responses-list">
-                <h4>Отклики доноров (${responses.length}):</h4>
-                ${responses.slice(0, 3).map(r => `
-                    <div class="mini-response-card ${r.status}">
-                        <div class="response-avatar">${getInitials(r.donor_name || 'НД')}</div>
-                        <div class="response-info">
-                            <div class="response-name">${r.donor_name || 'Донор'}</div>
-                            <div class="response-contact">${r.donor_phone || r.donor_email || '-'}</div>
-                            ${r.donor_comment ? `<div class="response-comment">"${r.donor_comment}"</div>` : ''}
-                        </div>
-                        <button class="btn btn-sm btn-primary" onclick="openDonorModal({donor_id: ${r.user_id}, donor_name: '${r.donor_name}', blood_type: '${r.donor_blood_type}', donor_phone: '${r.donor_phone || ''}', donor_email: '${r.donor_email || ''}'})">
-                            Написать
-                        </button>
-                    </div>
-                `).join('')}
-                ${responses.length > 3 ? `<button class="btn btn-outline btn-sm" onclick="showAllResponses(${req.id})">Показать все (${responses.length})</button>` : ''}
-            </div>
-        ` : '<p class="no-responses">Пока нет откликов</p>';
+        // Группы крови (может быть несколько)
+        const bloodTypes = req.blood_types || [req.blood_type];
         
         return `
-            <div class="request-card ${req.status}" data-request-id="${req.id}">
-                <div class="request-header">
-                    <div class="request-blood">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 4C12 4 6 10 6 14a6 6 0 1012 0c0-4-6-10-6-10z"/>
-                        </svg>
-                        ${req.blood_type}
+            <article class="blood-request-card blood-request-card--${req.urgency}" data-id="${req.id}">
+                <!-- Шапка -->
+                <header class="card-header">
+                    <div class="urgency-badge urgency-badge--${req.urgency}">
+                        <span class="urgency-dot"></span>
+                        <span class="urgency-text">${urgencyLabels[req.urgency]}</span>
                     </div>
-                    <div class="request-urgency ${req.urgency}">
-                        ${urgencyLabels[req.urgency]}
+                    <time class="card-time">${timeAgo}</time>
+                </header>
+                
+                <!-- Контент -->
+                <div class="card-body">
+                    <!-- Группы крови -->
+                    <div class="blood-types">
+                        ${bloodTypes.map(bt => `<span class="blood-type-tag">${bt}</span>`).join('')}
                     </div>
-                    <div class="request-status-badge ${req.status}">
-                        ${statusLabels[req.status]}
+                    
+                    <!-- Мета-информация -->
+                    ${expiresDate ? `
+                        <div class="card-meta">
+                            <span class="meta-item">
+                                <span class="meta-label">Истекает:</span>
+                                <span class="meta-value">${expiresDate}</span>
+                            </span>
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Прогресс откликов -->
+                    <div class="respondents-progress">
+                        <div class="progress-header">
+                            <span class="progress-label">Откликнулось</span>
+                            <span class="progress-value">${currentDonors}${neededDonors ? ` из ${neededDonors}` : ''}</span>
+                        </div>
+                        ${neededDonors ? `
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${progress}%"></div>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
                 
-                <div class="request-body">
-                    ${req.description ? `<p class="request-description">${req.description}</p>` : ''}
-                    
-                    <div class="request-meta">
-                        <div class="request-meta-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <polyline points="12 6 12 12 16 14"/>
-                            </svg>
-                            Создан: ${createdDate}
-                        </div>
-                        <div class="request-meta-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
-                            </svg>
-                            Истекает: ${expiresDate}
-                        </div>
-                    </div>
-                    
-                    ${responsesHtml}
-                </div>
-                
-                <div class="request-footer">
-                    <div class="request-stats">
-                        <div class="request-stat">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                                <circle cx="9" cy="7" r="4"/>
-                                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
-                            </svg>
-                            <strong>${req.responses_count || 0}</strong> откликов
-                        </div>
-                        <div class="request-stat">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                            <strong>${req.approved_count || 0}</strong> подтверждено
-                        </div>
-                    </div>
-                    
-                    <div class="request-actions">
-                        ${req.status === 'active' ? `
-                            <button class="btn btn-outline btn-sm" onclick="markRequestFulfilled(${req.id})">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                                Выполнен
-                            </button>
-                            <button class="btn btn-outline btn-sm" onclick="editRequest(${req.id})">Редактировать</button>
-                            <button class="btn btn-outline btn-sm btn-danger" onclick="cancelRequest(${req.id})">Отменить</button>
-                        ` : `
-                            <button class="btn btn-outline btn-sm" onclick="archiveRequest(${req.id})">В архив</button>
-                        `}
-                    </div>
-                </div>
-            </div>
+                <!-- Футер с кнопками -->
+                <footer class="card-footer">
+                    <button class="btn btn-secondary btn-sm" onclick="showRespondents(${req.id})">
+                        👥 Доноры
+                        ${currentDonors > 0 ? `<span class="btn-badge">${currentDonors}</span>` : ''}
+                    </button>
+                    <button class="btn btn-ghost btn-sm" onclick="editRequest(${req.id})">
+                        Редактировать
+                    </button>
+                    ${req.status === 'active' ? `
+                        <button class="btn btn-primary btn-sm" onclick="markRequestFulfilled(${req.id})">
+                            Выполнен
+                        </button>
+                        <button class="btn btn-icon-only btn-ghost btn-sm" onclick="cancelRequest(${req.id})" title="Отменить">
+                            ✕
+                        </button>
+                    ` : `
+                        <span class="request-status-badge ${req.status}">
+                            ${req.status === 'fulfilled' ? 'Выполнен' : 'Отменён'}
+                        </span>
+                    `}
+                </footer>
+            </article>
         `;
     }).join('');
     
@@ -1634,5 +1591,56 @@ function changePage(page) {
 function closeAllResponsesModal() {
     const modal = document.getElementById('all-responses-modal');
     if (modal) modal.remove();
+}
+
+/**
+ * Форматировать время "X назад"
+ */
+function formatTimeAgo(dateString) {
+    if (!dateString) return '-';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Только что';
+    if (diffMins < 60) return `${diffMins} мин. назад`;
+    if (diffHours < 24) return `${diffHours} ч. назад`;
+    if (diffDays === 1) return 'Вчера';
+    if (diffDays < 7) return `${diffDays} дн. назад`;
+    return formatDateShort(dateString);
+}
+
+/**
+ * Форматировать дату компактно
+ */
+function formatDateShort(dateString) {
+    if (!dateString) return '-';
+    
+    const date = new Date(dateString);
+    const months = [
+        'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+        'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+    ];
+    
+    return `${date.getDate()} ${months[date.getMonth()]}`;
+}
+
+/**
+ * Показать всех откликнувшихся доноров для запроса
+ */
+function showRespondents(requestId) {
+    // Найти запрос
+    const request = bloodRequestsCache.find(r => r.id === requestId);
+    if (!request) {
+        showNotification('Запрос не найден', 'error');
+        return;
+    }
+    
+    // Использовать существующую функцию showAllResponses
+    showAllResponses(requestId);
 }
 
