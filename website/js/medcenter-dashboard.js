@@ -794,12 +794,30 @@ async function loadStatisticsFromAPI() {
 }
 
 function renderDashboardStatistics(apiStats) {
+    console.log('📊 Обновление статистики на главной:', apiStats);
+    
     // Обновляем счётчики на главной
     const totalDonors = document.getElementById('stat-donors');
     const activeRequests = document.getElementById('stat-requests');
+    const pendingResponses = document.getElementById('stat-pending');
+    const monthDonations = document.getElementById('stat-donations-month'); // ПРАВИЛЬНЫЙ ID!
     
-    if (totalDonors) totalDonors.textContent = apiStats.total_donors || 0;
-    if (activeRequests) activeRequests.textContent = apiStats.active_requests || 0;
+    if (totalDonors) {
+        totalDonors.textContent = apiStats.total_donors || 0;
+        console.log('✓ Доноры обновлены:', apiStats.total_donors);
+    }
+    if (activeRequests) {
+        activeRequests.textContent = apiStats.active_requests || 0;
+        console.log('✓ Запросы обновлены:', apiStats.active_requests);
+    }
+    if (pendingResponses) {
+        pendingResponses.textContent = apiStats.pending_responses || 0;
+        console.log('✓ Ожидают обновлены:', apiStats.pending_responses);
+    }
+    if (monthDonations) {
+        monthDonations.textContent = apiStats.month_donations || 0;
+        console.log('✓ Донации за месяц обновлены:', apiStats.month_donations);
+    }
     
     // Статистика по группам крови
     const bloodStatsContainer = document.getElementById('blood-stats');

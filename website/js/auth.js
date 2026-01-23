@@ -6,6 +6,7 @@
 const API_URL = 'http://localhost:5001/api';
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔐 auth.js ЗАГРУЖЕН');
     initTypeSwitcher();
     initModeTabs();
     initFormSteps();
@@ -16,6 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Показываем форму входа по умолчанию
     showDefaultForms();
+    console.log('✅ auth.js инициализация завершена');
 });
 
 /**
@@ -608,14 +610,19 @@ function initCascadeSelector(regionId, districtId, centerId) {
  * Валидация и отправка форм
  */
 function initFormValidation() {
+    console.log('🔍 Инициализация валидации форм...');
+    
     // Вход донора
     const donorLoginForm = document.getElementById('donor-login-form');
+    console.log('Форма входа донора:', donorLoginForm ? 'найдена' : 'НЕ найдена');
     if (donorLoginForm) {
         donorLoginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            console.log('📝 Отправка формы входа донора...');
             
             const formData = new FormData(donorLoginForm);
             const data = Object.fromEntries(formData.entries());
+            console.log('Данные формы:', data);
             
             const btn = donorLoginForm.querySelector('button[type="submit"]');
             btn.classList.add('loading');
@@ -634,6 +641,7 @@ function initFormValidation() {
                 });
                 
                 const result = await response.json();
+                console.log('Ответ сервера:', result);
                 
                 if (response.ok) {
                     // Успех - показываем анимацию
@@ -654,23 +662,13 @@ function initFormValidation() {
                 }
                 
             } catch (error) {
+                console.error('❌ Ошибка входа:', error);
                 showFormError(donorLoginForm, 'Ошибка соединения с сервером');
             } finally {
                 if (!btn.classList.contains('success')) {
                     btn.classList.remove('loading');
                     btn.textContent = 'Войти';
                 }
-            }
-        });
-    }
-                } else {
-                    showNotification(result.error || 'Ошибка входа', 'error');
-                }
-                
-            } catch (error) {
-                showNotification('Ошибка соединения с сервером', 'error');
-            } finally {
-                btn.classList.remove('loading');
             }
         });
     }
@@ -760,12 +758,15 @@ function initFormValidation() {
     
     // Вход медцентра
     const mcLoginForm = document.getElementById('medcenter-login-form');
+    console.log('Форма входа медцентра:', mcLoginForm ? 'найдена' : 'НЕ найдена');
     if (mcLoginForm) {
         mcLoginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            console.log('🏥 Отправка формы входа медцентра...');
             
             const formData = new FormData(mcLoginForm);
             const data = Object.fromEntries(formData.entries());
+            console.log('Данные формы:', data);
             
             const btn = mcLoginForm.querySelector('button[type="submit"]');
             btn.classList.add('loading');
@@ -781,6 +782,7 @@ function initFormValidation() {
                 });
                 
                 const result = await response.json();
+                console.log('Ответ сервера:', result);
                 
                 if (response.ok) {
                     localStorage.setItem('auth_token', result.token);
@@ -792,6 +794,7 @@ function initFormValidation() {
                 }
                 
             } catch (error) {
+                console.error('❌ Ошибка входа медцентра:', error);
                 showNotification('Ошибка соединения с сервером', 'error');
             } finally {
                 btn.classList.remove('loading');

@@ -2003,6 +2003,15 @@ def get_medcenter_stats():
         (mc_id,), one=True
     )
     
+    # Донации за текущий месяц
+    from datetime import datetime, timedelta
+    start_of_month = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    month_donations = query_db(
+        """SELECT COUNT(*) as count FROM donation_history 
+           WHERE medical_center_id = %s AND donation_date >= %s""",
+        (mc_id, start_of_month), one=True
+    )
+    
     donors_by_blood = query_db(
         """SELECT blood_type, COUNT(*) as count FROM users 
            WHERE medical_center_id = %s AND is_active = TRUE AND blood_type IS NOT NULL
@@ -2014,6 +2023,7 @@ def get_medcenter_stats():
         'total_donors': donors_count['count'],
         'active_requests': active_requests['count'],
         'pending_responses': pending_responses['count'],
+        'month_donations': month_donations['count'],
         'donors_by_blood_type': {item['blood_type']: item['count'] for item in donors_by_blood}
     })
 
@@ -3145,14 +3155,18 @@ def export_statistics():
     output.write("        Конец отчёта. Спасибо за вашу работу!\n")
     output.write("=" * 60 + "\n")
     
-    # Формируем имя файла
+    # Формируем имя файла (транслитерация для избежания проблем с кодировкой)
+    from urllib.parse import quote
     period_str = f"{stats['period']['from']}_{stats['period']['to']}"
-    filename = f"statistics_{mc_name.replace(' ', '_')}_{period_str}.txt"
+    filename_safe = f"statistics_medcenter_{g.session['medical_center_id']}_{period_str}.txt"
+    filename_display = f"statistics_{mc_name.replace(' ', '_')}_{period_str}.txt"
     
     return Response(
         output.getvalue(),
         mimetype='text/plain; charset=utf-8',
-        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+        headers={
+            'Content-Disposition': f'attachment; filename="{filename_safe}"; filename*=UTF-8\'\'{quote(filename_display)}'
+        }
     )
 
 # ============================================
