@@ -377,21 +377,21 @@
     padding: var(--spacing-md);
 }
 
-/* Для "своих" notification (справа у медцентра) - более тёмный цвет */
+/* Для "своих" notification (справа у медцентра) - голубой цвет как у кнопок */
 .message.own .message-notification {
-    background: var(--color-primary) !important;
+    background: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%) !important;
     color: white !important;
-    border-left: 4px solid rgba(255, 255, 255, 0.5) !important;
+    border-left: 4px solid rgba(255, 255, 255, 0.7) !important;
 }
 
 .message.own .message-notification .notification-header {
     color: white !important;
-    opacity: 0.95;
+    opacity: 1;
 }
 
 .message.own .message-notification .notification-content {
     color: white !important;
-    opacity: 0.9;
+    opacity: 0.95;
 }
 
 .message-notification .notification-header {
