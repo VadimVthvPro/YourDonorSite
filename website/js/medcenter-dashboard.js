@@ -147,6 +147,12 @@ function initNavigation() {
             
             updatePageTitle(sectionId);
             document.querySelector('.sidebar')?.classList.remove('active');
+            
+            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Загрузка диалогов при переходе в секцию "Сообщения"
+            if (sectionId === 'messages' && window.messenger) {
+                console.log('🔄 Переход в секцию "Сообщения", загружаю диалоги...');
+                window.messenger.loadConversations();
+            }
         });
     });
     
@@ -169,6 +175,7 @@ function updatePageTitle(sectionId) {
         'traffic-light': 'Донорский светофор',
         'responses': 'Отклики доноров',
         'donors': 'База доноров',
+        'messages': 'Сообщения',
         'statistics': 'Статистика',
         'settings': 'Настройки'
     };

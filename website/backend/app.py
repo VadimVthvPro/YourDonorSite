@@ -3558,7 +3558,7 @@ def get_conversations():
                       u.id as partner_id,
                       u.full_name as partner_name,
                       u.blood_type,
-                      u.donation_count
+                      u.total_donations
                FROM conversations c
                JOIN users u ON c.donor_id = u.id
                WHERE c.medical_center_id = %s AND c.status = %s
@@ -3576,7 +3576,7 @@ def get_conversations():
                 'full_name': conv['partner_name'],
                 'type': 'donor',
                 'blood_type': conv.get('blood_type'),
-                'donation_count': conv.get('donation_count', 0)
+                'donation_count': conv.get('total_donations', 0)
             }
             result.append(format_conversation(conv, partner_info, conv['unread_count'], query_db))
         

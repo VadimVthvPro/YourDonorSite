@@ -742,3 +742,25 @@ class Messenger {
 // ============================================
 
 window.Messenger = Messenger;
+
+// ============================================
+// ИНИЦИАЛИЗАЦИЯ
+// ============================================
+
+function initMessengerUI() {
+    console.log('🚀 Запуск initMessengerUI...');
+    
+    // Создаём глобальный экземпляр мессенджера
+    if (!window.messenger) {
+        window.messenger = new Messenger();
+        console.log('✅ Экземпляр messenger создан');
+        
+        // Загружаем диалоги сразу
+        window.messenger.loadConversations();
+    } else {
+        console.log('ℹ️ Messenger уже инициализирован');
+    }
+}
+
+// Экспортируем функцию инициализации
+window.initMessengerUI = initMessengerUI;
