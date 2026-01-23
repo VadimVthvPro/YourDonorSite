@@ -1091,7 +1091,7 @@ def create_blood_request():
         return jsonify({'error': 'Неверная группа крови'}), 400
     
     # Проверяем срочность
-    if data['urgency'] not in ['normal', 'urgent', 'critical']: # critical оставим для совместимости, но лучше urgent
+    if data['urgency'] not in ['normal', 'needed', 'urgent', 'critical']:
         return jsonify({'error': 'Неверная срочность'}), 400
     
     # Вычисляем expires_at
@@ -1168,7 +1168,7 @@ def get_blood_request(request_id):
 @app.route('/api/blood-requests/<int:request_id>', methods=['PUT'])
 @require_auth('medcenter')
 def update_blood_request(request_id):
-    """Обновить статус запроса"""
+    """Обновить запрос крови"""
     mc_id = g.session['medical_center_id']
     data = request.json
     
@@ -1181,23 +1181,68 @@ def update_blood_request(request_id):
     if not req:
         return jsonify({'error': 'Запрос не найден'}), 404
     
-    status = data.get('status')
-    if status not in ['active', 'fulfilled', 'cancelled']:
-        return jsonify({'error': 'Неверный статус'}), 400
+    # Обновление статуса (для изменения статуса запроса)
+    if 'status' in data:
+        status = data['status']
+        if status not in ['active', 'fulfilled', 'cancelled']:
+            return jsonify({'error': 'Неверный статус'}), 400
+        
+        if status == 'fulfilled':
+            query_db(
+                "UPDATE blood_requests SET status = %s, fulfilled_at = NOW() WHERE id = %s",
+                (status, request_id), commit=True
+            )
+        else:
+            query_db(
+                "UPDATE blood_requests SET status = %s WHERE id = %s",
+                (status, request_id), commit=True
+            )
+        
+        return jsonify({'message': 'Статус обновлён'})
     
-    # Обновляем
-    if status == 'fulfilled':
-        query_db(
-            "UPDATE blood_requests SET status = %s, fulfilled_at = NOW() WHERE id = %s",
-            (status, request_id), commit=True
-        )
-    else:
-        query_db(
-            "UPDATE blood_requests SET status = %s WHERE id = %s",
-            (status, request_id), commit=True
-        )
+    # Обновление полей запроса (при редактировании)
+    updates = []
+    params = []
     
-    return jsonify({'message': 'Статус обновлён'})
+    if 'blood_type' in data:
+        valid_blood = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-']
+        if data['blood_type'] not in valid_blood:
+            return jsonify({'error': 'Неверная группа крови'}), 400
+        updates.append("blood_type = %s")
+        params.append(data['blood_type'])
+    
+    if 'urgency' in data:
+        if data['urgency'] not in ['normal', 'needed', 'urgent', 'critical']:
+            return jsonify({'error': 'Неверная срочность'}), 400
+        updates.append("urgency = %s")
+        params.append(data['urgency'])
+    
+    if 'description' in data:
+        updates.append("description = %s")
+        params.append(data['description'])
+    
+    if 'expires_at' in data:
+        updates.append("expires_at = %s")
+        params.append(data['expires_at'])
+    
+    if 'needed_donors' in data:
+        updates.append("needed_donors = %s")
+        params.append(data['needed_donors'])
+    
+    if 'auto_close' in data:
+        updates.append("auto_close = %s")
+        params.append(data['auto_close'])
+    
+    if not updates:
+        return jsonify({'error': 'Нет данных для обновления'}), 400
+    
+    params.append(request_id)
+    query_db(
+        f"UPDATE blood_requests SET {', '.join(updates)} WHERE id = %s",
+        tuple(params), commit=True
+    )
+    
+    return jsonify({'message': 'Запрос обновлён'})
 
 @app.route('/api/blood-requests/<int:request_id>', methods=['DELETE'])
 @require_auth('medcenter')
@@ -1303,6 +1348,60 @@ def create_response():
     )
     
     return jsonify({'message': 'Отклик отправлен'}), 201
+
+@app.route('/api/medical-center/donations', methods=['POST'])
+@require_auth('medcenter')
+def record_donation():
+    """Записать успешную донацию"""
+    mc_id = g.session['medical_center_id']
+    data = request.json
+    
+    required = ['donor_id', 'blood_type']
+    for field in required:
+        if not data.get(field):
+            return jsonify({'error': f'Поле {field} обязательно'}), 400
+    
+    donor_id = data['donor_id']
+    blood_type = data['blood_type']
+    volume_ml = data.get('volume_ml', 450)
+    donation_date = data.get('donation_date', 'CURRENT_DATE')
+    notes = data.get('notes', '')
+    response_id = data.get('response_id')
+    
+    # Проверяем группу крови
+    valid_blood = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-']
+    if blood_type not in valid_blood:
+        return jsonify({'error': 'Неверная группа крови'}), 400
+    
+    # Записываем донацию в историю
+    query_db(
+        """INSERT INTO donation_history 
+           (donor_id, medical_center_id, donation_date, blood_type, volume_ml, status, notes, response_id)
+           VALUES (%s, %s, %s, %s, %s, 'completed', %s, %s)""",
+        (donor_id, mc_id, donation_date, blood_type, volume_ml, notes, response_id),
+        commit=True
+    )
+    
+    # Обновляем статистику донора
+    query_db(
+        """UPDATE users SET 
+           total_donations = COALESCE(total_donations, 0) + 1,
+           last_donation_date = %s,
+           total_volume_ml = COALESCE(total_volume_ml, 0) + %s
+           WHERE id = %s""",
+        (donation_date, volume_ml, donor_id),
+        commit=True
+    )
+    
+    # Если есть response_id, обновляем статус отклика
+    if response_id:
+        query_db(
+            "UPDATE donation_responses SET status = 'completed' WHERE id = %s",
+            (response_id,),
+            commit=True
+        )
+    
+    return jsonify({'message': 'Донация записана', 'donor_id': donor_id}), 201
 
 @app.route('/api/responses/<int:response_id>', methods=['PUT'])
 @require_auth('medcenter')
@@ -2352,61 +2451,6 @@ def view_donor_certificate_alt(donor_id):
 
 # ============================================
 # API: Учёт донаций медцентром
-# ============================================
-
-@app.route('/api/medcenter/donations', methods=['POST'])
-@require_auth('medcenter')
-def record_donation():
-    """Отметить донацию"""
-    mc_id = g.session['medical_center_id']
-    data = request.json
-    
-    donor_id = data.get('donor_id')
-    response_id = data.get('response_id')
-    volume_ml = data.get('volume_ml', 450)
-    notes = data.get('notes', '')
-    
-    if not donor_id:
-        return jsonify({'error': 'donor_id обязателен'}), 400
-    
-    # Получаем данные донора
-    donor = query_db("SELECT blood_type FROM users WHERE id = %s", (donor_id,), one=True)
-    if not donor:
-        return jsonify({'error': 'Донор не найден'}), 404
-    
-    try:
-        # Создаём запись о донации
-        query_db(
-            """INSERT INTO donation_history 
-               (donor_id, medical_center_id, response_id, donation_date, blood_type, volume_ml, notes)
-               VALUES (%s, %s, %s, CURRENT_DATE, %s, %s, %s)""",
-            (donor_id, mc_id, response_id, donor['blood_type'], volume_ml, notes),
-            commit=True
-        )
-        
-        # Обновляем статистику донора
-        query_db(
-            """UPDATE users 
-               SET total_donations = COALESCE(total_donations, 0) + 1,
-                   last_donation_date = CURRENT_DATE,
-                   total_volume_ml = COALESCE(total_volume_ml, 0) + %s
-               WHERE id = %s""",
-            (volume_ml, donor_id), commit=True
-        )
-        
-        # Если был отклик — помечаем как завершённый
-        if response_id:
-            query_db(
-                "UPDATE donation_responses SET status = 'completed' WHERE id = %s",
-                (response_id,), commit=True
-            )
-        
-        return jsonify({'message': 'Донация учтена', 'success': True}), 201
-        
-    except Exception as e:
-        app.logger.error(f"Ошибка учёта донации: {e}")
-        return jsonify({'error': 'Ошибка сохранения'}), 500
-
 # ============================================
 # Запуск сервера
 # ============================================

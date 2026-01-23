@@ -924,9 +924,49 @@ async function createBloodRequest(formData) {
 }
 
 async function fulfillRequest(requestId) {
-    if (!confirm('Отметить запрос как выполненный?')) return;
+    if (!confirm('Отметить запрос как выполненный?\n\nДонорам с подтверждённым откликом будет засчитана донация.')) return;
     
     try {
+        // Получаем запрос и его отклики
+        const request = bloodRequestsCache.find(r => r.id === requestId);
+        if (!request) {
+            showNotification('Запрос не найден', 'error');
+            return;
+        }
+        
+        // Получаем подтверждённые отклики
+        const responsesReq = await fetch(`${MC_API_URL}/responses?request_id=${requestId}`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!responsesReq.ok) {
+            throw new Error('Ошибка загрузки откликов');
+        }
+        
+        const responses = await responsesReq.json();
+        const confirmedResponses = responses.filter(r => r.status === 'confirmed');
+        
+        // Записываем донации для всех подтверждённых
+        for (const resp of confirmedResponses) {
+            try {
+                await fetch(`${MC_API_URL}/medical-center/donations`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        donor_id: resp.user_id,
+                        blood_type: resp.donor_blood_type || request.blood_type,
+                        volume_ml: 450,
+                        donation_date: new Date().toISOString().split('T')[0],
+                        response_id: resp.id,
+                        notes: `Донация по запросу #${requestId}`
+                    })
+                });
+            } catch (err) {
+                console.error(`Ошибка записи донации для донора ${resp.user_id}:`, err);
+            }
+        }
+        
+        // Обновляем статус запроса
         const response = await fetch(`${MC_API_URL}/blood-requests/${requestId}`, {
             method: 'PUT',
             headers: getAuthHeaders(),
@@ -934,14 +974,18 @@ async function fulfillRequest(requestId) {
         });
         
         if (response.ok) {
-            showNotification('Запрос отмечен как выполненный', 'success');
+            showNotification(
+                `✅ Запрос выполнен! Донаций записано: ${confirmedResponses.length}`, 
+                'success'
+            );
             await loadBloodRequestsFromAPI();
+            await loadResponsesFromAPI();
         } else {
             showNotification('Ошибка обновления статуса', 'error');
         }
     } catch (error) {
         console.error('Ошибка:', error);
-        showNotification('Ошибка соединения', 'error');
+        showNotification('Ошибка выполнения запроса', 'error');
     }
 }
 
@@ -1409,7 +1453,7 @@ function showNotification(message, type = 'info') {
 /**
  * Показать все отклики на запрос (модальное окно с пагинацией)
  */
-async function showAllResponses(requestId) {
+async function showAllResponses(requestId, filterBloodType = null) {
     try {
         // Загружаем все отклики для запроса
         const response = await fetch(`${API_URL}/responses?request_id=${requestId}`, {
@@ -1418,7 +1462,12 @@ async function showAllResponses(requestId) {
         
         if (!response.ok) throw new Error('Ошибка загрузки откликов');
         
-        const responses = await response.json();
+        let responses = await response.json();
+        
+        // Фильтруем по группе крови, если указана
+        if (filterBloodType) {
+            responses = responses.filter(r => r.donor_blood_type === filterBloodType);
+        }
         
         // Создаём модальное окно
         const modal = document.createElement('div');
@@ -1427,7 +1476,7 @@ async function showAllResponses(requestId) {
         modal.innerHTML = `
             <div class="modal-content all-responses-modal">
                 <div class="modal-header">
-                    <h3>Все отклики на запрос (${responses.length})</h3>
+                    <h3>Отклики на запрос ${filterBloodType ? `(группа ${filterBloodType})` : ''} — ${responses.length} шт.</h3>
                     <button class="modal-close" onclick="closeAllResponsesModal()">&times;</button>
                 </div>
                 <div class="modal-body">
@@ -1440,6 +1489,19 @@ async function showAllResponses(requestId) {
                             <option value="completed">Завершён</option>
                             <option value="rejected">Отклонён</option>
                         </select>
+                        ${!filterBloodType ? `
+                        <select id="response-blood-filter" class="form-select">
+                            <option value="all">Все группы крови</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                        </select>
+                        ` : ''}
                     </div>
                     <div id="responses-table-container"></div>
                 </div>
@@ -1452,23 +1514,29 @@ async function showAllResponses(requestId) {
         renderResponsesTable(responses);
         
         // Обработчики фильтров
-        document.getElementById('response-search').addEventListener('input', () => {
+        const applyFilters = () => {
             const search = document.getElementById('response-search').value.toLowerCase();
             const status = document.getElementById('response-status-filter').value;
+            const bloodFilter = document.getElementById('response-blood-filter');
+            const blood = bloodFilter ? bloodFilter.value : 'all';
+            
             const filtered = responses.filter(r => {
                 const matchSearch = !search || 
                     r.donor_name?.toLowerCase().includes(search) ||
                     r.donor_phone?.toLowerCase().includes(search) ||
                     r.donor_email?.toLowerCase().includes(search);
                 const matchStatus = status === 'all' || r.status === status;
-                return matchSearch && matchStatus;
+                const matchBlood = blood === 'all' || r.donor_blood_type === blood;
+                return matchSearch && matchStatus && matchBlood;
             });
             renderResponsesTable(filtered);
-        });
+        };
         
-        document.getElementById('response-status-filter').addEventListener('change', () => {
-            document.getElementById('response-search').dispatchEvent(new Event('input'));
-        });
+        document.getElementById('response-search').addEventListener('input', applyFilters);
+        document.getElementById('response-status-filter').addEventListener('change', applyFilters);
+        if (document.getElementById('response-blood-filter')) {
+            document.getElementById('response-blood-filter').addEventListener('change', applyFilters);
+        }
         
     } catch (error) {
         console.error('Ошибка загрузки откликов:', error);
@@ -1548,13 +1616,24 @@ function renderResponsesTable(responses, page = 1) {
                             </td>
                             <td>${new Date(r.created_at).toLocaleString('ru-RU')}</td>
                             <td>
-                                <div class="action-buttons">
+                                <div class="action-buttons" style="display: flex; gap: 6px; align-items: center;">
                                     <button class="btn btn-sm btn-primary" onclick="openDonorModal({donor_id: ${r.user_id}, donor_name: '${(r.donor_name || '').replace(/'/g, "\\'")}', blood_type: '${r.donor_blood_type}', donor_phone: '${r.donor_phone || ''}', donor_email: '${r.donor_email || ''}'})">
                                         ✉️
                                     </button>
-                                    ${r.status === 'confirmed' ? `
-                                        <button class="btn btn-sm btn-success" onclick="recordDonation(${r.user_id}, ${r.id})">
+                                    ${r.status === 'pending' ? `
+                                        <button class="btn btn-sm btn-success" onclick="confirmResponse(${r.id})" title="Подтвердить">
                                             ✓
+                                        </button>
+                                        <button class="btn btn-sm btn-ghost" onclick="rejectResponse(${r.id})" title="Отклонить">
+                                            ✕
+                                        </button>
+                                    ` : ''}
+                                    ${r.status === 'confirmed' ? `
+                                        <button class="btn btn-sm btn-success" onclick="recordDonation(${r.user_id}, ${r.id})" title="Записать донацию">
+                                            🩸
+                                        </button>
+                                        <button class="btn btn-sm" onclick="unconfirmResponse(${r.id})" title="Отменить подтверждение">
+                                            ↶
                                         </button>
                                     ` : ''}
                                 </div>
@@ -1640,7 +1719,158 @@ function showRespondents(requestId) {
         return;
     }
     
-    // Использовать существующую функцию showAllResponses
-    showAllResponses(requestId);
+    // Использовать существующую функцию showAllResponses с фильтрацией
+    showAllResponses(requestId, request.blood_type);
+}
+
+/**
+ * Записать успешную донацию
+ */
+async function recordDonation(donorId, responseId = null) {
+    // Запросить подтверждение
+    const confirmed = confirm('Подтвердить, что донор сдал кровь?');
+    if (!confirmed) return;
+    
+    // Получить информацию о доноре
+    const donorResponse = await fetch(`${MC_API_URL}/donors?donor_id=${donorId}`, {
+        headers: getAuthHeaders()
+    });
+    
+    if (!donorResponse.ok) {
+        showNotification('Ошибка загрузки данных донора', 'error');
+        return;
+    }
+    
+    const donors = await donorResponse.json();
+    const donor = donors.find(d => d.id === donorId);
+    
+    if (!donor) {
+        showNotification('Донор не найден', 'error');
+        return;
+    }
+    
+    // Запросить объём крови
+    const volume = prompt('Объём сданной крови (мл):', '450');
+    if (!volume) return;
+    
+    const volumeInt = parseInt(volume);
+    if (isNaN(volumeInt) || volumeInt < 100 || volumeInt > 600) {
+        showNotification('Некорректный объём крови', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${MC_API_URL}/medical-center/donations`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                donor_id: donorId,
+                blood_type: donor.blood_type,
+                volume_ml: volumeInt,
+                donation_date: new Date().toISOString().split('T')[0],
+                response_id: responseId,
+                notes: ''
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showNotification('✅ Донация успешно записана!', 'success');
+            // Обновляем списки
+            await loadResponsesFromAPI();
+            await loadDonorsFromAPI();
+        } else {
+            showNotification('❌ ' + (result.error || 'Ошибка записи донации'), 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка записи донации:', error);
+        showNotification('❌ Ошибка соединения', 'error');
+    }
+}
+
+/**
+ * Подтвердить отклик донора
+ */
+async function confirmResponse(responseId) {
+    if (!confirm('Подтвердить отклик донора?')) return;
+    
+    try {
+        const response = await fetch(`${MC_API_URL}/responses/${responseId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ 
+                status: 'confirmed',
+                comment: 'Подтверждён медцентром'
+            })
+        });
+        
+        if (response.ok) {
+            showNotification('✅ Отклик подтверждён', 'success');
+            await showAllResponses(currentResponsesData[0]?.request_id);
+        } else {
+            showNotification('❌ Ошибка подтверждения', 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        showNotification('❌ Ошибка соединения', 'error');
+    }
+}
+
+/**
+ * Отменить подтверждение отклика (вернуть в pending)
+ */
+async function unconfirmResponse(responseId) {
+    if (!confirm('Отменить подтверждение?\n\nОтклик вернётся в статус "Ожидает".')) return;
+    
+    try {
+        const response = await fetch(`${MC_API_URL}/responses/${responseId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ 
+                status: 'pending',
+                comment: 'Подтверждение отменено'
+            })
+        });
+        
+        if (response.ok) {
+            showNotification('✅ Подтверждение отменено', 'success');
+            await showAllResponses(currentResponsesData[0]?.request_id);
+        } else {
+            showNotification('❌ Ошибка отмены', 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        showNotification('❌ Ошибка соединения', 'error');
+    }
+}
+
+/**
+ * Отклонить отклик донора
+ */
+async function rejectResponse(responseId) {
+    const reason = prompt('Причина отклонения (необязательно):');
+    if (reason === null) return; // Пользователь отменил
+    
+    try {
+        const response = await fetch(`${MC_API_URL}/responses/${responseId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ 
+                status: 'rejected',
+                comment: reason || 'Отклонён медцентром'
+            })
+        });
+        
+        if (response.ok) {
+            showNotification('✅ Отклик отклонён', 'success');
+            await showAllResponses(currentResponsesData[0]?.request_id);
+        } else {
+            showNotification('❌ Ошибка отклонения', 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        showNotification('❌ Ошибка соединения', 'error');
+    }
 }
 
