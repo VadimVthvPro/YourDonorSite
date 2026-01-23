@@ -674,7 +674,9 @@ def update_blood_needs(mc_id):
             (mc_id, blood_type, status), commit=True
         )
     
-    # Логика уведомлений при статусе urgent
+    # Логика уведомлений при изменении статуса
+    mc = query_db("SELECT name, address FROM medical_centers WHERE id = %s", (mc_id,), one=True)
+    
     if status == 'urgent':
         # 1. Проверяем, есть ли активный запрос крови
         active_request = query_db(
@@ -701,11 +703,23 @@ def update_blood_needs(mc_id):
                 "UPDATE blood_requests SET urgency = 'urgent' WHERE id = %s",
                 (request_id,), commit=True
             )
-            
-        # 3. Отправляем уведомления
-        mc = query_db("SELECT name, address FROM medical_centers WHERE id = %s", (mc_id,), one=True)
+        
+        # 3. Отправляем срочные уведомления через send_blood_status_notification
         if mc:
-            send_urgent_blood_request(blood_type, mc['name'], mc.get('address'))
+            try:
+                from telegram_bot import send_blood_status_notification
+                send_blood_status_notification(blood_type, 'urgent', mc['name'])
+            except Exception as e:
+                logger.error(f"Ошибка отправки Telegram уведомления: {e}")
+    
+    elif status == 'needed':
+        # Отправляем уведомления о том, что нужно пополнить
+        if mc:
+            try:
+                from telegram_bot import send_blood_status_notification
+                send_blood_status_notification(blood_type, 'needed', mc['name'])
+            except Exception as e:
+                logger.error(f"Ошибка отправки Telegram уведомления: {e}")
     
     return jsonify({'message': 'Статус обновлён', 'blood_type': blood_type, 'status': status})
 
@@ -924,11 +938,15 @@ def create_blood_request():
                DO UPDATE SET status = %s, last_updated = NOW()""",
             (mc_id, data['blood_type'], status_to_set, status_to_set), commit=True
         )
-        
-        # Отправляем уведомления
-        mc = query_db("SELECT name, address FROM medical_centers WHERE id = %s", (mc_id,), one=True)
-        if mc:
-            send_urgent_blood_request(data['blood_type'], mc['name'], mc.get('address'))
+    
+    # Отправляем уведомления для ВСЕХ запросов (не только urgent)
+    mc = query_db("SELECT name, address FROM medical_centers WHERE id = %s", (mc_id,), one=True)
+    if mc:
+        try:
+            from telegram_bot import send_blood_request_notification
+            send_blood_request_notification(data['blood_type'], data['urgency'], mc['name'], mc.get('address'))
+        except Exception as e:
+            logger.error(f"Ошибка отправки Telegram уведомления о запросе: {e}")
     
     return jsonify({'message': 'Запрос создан', 'request_id': request_id}), 201
 
@@ -1226,12 +1244,28 @@ def send_message():
         # Медцентр пишет донору
         if not data.get('to_user_id'):
             return jsonify({'error': 'Укажите получателя'}), 400
+        
+        to_user_id = data['to_user_id']
+        subject = data.get('subject', 'Новое сообщение')
+        message = data['message']
+        
         query_db(
             """INSERT INTO messages (from_medcenter_id, to_user_id, subject, message)
                VALUES (%s, %s, %s, %s)""",
-            (session['medical_center_id'], data['to_user_id'], data.get('subject'), data['message']),
+            (session['medical_center_id'], to_user_id, subject, message),
             commit=True
         )
+        
+        # Отправляем Telegram уведомление донору
+        try:
+            from telegram_bot import send_message_notification
+            medcenter = query_db(
+                "SELECT name FROM medical_centers WHERE id = %s",
+                (session['medical_center_id'],), one=True
+            )
+            send_message_notification(to_user_id, medcenter['name'], subject, message)
+        except Exception as e:
+            logger.error(f"Ошибка отправки Telegram уведомления о сообщении: {e}")
     
     return jsonify({'message': 'Сообщение отправлено'}), 201
 

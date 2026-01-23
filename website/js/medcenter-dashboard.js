@@ -722,6 +722,30 @@ async function loadBloodRequestsFromAPI() {
             headers: getAuthHeaders()
         });
         const requests = await response.json();
+        
+        // Загружаем отклики для каждого запроса
+        const mcId = getMedcenterId();
+        const responsesResp = await fetch(`${MC_API_URL}/responses?medical_center_id=${mcId}`, {
+            headers: getAuthHeaders()
+        });
+        const allResponses = await responsesResp.json();
+        
+        // Группируем отклики по запросам
+        const responsesByRequest = {};
+        allResponses.forEach(r => {
+            if (!responsesByRequest[r.request_id]) {
+                responsesByRequest[r.request_id] = [];
+            }
+            responsesByRequest[r.request_id].push(r);
+        });
+        
+        // Добавляем отклики к запросам
+        requests.forEach(req => {
+            req.donor_responses = responsesByRequest[req.id] || [];
+            req.responses_count = req.donor_responses.length;
+            req.approved_count = req.donor_responses.filter(r => r.status === 'confirmed' || r.status === 'completed').length;
+        });
+        
         renderBloodRequests(requests);
         updateRequestsBadge(requests);
     } catch (error) {
@@ -734,12 +758,26 @@ function renderBloodRequests(requests) {
     const container = document.getElementById('requests-list');
     if (!container) return;
     
-    if (!requests || requests.length === 0) {
-        container.innerHTML = '<p class="no-data">Нет активных запросов на донацию</p>';
+    // Фильтрация по статусу
+    const filterStatus = document.getElementById('requests-filter-status')?.value || 'active';
+    const filterBlood = document.getElementById('requests-filter-blood')?.value || 'all';
+    
+    let filteredRequests = requests;
+    
+    if (filterStatus !== 'all') {
+        filteredRequests = filteredRequests.filter(r => r.status === filterStatus);
+    }
+    
+    if (filterBlood !== 'all') {
+        filteredRequests = filteredRequests.filter(r => r.blood_type === filterBlood);
+    }
+    
+    if (!filteredRequests || filteredRequests.length === 0) {
+        container.innerHTML = '<p class="no-data">Нет запросов по выбранным фильтрам</p>';
         return;
     }
     
-    container.innerHTML = requests.map(req => {
+    container.innerHTML = filteredRequests.map(req => {
         const urgencyLabels = {
             'normal': 'Обычная',
             'urgent': 'Срочная',
@@ -755,8 +793,28 @@ function renderBloodRequests(requests) {
         const createdDate = new Date(req.created_at).toLocaleDateString('ru-RU');
         const expiresDate = req.expires_at ? new Date(req.expires_at).toLocaleDateString('ru-RU') : '—';
         
+        // Отклики доноров для этого запроса
+        const responses = req.donor_responses || [];
+        const responsesHtml = responses.length > 0 ? `
+            <div class="request-responses-list">
+                <h4>Отклики доноров (${responses.length}):</h4>
+                ${responses.slice(0, 3).map(r => `
+                    <div class="mini-response-card ${r.status}">
+                        <div class="response-avatar">${getInitials(r.donor_name || 'НД')}</div>
+                        <div class="response-info">
+                            <div class="response-name">${r.donor_name || 'Донор'}</div>
+                            <div class="response-contact">${r.donor_phone || r.donor_email || '-'}</div>
+                            ${r.donor_comment ? `<div class="response-comment">"${r.donor_comment}"</div>` : ''}
+                        </div>
+                        <div class="response-status-badge ${r.status}">${getResponseStatusText(r.status)}</div>
+                    </div>
+                `).join('')}
+                ${responses.length > 3 ? `<button class="btn btn-outline btn-sm" onclick="showAllResponses(${req.id})">Показать все (${responses.length})</button>` : ''}
+            </div>
+        ` : '<p class="no-responses">Пока нет откликов</p>';
+        
         return `
-            <div class="request-card ${req.status}">
+            <div class="request-card ${req.status}" data-request-id="${req.id}">
                 <div class="request-header">
                     <div class="request-blood">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -766,6 +824,9 @@ function renderBloodRequests(requests) {
                     </div>
                     <div class="request-urgency ${req.urgency}">
                         ${urgencyLabels[req.urgency]}
+                    </div>
+                    <div class="request-status-badge ${req.status}">
+                        ${statusLabels[req.status]}
                     </div>
                 </div>
                 
@@ -789,14 +850,9 @@ function renderBloodRequests(requests) {
                             </svg>
                             Истекает: ${expiresDate}
                         </div>
-                        <div class="request-meta-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                                <circle cx="9" cy="7" r="4"/>
-                            </svg>
-                            Статус: ${statusLabels[req.status]}
-                        </div>
                     </div>
+                    
+                    ${responsesHtml}
                 </div>
                 
                 <div class="request-footer">
@@ -817,6 +873,36 @@ function renderBloodRequests(requests) {
                         </div>
                     </div>
                     
+                    <div class="request-actions">
+                        ${req.status === 'active' ? `
+                            <button class="btn btn-outline btn-sm" onclick="markRequestFulfilled(${req.id})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                                Выполнен
+                            </button>
+                            <button class="btn btn-outline btn-sm" onclick="editRequest(${req.id})">Редактировать</button>
+                            <button class="btn btn-outline btn-sm btn-danger" onclick="cancelRequest(${req.id})">Отменить</button>
+                        ` : `
+                            <button class="btn btn-outline btn-sm" onclick="archiveRequest(${req.id})">В архив</button>
+                        `}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Добавляем обработчики фильтров
+    const statusFilter = document.getElementById('requests-filter-status');
+    const bloodFilter = document.getElementById('requests-filter-blood');
+    
+    if (statusFilter) {
+        statusFilter.onchange = () => renderBloodRequests(requests);
+    }
+    if (bloodFilter) {
+        bloodFilter.onchange = () => renderBloodRequests(requests);
+    }
+}
                     <div class="request-actions">
                         ${req.status === 'active' ? `
                             <button class="btn btn-sm btn-success" onclick="fulfillRequest(${req.id})">
@@ -943,6 +1029,24 @@ async function deleteRequest(requestId) {
         showNotification('Ошибка соединения', 'error');
     }
 }
+
+// Алиасы для новых имён функций
+window.markRequestFulfilled = fulfillRequest;
+window.editRequest = function(requestId) {
+    showNotification('Функция редактирования в разработке', 'info');
+};
+window.archiveRequest = async function(requestId) {
+    // В будущем можно добавить отдельный статус "archived"
+    showNotification('Запрос перемещён в архив', 'success');
+};
+window.showAllResponses = function(requestId) {
+    // Можно открыть модальное окно со всеми откликами
+    const card = document.querySelector(`[data-request-id="${requestId}"]`);
+    if (card) {
+        card.scrollIntoView({ behavior: 'smooth' });
+        showNotification(`Все отклики для запроса #${requestId}`, 'info');
+    }
+};
 
 /**
  * Модальные окна

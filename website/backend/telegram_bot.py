@@ -423,6 +423,132 @@ def send_urgent_blood_request(blood_type: str, medical_center_name: str, address
     logger.info(f"Отправлено {sent_count}/{len(donors)} уведомлений для группы {blood_type}")
     return sent_count
 
+def send_blood_status_notification(blood_type: str, status: str, medical_center_name: str):
+    """
+    Отправить уведомление об изменении статуса группы крови (светофор)
+    status: 'normal', 'needed', 'urgent'
+    """
+    # Находим доноров с подходящей группой крови
+    donors = query_db(
+        """SELECT telegram_id FROM users
+           WHERE blood_type = %s 
+           AND telegram_id IS NOT NULL
+           AND is_active = TRUE""",
+        (blood_type,)
+    )
+    
+    if not donors:
+        logger.info(f"Нет доноров для уведомления (группа {blood_type})")
+        return 0
+    
+    # Формируем сообщение в зависимости от статуса
+    if status == 'urgent':
+        emoji = "🚨"
+        title = "СРОЧНО НУЖНА КРОВЬ!"
+        desc = "Это срочный запрос! Ваша помощь нужна как можно скорее."
+    elif status == 'needed':
+        emoji = "⚠️"
+        title = "Нужно пополнить запасы крови"
+        desc = "Запасы вашей группы крови снижаются. Пожалуйста, запланируйте донацию в ближайшее время."
+    else:
+        return 0  # Для статуса 'normal' не отправляем уведомления
+    
+    message = (
+        f"{emoji} <b>{title}</b>\n\n"
+        f"🩸 <b>Группа крови:</b> {blood_type}\n"
+        f"🏥 <b>Медцентр:</b> {medical_center_name}\n\n"
+        f"{desc}\n\n"
+        f"🌐 <a href='{WEBSITE_URL}'>Перейти на сайт</a>"
+    )
+    
+    # Отправляем уведомления
+    sent_count = 0
+    for donor in donors:
+        if send_notification(donor['telegram_id'], message):
+            sent_count += 1
+    
+    logger.info(f"Отправлено {sent_count}/{len(donors)} уведомлений о статусе {status} для группы {blood_type}")
+    return sent_count
+
+def send_message_notification(user_id: int, medcenter_name: str, subject: str, message_text: str):
+    """
+    Отправить уведомление о новом сообщении от медцентра
+    """
+    # Получаем telegram_id донора
+    donor = query_db(
+        "SELECT telegram_id FROM users WHERE id = %s AND telegram_id IS NOT NULL",
+        (user_id,), one=True
+    )
+    
+    if not donor or not donor['telegram_id']:
+        logger.info(f"У пользователя {user_id} нет привязанного Telegram")
+        return False
+    
+    # Формируем сообщение
+    message = (
+        f"📩 <b>Новое сообщение от медцентра</b>\n\n"
+        f"🏥 <b>От:</b> {medcenter_name}\n"
+        f"📝 <b>Тема:</b> {subject}\n\n"
+        f"<i>{message_text[:200]}</i>{'...' if len(message_text) > 200 else ''}\n\n"
+        f"🌐 <a href='{WEBSITE_URL}/pages/donor-dashboard.html'>Прочитать полностью</a>"
+    )
+    
+    success = send_notification(donor['telegram_id'], message)
+    if success:
+        logger.info(f"Уведомление о сообщении отправлено пользователю {user_id}")
+    return success
+
+def send_blood_request_notification(blood_type: str, urgency: str, medical_center_name: str, address: str = None):
+    """
+    Отправить уведомление о запросе крови любой срочности
+    urgency: 'normal', 'urgent', 'critical'
+    """
+    # Находим доноров с подходящей группой крови
+    donors = query_db(
+        """SELECT telegram_id FROM users
+           WHERE blood_type = %s 
+           AND telegram_id IS NOT NULL
+           AND is_active = TRUE""",
+        (blood_type,)
+    )
+    
+    if not donors:
+        logger.info(f"Нет доноров для уведомления (группа {blood_type})")
+        return 0
+    
+    # Формируем сообщение в зависимости от срочности
+    if urgency == 'critical' or urgency == 'urgent':
+        emoji = "🚨"
+        title = "СРОЧНО! Нужна кровь!"
+        desc = "Это срочный запрос! Ваша помощь нужна как можно скорее."
+    else:
+        emoji = "🩸"
+        title = "Новый запрос на донацию"
+        desc = "Медцентр запрашивает донацию крови. Вы можете записаться в удобное время."
+    
+    message = (
+        f"{emoji} <b>{title}</b>\n\n"
+        f"🩸 <b>Группа крови:</b> {blood_type}\n"
+        f"🏥 <b>Медцентр:</b> {medical_center_name}\n"
+    )
+    
+    if address:
+        message += f"📍 <b>Адрес:</b> {address}\n"
+    
+    message += (
+        f"\n{desc}\n\n"
+        f"🌐 <a href='{WEBSITE_URL}/pages/donor-dashboard.html'>Откликнуться на запрос</a>"
+    )
+    
+    # Отправляем уведомления
+    sent_count = 0
+    for donor in donors:
+        if send_notification(donor['telegram_id'], message):
+            sent_count += 1
+    
+    logger.info(f"Отправлено {sent_count}/{len(donors)} уведомлений о запросе {urgency} для группы {blood_type}")
+    return sent_count
+
 # ============================================
 # Запуск бота
 # ============================================
