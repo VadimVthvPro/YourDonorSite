@@ -482,6 +482,21 @@ def get_donor_statistics():
         (user_id,)
     )
     
+    # Подсчёт донаций за текущий календарный год
+    current_year = date.today().year
+    donations_this_year = query_db(
+        """SELECT COUNT(*) as count
+           FROM donation_history
+           WHERE donor_id = %s
+           AND EXTRACT(YEAR FROM donation_date) = %s""",
+        (user_id, current_year), one=True
+    )
+    donations_this_year_count = donations_this_year['count'] if donations_this_year else 0
+    
+    # Максимум донаций в год (цельная кровь: 60 дней между донациями = ~6 раз)
+    max_donations_per_year = 6
+    year_progress_percent = min(100, (donations_this_year_count / max_donations_per_year) * 100)
+    
     # Рассчитываем "спасённые жизни"
     lives_saved_estimate = total_donations * 3
     
@@ -509,7 +524,11 @@ def get_donor_statistics():
         'donations_history': donations_history,
         'blood_type': user.get('blood_type'),
         'lives_saved_estimate': lives_saved_estimate,
-        'donor_since': donor_since.isoformat() if donor_since else None
+        'donor_since': donor_since.isoformat() if donor_since else None,
+        'donations_this_year': donations_this_year_count,
+        'max_donations_per_year': max_donations_per_year,
+        'year_progress_percent': year_progress_percent,
+        'current_year': current_year
     })
 
 def get_donor_level(donations):
@@ -1564,6 +1583,8 @@ def create_response():
 @require_auth('medcenter')
 def record_donation():
     """Записать успешную донацию"""
+    from datetime import date
+    
     mc_id = g.session['medical_center_id']
     data = request.json
     
@@ -1575,7 +1596,14 @@ def record_donation():
     donor_id = data['donor_id']
     blood_type = data['blood_type']
     volume_ml = data.get('volume_ml', 450)
-    donation_date = data.get('donation_date', 'CURRENT_DATE')
+    
+    # Правильная обработка даты донации
+    donation_date_str = data.get('donation_date')
+    if donation_date_str and donation_date_str != 'CURRENT_DATE':
+        donation_date = donation_date_str
+    else:
+        donation_date = date.today()
+    
     notes = data.get('notes', '')
     response_id = data.get('response_id')
     
@@ -1593,7 +1621,7 @@ def record_donation():
         commit=True
     )
     
-    # Обновляем статистику донора
+    # Обновляем статистику донора в таблице users
     query_db(
         """UPDATE users SET 
            total_donations = COALESCE(total_donations, 0) + 1,
@@ -2159,6 +2187,28 @@ def respond_to_blood_request(request_id):
     """Откликнуться на запрос крови"""
     user_id = g.session['user_id']
     data = request.json
+    
+    # ЖЁСТКАЯ ПРОВЕРКА: Прошло ли 60 дней с последней донации
+    donor = query_db(
+        "SELECT last_donation_date FROM users WHERE id = %s",
+        (user_id,), one=True
+    )
+    
+    if donor and donor['last_donation_date']:
+        from datetime import date, timedelta
+        last_date = donor['last_donation_date']
+        if isinstance(last_date, str):
+            from datetime import datetime as dt
+            last_date = dt.strptime(last_date, '%Y-%m-%d').date()
+        
+        days_since = (date.today() - last_date).days
+        
+        if days_since < 60:
+            return jsonify({
+                'error': f'Нельзя откликнуться! С последней донации прошло только {days_since} дней. Минимум 60 дней между донациями.',
+                'days_since': days_since,
+                'days_remaining': 60 - days_since
+            }), 403  # 403 Forbidden
     
     # Проверяем, существует ли запрос
     req = query_db(

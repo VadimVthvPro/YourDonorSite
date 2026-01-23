@@ -240,6 +240,7 @@ async function loadRequestsFromAPI() {
         
         displayBloodRequests(requests);
         updateRequestsBadges(requests);
+        displayRecentUrgentRequests(requests); // Отображение на главной
     } catch (error) {
         console.error('Ошибка загрузки запросов крови:', error);
         const container = document.getElementById('blood-requests-list');
@@ -362,9 +363,15 @@ function displayBloodRequests(requests) {
                         <button class="btn btn-ghost btn-sm" onclick="showRequestDetails(${r.id})">
                             Подробнее
                         </button>
-                        <button class="btn btn-primary btn-sm btn-respond" data-id="${r.id}">
+                        ${canDonateNow ? `
+                            <button class="btn btn-primary btn-sm btn-respond" data-id="${r.id}">
                             Откликнуться
                         </button>
+                        ` : `
+                            <button class="btn btn-disabled btn-sm" disabled title="С последней донации должно пройти 60 дней">
+                                🔒 Заблокировано
+                        </button>
+                    `}
                     `}
                 </footer>
             </article>
@@ -412,6 +419,78 @@ function updateRequestsBadges(requests) {
     
     const filterCountResponded = document.getElementById('filter-count-responded');
     if (filterCountResponded) filterCountResponded.textContent = respondedCount;
+}
+
+/**
+ * Отображение срочных запросов на главной странице
+ */
+function displayRecentUrgentRequests(requests) {
+    const container = document.getElementById('recent-requests-list');
+    
+    if (!container) {
+        return;
+    }
+    
+    // Фильтруем срочные и критичные запросы, максимум 3
+    const urgentRequests = requests
+        .filter(r => r.urgency === 'urgent' || r.urgency === 'critical')
+        .slice(0, 3);
+    
+    if (urgentRequests.length === 0) {
+        container.innerHTML = `
+            <div class="urgent-empty">
+                <div class="urgent-empty-icon">✓</div>
+                <p class="urgent-empty-text">Срочных запросов нет</p>
+                <p class="urgent-empty-subtext">Вы увидите здесь критичные запросы</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = urgentRequests.map(r => {
+        const urgencyConfig = {
+            'critical': { 
+                icon: '🔴', 
+                label: 'КРИТИЧНО', 
+                class: 'critical',
+                color: '#ef4444'
+            },
+            'urgent': { 
+                icon: '🟠', 
+                label: 'СРОЧНО', 
+                class: 'urgent',
+                color: '#f59e0b'
+            }
+        };
+        
+        const config = urgencyConfig[r.urgency] || urgencyConfig['urgent'];
+        const timeAgo = formatTimeAgo(r.created_at);
+        
+        return `
+            <div class="urgent-request-mini" data-id="${r.id}" onclick="openRespondModal(${r.id})">
+                <div class="urgent-mini-header">
+                    <span class="urgent-mini-badge urgent-mini-badge--${config.class}">
+                        ${config.icon} ${config.label}
+                    </span>
+                    <span class="urgent-mini-time">${timeAgo}</span>
+                </div>
+                <div class="urgent-mini-body">
+                    <div class="urgent-mini-center">
+                        <span class="urgent-mini-icon">🏥</span>
+                        <span class="urgent-mini-name">${r.medical_center_name || 'Медцентр'}</span>
+                    </div>
+                    <div class="urgent-mini-blood">
+                        <span class="blood-type-mini">${r.blood_type || '?'}</span>
+                    </div>
+                </div>
+                <div class="urgent-mini-footer">
+                    <button class="btn-mini-respond" onclick="event.stopPropagation(); openRespondModal(${r.id})">
+                        ${canDonateNow ? '⚡ Откликнуться' : '🔒 Заблокировано'}
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 /**
@@ -505,7 +584,7 @@ function openRespondModal(requestId) {
  * Откликнуться на запрос крови
  */
 async function respondToBloodRequest(requestId, message = '') {
-    // Проверка: можно ли откликаться
+    // Проверка: можно ли откликаться (фронтенд)
     if (!checkCanRespond()) {
         return;
     }
@@ -522,6 +601,13 @@ async function respondToBloodRequest(requestId, message = '') {
         if (response.ok) {
             showNotification('✅ Ваш отклик отправлен! Медицинский центр свяжется с вами.', 'success');
             loadRequestsFromAPI();
+        } else if (response.status === 403) {
+            // Блокировка от backend - 60 дней не прошло
+            const daysRemaining = result.days_remaining || '?';
+            showNotification(`🔒 ${result.error}`, 'error');
+            
+            // Показываем подробное предупреждение
+            alert(`❌ ДОНАЦИЯ ЗАПРЕЩЕНА\n\n${result.error}\n\nОсталось дождаться: ${daysRemaining} дней`);
         } else {
             showNotification('❌ ' + (result.error || 'Ошибка отклика'), 'error');
         }
@@ -2202,11 +2288,11 @@ async function loadDonationStatistics() {
  * Отобразить статистику донаций
  */
 function renderDonationStatistics(stats) {
-    // Анимация заполнения капельки
-    animateBloodDrop(stats.total_donations);
+    // Анимация заполнения капельки (по донациям текущего года)
+    animateBloodDrop(stats);
     
     // Герой-блок
-    document.getElementById('drop-donations').textContent = stats.total_donations || 0;
+    document.getElementById('drop-donations').textContent = stats.donations_this_year || 0;
     document.getElementById('lives-saved-hero').textContent = stats.lives_saved_estimate || 0;
     document.getElementById('hero-donations').textContent = stats.total_donations || 0;
     
@@ -2250,13 +2336,28 @@ function renderDonationStatistics(stats) {
 /**
  * Анимация заполнения капли крови
  */
-function animateBloodDrop(donations) {
+function animateBloodDrop(stats) {
     const fillElement = document.getElementById('bloodFill');
+    const yearText = document.getElementById('blood-drop-year-text');
+    const yearCount = document.getElementById('blood-drop-year-count');
+    
     if (!fillElement) return;
     
-    // Рассчитываем процент заполнения (20 донаций = 100%)
-    const maxDonations = 20;
-    const fillPercent = Math.min((donations / maxDonations) * 100, 100);
+    // Используем донации текущего года
+    const donationsThisYear = stats.donations_this_year || 0;
+    const maxDonations = stats.max_donations_per_year || 6;
+    const currentYear = stats.current_year || new Date().getFullYear();
+    
+    // Обновляем текст
+    if (yearText) {
+        yearText.textContent = `Донаций в ${currentYear} году`;
+    }
+    if (yearCount) {
+        yearCount.textContent = `${donationsThisYear} / ${maxDonations}`;
+    }
+    
+    // Рассчитываем процент заполнения (6 донаций = 100%)
+    const fillPercent = Math.min((donationsThisYear / maxDonations) * 100, 100);
     
     // Высота капли примерно 190 пикселей
     const dropHeight = 190;

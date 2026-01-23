@@ -531,3 +531,30 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Дополнительные стили для годовой статистики */
+.drop-sublabel {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 4px;
+    font-weight: 500;
+    text-transform: none;
+}
+
+.drop-label {
+    margin-top: 8px;
+}
+
+/* Анимация пульсации при заполнении */
+@keyframes dropPulse {
+    0%, 100% {
+        filter: brightness(1);
+    }
+    50% {
+        filter: brightness(1.1);
+    }
+}
+
+#bloodFill {
+    animation: dropPulse 3s ease-in-out infinite;
+}

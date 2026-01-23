@@ -829,7 +829,7 @@ function renderBloodRequests(requests) {
                                 <span class="meta-label">Истекает:</span>
                                 <span class="meta-value">${expiresDate}</span>
                             </span>
-                        </div>
+                </div>
                     ` : ''}
                     
                     <!-- Прогресс откликов -->
@@ -841,7 +841,7 @@ function renderBloodRequests(requests) {
                         ${neededDonors ? `
                             <div class="progress-bar">
                                 <div class="progress-fill" style="width: ${progress}%"></div>
-                            </div>
+                        </div>
                         ` : ''}
                     </div>
                 </div>
@@ -855,10 +855,10 @@ function renderBloodRequests(requests) {
                     <button class="btn btn-ghost btn-sm" onclick="editRequest(${req.id})">
                         Редактировать
                     </button>
-                    ${req.status === 'active' ? `
+                        ${req.status === 'active' ? `
                         <button class="btn btn-primary btn-sm" onclick="markRequestFulfilled(${req.id})">
-                            Выполнен
-                        </button>
+                                Выполнен
+                            </button>
                         <button class="btn btn-icon-only btn-ghost btn-sm" onclick="cancelRequest(${req.id})" title="Отменить">
                             ✕
                         </button>
@@ -1240,7 +1240,7 @@ function initModals() {
             
             if (response.ok) {
                 showNotification(`Срочный запрос отправлен донорам с группой ${bloodType.value}!`, 'success');
-                closeModal(document.getElementById('urgent-modal'));
+        closeModal(document.getElementById('urgent-modal'));
                 await loadBloodRequestsFromAPI(); // Обновляем список запросов
             } else {
                 const error = await response.json();
