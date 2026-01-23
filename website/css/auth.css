@@ -675,3 +675,260 @@
         transform: rotate(360deg);
     }
 }
+
+/* ============================================
+   АНИМАЦИИ УСПЕХА И ОШИБОК
+   ============================================ */
+
+/* Анимация тряски формы при ошибке */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+    20%, 40%, 60%, 80% { transform: translateX(10px); }
+}
+
+.auth-form.error-shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+/* Подсветка поля с ошибкой */
+.form-group.error input,
+.form-group.error select {
+    border-color: #e74c3c;
+    box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+    animation: errorPulse 0.5s ease-out;
+}
+
+@keyframes errorPulse {
+    0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
+    100% { box-shadow: 0 0 0 8px rgba(231, 76, 60, 0); }
+}
+
+/* Иконка ошибки в поле */
+.form-group.error {
+    position: relative;
+}
+
+.form-group.error::after {
+    content: '⚠️';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    animation: errorIconAppear 0.3s ease-out;
+}
+
+@keyframes errorIconAppear {
+    from {
+        opacity: 0;
+        transform: translateY(-50%) scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(-50%) scale(1);
+    }
+}
+
+/* Сообщение об ошибке */
+.field-error {
+    display: block;
+    margin-top: 8px;
+    color: #e74c3c;
+    font-size: 13px;
+    font-weight: 500;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Состояния кнопки */
+.btn-auth {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.btn-auth.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.btn-auth.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid white;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.btn-auth.success {
+    background: #2ecc71 !important;
+    pointer-events: none;
+}
+
+.btn-auth.success::before {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    color: white;
+    animation: checkAppear 0.5s ease-out;
+}
+
+@keyframes checkAppear {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* Floating label эффект */
+.form-group {
+    position: relative;
+}
+
+.form-group input:focus + label,
+.form-group select:focus + label,
+.form-group input:not(:placeholder-shown) + label,
+.form-group select:valid + label {
+    transform: translateY(-28px) scale(0.85);
+    color: var(--color-primary);
+}
+
+.form-group label {
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+/* Плавный переход между формами */
+.auth-form {
+    animation: formFadeIn 0.4s ease-out;
+}
+
+@keyframes formFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Анимация появления уведомлений */
+.auth-notification {
+    animation: notificationSlide 0.4s ease-out;
+}
+
+@keyframes notificationSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Accessibility: отключение анимаций */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Микровзаимодействия */
+.form-group input,
+.form-group select {
+    transition: all 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+    transform: translateY(-1px);
+}
+
+/* Чекбокс с анимацией */
+input[type="checkbox"] {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--color-gray-300);
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+input[type="checkbox"]:checked {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    animation: checkBounce 0.3s ease-out forwards;
+}
+
+@keyframes checkBounce {
+    0% { transform: translate(-50%, -50%) scale(0); }
+    50% { transform: translate(-50%, -50%) scale(1.2); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Hover эффекты для кнопок */
+.btn-auth {
+    transform: translateY(0);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.2);
+}
+
+.btn-auth:hover:not(.loading):not(.success) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
+}
+
+.btn-auth:active:not(.loading):not(.success) {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.2);
+}

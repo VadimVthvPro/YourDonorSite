@@ -619,6 +619,7 @@ function initFormValidation() {
             
             const btn = donorLoginForm.querySelector('button[type="submit"]');
             btn.classList.add('loading');
+            btn.textContent = 'Вход...';
             
             try {
                 const response = await fetch(`${API_URL}/donor/login`, {
@@ -635,10 +636,33 @@ function initFormValidation() {
                 const result = await response.json();
                 
                 if (response.ok) {
+                    // Успех - показываем анимацию
+                    btn.classList.remove('loading');
+                    btn.classList.add('success');
+                    btn.textContent = '';
+                    
                     localStorage.setItem('auth_token', result.token);
                     localStorage.setItem('user_type', 'donor');
                     localStorage.setItem('donor_user', JSON.stringify(result.user));
-                    window.location.href = 'donor-dashboard.html';
+                    
+                    setTimeout(() => {
+                        window.location.href = 'donor-dashboard.html';
+                    }, 800);
+                } else {
+                    // Ошибка - показываем анимацию тряски
+                    showFormError(donorLoginForm, result.error || 'Неверные данные для входа');
+                }
+                
+            } catch (error) {
+                showFormError(donorLoginForm, 'Ошибка соединения с сервером');
+            } finally {
+                if (!btn.classList.contains('success')) {
+                    btn.classList.remove('loading');
+                    btn.textContent = 'Войти';
+                }
+            }
+        });
+    }
                 } else {
                     showNotification(result.error || 'Ошибка входа', 'error');
                 }
@@ -881,67 +905,215 @@ function showTelegramVerificationModal(code, telegram_username) {
     // Создаём модальное окно
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 9999;';
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px);';
     
     modal.innerHTML = `
-        <div class="telegram-verification-modal" style="background: white; padding: 40px; border-radius: 16px; max-width: 500px; width: 90%; text-align: center;">
-            <div style="font-size: 48px; margin-bottom: 16px;">🎉</div>
-            <h2 style="margin-bottom: 16px; color: var(--color-text);">Регистрация почти завершена!</h2>
-            <p style="margin-bottom: 24px; color: var(--color-text-secondary);">
-                Для получения срочных уведомлений подтвердите Telegram
+        <div class="telegram-verification-modal" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); padding: 48px; border-radius: 24px; max-width: 540px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalFadeIn 0.3s ease-out;">
+            <div style="font-size: 64px; margin-bottom: 16px; animation: bounce 0.6s ease-out;">🎉</div>
+            <h2 style="margin-bottom: 12px; color: #2c3e50; font-size: 28px; font-weight: 700;">Регистрация успешна!</h2>
+            <p style="margin-bottom: 32px; color: #7f8c8d; font-size: 16px;">
+                Подтвердите аккаунт в Telegram для получения уведомлений
             </p>
             
-            <div style="background: var(--color-gray-50, #f5f5f5); padding: 24px; border-radius: 12px; margin-bottom: 24px;">
-                <p style="margin-bottom: 12px; font-weight: 600;">Ваш код для привязки:</p>
-                <div style="font-size: 36px; font-weight: 800; color: var(--color-primary, #e74c3c); letter-spacing: 0.3em; font-family: 'Courier New', monospace; margin: 16px 0;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);">
+                <p style="margin-bottom: 12px; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Ваш код:</p>
+                <div id="code-display" style="font-size: 48px; font-weight: 900; color: white; letter-spacing: 8px; font-family: 'Courier New', monospace; margin: 20px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.2);">
                     ${code}
                 </div>
-                <button onclick="navigator.clipboard.writeText('${code}')" style="padding: 8px 16px; background: var(--color-primary, #e74c3c); color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 12px;">
+                <button id="copy-code-btn" style="padding: 12px 28px; background: rgba(255,255,255,0.2); color: white; border: 2px solid rgba(255,255,255,0.3); border-radius: 10px; cursor: pointer; font-weight: 700; transition: all 0.2s; backdrop-filter: blur(10px);">
                     📋 Скопировать код
                 </button>
             </div>
             
-            <div style="text-align: left; background: var(--color-info-bg, #e3f2fd); padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-                <p style="font-weight: 600; margin-bottom: 12px;">📱 Инструкция:</p>
-                <ol style="margin: 0; padding-left: 20px; line-height: 1.8;">
-                    <li>Откройте Telegram</li>
-                    <li>Найдите бот <strong>@your_donor_bot</strong></li>
-                    <li>Нажмите /start</li>
-                    <li>Отправьте команду: <code style="background: white; padding: 2px 6px; border-radius: 4px;">/link ${code}</code></li>
+            <div style="text-align: left; background: #e8f4fd; padding: 20px; border-radius: 12px; margin-bottom: 24px; border-left: 4px solid #3498db;">
+                <p style="font-weight: 700; margin-bottom: 12px; color: #2c3e50; font-size: 15px;">📱 Всего 2 шага:</p>
+                <ol style="margin: 0; padding-left: 20px; line-height: 2; color: #34495e; font-size: 15px;">
+                    <li>Откройте бота в Telegram (кнопка ниже)</li>
+                    <li>Отправьте боту этот 6-значный код</li>
                 </ol>
+                <p style="margin-top: 12px; font-size: 13px; color: #7f8c8d; font-style: italic;">
+                    💡 Код автоматически подставится при переходе в бота
+                </p>
             </div>
             
-            <div style="display: flex; gap: 12px;">
-                <button id="telegram-open-btn" style="flex: 1; padding: 14px; background: #0088cc; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                    Открыть Telegram
+            <div style="display: flex; gap: 12px; flex-direction: column;">
+                <button id="telegram-open-btn" style="padding: 16px; background: linear-gradient(135deg, #0088cc 0%, #005f99 100%); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 16px; box-shadow: 0 4px 15px rgba(0,136,204,0.4); transition: all 0.2s;">
+                    🚀 Открыть бота в Telegram
                 </button>
-                <button id="telegram-skip-btn" style="flex: 1; padding: 14px; background: var(--color-gray-300, #ddd); color: var(--color-text); border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                    Пропустить
+                <button id="telegram-skip-btn" style="padding: 14px; background: transparent; color: #7f8c8d; border: 2px solid #e0e0e0; border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s;">
+                    Привяжу позже
                 </button>
             </div>
             
-            <p style="margin-top: 16px; font-size: 12px; color: var(--color-text-secondary);">
-                Код действителен 10 минут. Вы сможете привязать Telegram позже в профиле.
+            <p style="margin-top: 20px; font-size: 13px; color: #95a5a6;">
+                ⏱️ Код действителен <strong>10 минут</strong>
             </p>
         </div>
     `;
     
+    // Добавляем стили анимации
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        #copy-code-btn:hover {
+            background: rgba(255,255,255,0.3) !important;
+            transform: translateY(-2px);
+        }
+        #telegram-open-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,136,204,0.5);
+        }
+        #telegram-skip-btn:hover {
+            background: #f8f9fa;
+            border-color: #bdc3c7;
+        }
+    `;
+    document.head.appendChild(style);
+    
     document.body.appendChild(modal);
     
-    // Обработчик кнопки "Открыть Telegram"
+    // Обработчик кнопки "Скопировать код"
+    modal.querySelector('#copy-code-btn').addEventListener('click', (e) => {
+        navigator.clipboard.writeText(code).then(() => {
+            const btn = e.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '✅ Скопировано!';
+            btn.style.background = 'rgba(46, 204, 113, 0.3)';
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.style.background = 'rgba(255,255,255,0.2)';
+            }, 2000);
+        });
+    });
+    
+    // Обработчик кнопки "Открыть бота"
     modal.querySelector('#telegram-open-btn').addEventListener('click', () => {
-        window.open(`https://t.me/your_donor_bot?start=link_${code}`, '_blank');
-        showNotification('Откройте Telegram и отправьте команду /link ' + code, 'info');
+        // Deep link с кодом - бот автоматически его проверит
+        window.open(`https://t.me/your_donor_bot?start=${code}`, '_blank');
+        showNotification('Откройте Telegram и отправьте боту код (он уже скопирован)', 'info');
+        
+        // Начинаем проверять статус верификации каждые 3 секунды
+        startVerificationCheck(modal);
     });
     
     // Обработчик кнопки "Пропустить"
     modal.querySelector('#telegram-skip-btn').addEventListener('click', () => {
         modal.remove();
+        style.remove();
         showNotification('Вы можете привязать Telegram позже в профиле', 'info');
         setTimeout(() => {
             window.location.href = 'donor-dashboard.html';
         }, 1500);
     });
+}
+
+/**
+ * Периодическая проверка статуса верификации
+ */
+function startVerificationCheck(modal) {
+    let attempts = 0;
+    const maxAttempts = 40; // 40 * 3 сек = 2 минуты
+    
+    const checkInterval = setInterval(async () => {
+        attempts++;
+        
+        try {
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                clearInterval(checkInterval);
+                return;
+            }
+            
+            const response = await fetch(`${API_URL}/donor/profile`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Проверяем, привязан ли Telegram
+                if (data.telegram_id) {
+                    clearInterval(checkInterval);
+                    modal.remove();
+                    
+                    // Показываем анимацию успеха
+                    showSuccessAnimation(() => {
+                        window.location.href = 'donor-dashboard.html';
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Ошибка проверки верификации:', error);
+        }
+        
+        // Прекращаем проверку через 2 минуты
+        if (attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+        }
+    }, 3000);
+}
+
+/**
+ * Показать анимацию успеха
+ */
+function showSuccessAnimation(callback) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: center; z-index: 10000; animation: fadeIn 0.3s ease-out;';
+    
+    overlay.innerHTML = `
+        <div style="text-align: center; animation: zoomIn 0.5s ease-out;">
+            <div style="width: 120px; height: 120px; margin: 0 auto 24px; background: linear-gradient(135deg, #2ecc71, #27ae60); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 40px rgba(46, 204, 113, 0.4); animation: pulse 1s infinite;">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="animation: checkDraw 0.5s ease-out 0.3s both;">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <h2 style="font-size: 32px; font-weight: 700; color: #2c3e50; margin-bottom: 12px;">Аккаунт подтверждён!</h2>
+            <p style="font-size: 18px; color: #7f8c8d;">Добро пожаловать в Твой Донор</p>
+        </div>
+    `;
+    
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes zoomIn {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        @keyframes checkDraw {
+            from { stroke-dasharray: 100; stroke-dashoffset: 100; }
+            to { stroke-dasharray: 100; stroke-dashoffset: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(overlay);
+    
+    setTimeout(() => {
+        overlay.remove();
+        style.remove();
+        if (callback) callback();
+    }, 2500);
 }
 
 /**
@@ -974,4 +1146,52 @@ function showNotification(message, type = 'info') {
             notification.remove();
         }, 5000);
     }
+}
+
+/**
+ * Показать ошибку формы с анимацией
+ */
+function showFormError(form, message) {
+    // Анимация тряски
+    form.classList.add('error-shake');
+    setTimeout(() => {
+        form.classList.remove('error-shake');
+    }, 500);
+    
+    // Показываем уведомление
+    showNotification(message, 'error');
+}
+
+/**
+ * Подсветить поле с ошибкой
+ */
+function highlightFieldError(input, message) {
+    const formGroup = input.closest('.form-group');
+    if (!formGroup) return;
+    
+    // Добавляем класс ошибки
+    formGroup.classList.add('error');
+    
+    // Удаляем предыдущее сообщение об ошибке
+    const existingError = formGroup.querySelector('.field-error');
+    if (existingError) {
+        existingError.remove();
+    }
+    
+    // Добавляем сообщение об ошибке
+    if (message) {
+        const errorMsg = document.createElement('span');
+        errorMsg.className = 'field-error';
+        errorMsg.textContent = message;
+        formGroup.appendChild(errorMsg);
+    }
+    
+    // Убираем ошибку при фокусе
+    input.addEventListener('focus', () => {
+        formGroup.classList.remove('error');
+        const errorMsg = formGroup.querySelector('.field-error');
+        if (errorMsg) {
+            errorMsg.remove();
+        }
+    }, { once: true });
 }

@@ -437,22 +437,126 @@
         <section id="statistics" class="dashboard-section">
             <div class="section-header">
                 <h2>Статистика</h2>
-                <p>Аналитика донорской активности</p>
+                <p>Полная аналитика работы медицинского центра</p>
             </div>
             
-            <div class="stats-overview">
-                <div class="stat-block">
-                    <h3>По группам крови</h3>
-                    <div id="blood-stats" class="blood-stats-chart">
-                        <!-- Заполняется динамически -->
+            <!-- Выбор периода -->
+            <div class="stats-period-selector">
+                <div class="period-presets">
+                    <button class="period-btn" data-period="today">Сегодня</button>
+                    <button class="period-btn" data-period="week">Неделя</button>
+                    <button class="period-btn active" data-period="month">Месяц</button>
+                    <button class="period-btn" data-period="quarter">Квартал</button>
+                    <button class="period-btn" data-period="year">Год</button>
+                    <button class="period-btn" data-period="all">Всё время</button>
+                </div>
+                
+                <div class="period-custom">
+                    <label>От:</label>
+                    <input type="date" id="stats-date-from" class="date-input">
+                    <label>До:</label>
+                    <input type="date" id="stats-date-to" class="date-input">
+                    <button class="btn btn-secondary btn-sm" id="apply-custom-period">Применить</button>
+                    <button class="btn btn-primary btn-sm" id="export-stats-btn">📥 Скачать TXT</button>
+                </div>
+            </div>
+            
+            <!-- Основные метрики -->
+            <div class="stats-cards">
+                <div class="stat-card stat-card-primary">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="stat-requests">0</div>
+                        <div class="stat-label">Запросов крови</div>
+                        <div class="stat-change" id="stat-requests-change">-</div>
                     </div>
                 </div>
                 
-                <div class="stat-block">
-                    <h3>Донации за последние 6 месяцев</h3>
-                    <div id="donations-chart" class="donations-chart">
-                        <!-- Заполняется динамически -->
+                <div class="stat-card stat-card-success">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="stat-donors">0</div>
+                        <div class="stat-label">Уникальных доноров</div>
+                        <div class="stat-change" id="stat-donors-change">-</div>
                     </div>
+                </div>
+                
+                <div class="stat-card stat-card-danger">
+                    <div class="stat-icon">🩸</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="stat-donations">0</div>
+                        <div class="stat-label">Донаций проведено</div>
+                        <div class="stat-change" id="stat-donations-change">-</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card stat-card-info">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="stat-volume">0 л</div>
+                        <div class="stat-label">Объём крови</div>
+                        <div class="stat-change" id="stat-volume-change">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Диаграммы -->
+            <div class="stats-charts-grid">
+                <div class="chart-card">
+                    <h3>Запросы по срочности</h3>
+                    <div id="urgency-chart" class="chart-container">
+                        <div class="chart-empty">Нет данных</div>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <h3>Донации по группам крови</h3>
+                    <div id="blood-type-chart" class="chart-container">
+                        <div class="chart-empty">Нет данных</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Детальная статистика -->
+            <div class="stats-detailed">
+                <div class="detailed-section">
+                    <h3>Запросы крови</h3>
+                    <table class="stats-table">
+                        <tr>
+                            <td>Всего запросов</td>
+                            <td id="detail-total-requests">-</td>
+                        </tr>
+                        <tr>
+                            <td>Активных</td>
+                            <td id="detail-active-requests">-</td>
+                        </tr>
+                        <tr>
+                            <td>Завершённых</td>
+                            <td id="detail-closed-requests">-</td>
+                        </tr>
+                        <tr>
+                            <td>Отменённых</td>
+                            <td id="detail-cancelled-requests">-</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="detailed-section">
+                    <h3>Отклики доноров</h3>
+                    <table class="stats-table">
+                        <tr>
+                            <td>Всего откликов</td>
+                            <td id="detail-total-responses">-</td>
+                        </tr>
+                        <tr>
+                            <td>Подтверждено</td>
+                            <td id="detail-confirmed-responses">-</td>
+                        </tr>
+                        <tr>
+                            <td>Конверсия</td>
+                            <td id="detail-conversion-rate">-</td>
+                        </tr>
+                    </table>
                 </div>
             </div>
         </section>

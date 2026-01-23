@@ -2809,6 +2809,297 @@ def view_donor_certificate_alt(donor_id):
 # ============================================
 # API: Учёт донаций медцентром
 # ============================================
+
+# ============================================
+# API: Статистика для медцентров
+# ============================================
+
+@app.route('/api/medical-center/statistics', methods=['GET'])
+@require_auth('medcenter')
+def get_medical_center_statistics():
+    """Получить статистику медцентра за период"""
+    from datetime import datetime, timedelta, date
+    
+    medical_center_id = g.session['medical_center_id']
+    
+    # Получаем параметры периода
+    from_date = request.args.get('from')
+    to_date = request.args.get('to')
+    period = request.args.get('period', 'month')  # today, week, month, quarter, year, all
+    
+    # Определяем даты периода
+    today = date.today()
+    
+    if from_date and to_date:
+        start_date = datetime.strptime(from_date, '%Y-%m-%d').date()
+        end_date = datetime.strptime(to_date, '%Y-%m-%d').date()
+    elif period == 'today':
+        start_date = today
+        end_date = today
+    elif period == 'yesterday':
+        start_date = today - timedelta(days=1)
+        end_date = start_date
+    elif period == 'week':
+        start_date = today - timedelta(days=7)
+        end_date = today
+    elif period == 'month':
+        start_date = today - timedelta(days=30)
+        end_date = today
+    elif period == 'quarter':
+        start_date = today - timedelta(days=90)
+        end_date = today
+    elif period == 'year':
+        start_date = today - timedelta(days=365)
+        end_date = today
+    else:  # all
+        start_date = date(2020, 1, 1)
+        end_date = today
+    
+    # Предыдущий период (для сравнения)
+    period_length = (end_date - start_date).days + 1
+    prev_start_date = start_date - timedelta(days=period_length)
+    prev_end_date = start_date - timedelta(days=1)
+    
+    # ========== ЗАПРОСЫ КРОВИ ==========
+    blood_requests_stats = query_db("""
+        SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+            SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END) as closed,
+            SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled,
+            SUM(CASE WHEN status = 'expired' THEN 1 ELSE 0 END) as expired,
+            SUM(CASE WHEN urgency = 'normal' THEN 1 ELSE 0 END) as normal_urgency,
+            SUM(CASE WHEN urgency = 'needed' THEN 1 ELSE 0 END) as needed_urgency,
+            SUM(CASE WHEN urgency = 'urgent' THEN 1 ELSE 0 END) as urgent_urgency,
+            SUM(CASE WHEN urgency = 'critical' THEN 1 ELSE 0 END) as critical_urgency
+        FROM blood_requests
+        WHERE medical_center_id = %s
+        AND created_at::date BETWEEN %s AND %s
+    """, (medical_center_id, start_date, end_date), one=True)
+    
+    # Статистика предыдущего периода
+    prev_requests_count = query_db("""
+        SELECT COUNT(*) as total FROM blood_requests
+        WHERE medical_center_id = %s
+        AND created_at::date BETWEEN %s AND %s
+    """, (medical_center_id, prev_start_date, prev_end_date), one=True)['total'] or 0
+    
+    # Статистика по группам крови
+    requests_by_blood_type = query_db("""
+        SELECT blood_type, COUNT(*) as count
+        FROM blood_requests
+        WHERE medical_center_id = %s
+        AND created_at::date BETWEEN %s AND %s
+        GROUP BY blood_type
+        ORDER BY count DESC
+    """, (medical_center_id, start_date, end_date))
+    
+    # ========== ДОНОРЫ И ОТКЛИКИ ==========
+    responses_stats = query_db("""
+        SELECT 
+            COUNT(DISTINCT dr.user_id) as unique_donors,
+            COUNT(*) as total_responses,
+            SUM(CASE WHEN dr.status = 'confirmed' THEN 1 ELSE 0 END) as confirmed,
+            SUM(CASE WHEN dr.status = 'pending' THEN 1 ELSE 0 END) as pending,
+            SUM(CASE WHEN dr.status = 'cancelled' OR dr.status = 'rejected' THEN 1 ELSE 0 END) as declined
+        FROM donation_responses dr
+        JOIN blood_requests br ON dr.request_id = br.id
+        WHERE br.medical_center_id = %s
+        AND dr.created_at::date BETWEEN %s AND %s
+    """, (medical_center_id, start_date, end_date), one=True)
+    
+    prev_responses_count = query_db("""
+        SELECT COUNT(*) as total FROM donation_responses dr
+        JOIN blood_requests br ON dr.request_id = br.id
+        WHERE br.medical_center_id = %s
+        AND dr.created_at::date BETWEEN %s AND %s
+    """, (medical_center_id, prev_start_date, prev_end_date), one=True)['total'] or 0
+    
+    # ========== ДОНАЦИИ ==========
+    donations_stats = query_db("""
+        SELECT 
+            COUNT(*) as total_donations,
+            COALESCE(SUM(volume_ml), 0) as total_volume_ml
+        FROM donation_history dh
+        JOIN users u ON dh.donor_id = u.id
+        WHERE dh.medical_center_id = %s
+        AND dh.donation_date BETWEEN %s AND %s
+    """, (medical_center_id, start_date, end_date), one=True)
+    
+    prev_donations_count = query_db("""
+        SELECT COUNT(*) as total FROM donation_history
+        WHERE medical_center_id = %s
+        AND donation_date BETWEEN %s AND %s
+    """, (medical_center_id, prev_start_date, prev_end_date), one=True)['total'] or 0
+    
+    # Донации по группам крови
+    donations_by_blood_type = query_db("""
+        SELECT 
+            u.blood_type,
+            COUNT(*) as count,
+            COALESCE(SUM(dh.volume_ml), 0) as total_volume
+        FROM donation_history dh
+        JOIN users u ON dh.donor_id = u.id
+        WHERE dh.medical_center_id = %s
+        AND dh.donation_date BETWEEN %s AND %s
+        GROUP BY u.blood_type
+        ORDER BY count DESC
+    """, (medical_center_id, start_date, end_date))
+    
+    # Рассчитываем проценты изменений
+    def calc_change(current, previous):
+        if previous == 0:
+            return 100 if current > 0 else 0
+        return round(((current - previous) / previous) * 100, 1)
+    
+    requests_change = calc_change(blood_requests_stats['total'] or 0, prev_requests_count)
+    responses_change = calc_change(responses_stats['total_responses'] or 0, prev_responses_count)
+    donations_change = calc_change(donations_stats['total_donations'] or 0, prev_donations_count)
+    
+    # Формируем ответ
+    stats = {
+        'period': {
+            'from': start_date.isoformat(),
+            'to': end_date.isoformat(),
+            'period_type': period
+        },
+        'blood_requests': {
+            'total': blood_requests_stats['total'] or 0,
+            'active': blood_requests_stats['active'] or 0,
+            'closed': blood_requests_stats['closed'] or 0,
+            'cancelled': blood_requests_stats['cancelled'] or 0,
+            'expired': blood_requests_stats['expired'] or 0,
+            'by_urgency': {
+                'normal': blood_requests_stats['normal_urgency'] or 0,
+                'needed': blood_requests_stats['needed_urgency'] or 0,
+                'urgent': blood_requests_stats['urgent_urgency'] or 0,
+                'critical': blood_requests_stats['critical_urgency'] or 0
+            },
+            'by_blood_type': [dict(r) for r in requests_by_blood_type],
+            'change_percent': requests_change
+        },
+        'responses': {
+            'unique_donors': responses_stats['unique_donors'] or 0,
+            'total_responses': responses_stats['total_responses'] or 0,
+            'confirmed': responses_stats['confirmed'] or 0,
+            'pending': responses_stats['pending'] or 0,
+            'declined': responses_stats['declined'] or 0,
+            'conversion_rate': round((responses_stats['confirmed'] or 0) / (responses_stats['total_responses'] or 1) * 100, 1),
+            'change_percent': responses_change
+        },
+        'donations': {
+            'total': donations_stats['total_donations'] or 0,
+            'total_volume_ml': donations_stats['total_volume_ml'] or 0,
+            'total_volume_liters': round((donations_stats['total_volume_ml'] or 0) / 1000, 2),
+            'by_blood_type': [dict(r) for r in donations_by_blood_type],
+            'change_percent': donations_change
+        }
+    }
+    
+    return jsonify(stats), 200
+
+@app.route('/api/medical-center/statistics/export', methods=['GET'])
+@require_auth('medcenter')
+def export_statistics():
+    """Экспорт статистики в TXT"""
+    from datetime import datetime
+    import io
+    from flask import Response
+    
+    # Получаем статистику
+    stats_response = get_medical_center_statistics()
+    stats = stats_response[0].get_json()
+    
+    # Получаем название медцентра
+    mc = query_db(
+        "SELECT name FROM medical_centers WHERE id = %s",
+        (g.session['medical_center_id'],), one=True
+    )
+    mc_name = mc['name'] if mc else 'Медицинский центр'
+    
+    # Формируем текстовый отчёт
+    output = io.StringIO()
+    
+    output.write("=" * 60 + "\n")
+    output.write("        СТАТИСТИКА МЕДИЦИНСКОГО ЦЕНТРА\n")
+    output.write("=" * 60 + "\n\n")
+    output.write(f"Центр: {mc_name}\n")
+    output.write(f"Период: {stats['period']['from']} — {stats['period']['to']}\n")
+    output.write(f"Дата формирования: {datetime.now().strftime('%d.%m.%Y %H:%M')}\n\n")
+    
+    output.write("-" * 60 + "\n")
+    output.write("                    ЗАПРОСЫ КРОВИ\n")
+    output.write("-" * 60 + "\n\n")
+    
+    req = stats['blood_requests']
+    output.write(f"Всего запросов:                    {req['total']}\n")
+    output.write(f"  - Активных:                       {req['active']}\n")
+    output.write(f"  - Завершённых:                    {req['closed']}\n")
+    output.write(f"  - Отменённых:                     {req['cancelled']}\n")
+    output.write(f"  - Истёкших:                       {req['expired']}\n\n")
+    
+    output.write("По срочности:\n")
+    output.write(f"  - Обычных:                        {req['by_urgency']['normal']}\n")
+    output.write(f"  - Нужно пополнить:                {req['by_urgency']['needed']}\n")
+    output.write(f"  - Срочных:                        {req['by_urgency']['urgent']}\n")
+    output.write(f"  - Критичных:                      {req['by_urgency']['critical']}\n\n")
+    
+    if req['by_blood_type']:
+        output.write("По группам крови:\n")
+        for bt in req['by_blood_type']:
+            output.write(f"  - {bt['blood_type']:5s}                          {bt['count']}\n")
+    output.write("\n")
+    
+    output.write("-" * 60 + "\n")
+    output.write("                  ДОНОРЫ И ОТКЛИКИ\n")
+    output.write("-" * 60 + "\n\n")
+    
+    resp = stats['responses']
+    output.write(f"Уникальных доноров:                {resp['unique_donors']}\n")
+    output.write(f"Всего откликов:                    {resp['total_responses']}\n")
+    output.write(f"  - Одобрено:                       {resp['confirmed']}\n")
+    output.write(f"  - Ожидают решения:                {resp['pending']}\n")
+    output.write(f"  - Отклонено:                      {resp['declined']}\n\n")
+    output.write(f"Конверсия откликов:                {resp['conversion_rate']}%\n\n")
+    
+    output.write("-" * 60 + "\n")
+    output.write("                      ДОНАЦИИ\n")
+    output.write("-" * 60 + "\n\n")
+    
+    don = stats['donations']
+    output.write(f"Всего донаций:                     {don['total']}\n")
+    output.write(f"Общий объём:                       {don['total_volume_liters']} л\n\n")
+    
+    if don['by_blood_type']:
+        output.write("По группам крови:\n")
+        for bt in don['by_blood_type']:
+            volume_l = round(bt['total_volume'] / 1000, 2)
+            output.write(f"  - {bt['blood_type']:5s}    {bt['count']:3d} донаций   ({volume_l:6.2f} л)\n")
+    output.write("\n")
+    
+    output.write("-" * 60 + "\n")
+    output.write("              СРАВНЕНИЕ С ПРОШЛЫМ ПЕРИОДОМ\n")
+    output.write("-" * 60 + "\n\n")
+    
+    output.write(f"Запросов:                          {req['change_percent']:+.1f}%\n")
+    output.write(f"Откликов:                          {resp['change_percent']:+.1f}%\n")
+    output.write(f"Донаций:                           {don['change_percent']:+.1f}%\n\n")
+    
+    output.write("=" * 60 + "\n")
+    output.write("        Конец отчёта. Спасибо за вашу работу!\n")
+    output.write("=" * 60 + "\n")
+    
+    # Формируем имя файла
+    period_str = f"{stats['period']['from']}_{stats['period']['to']}"
+    filename = f"statistics_{mc_name.replace(' ', '_')}_{period_str}.txt"
+    
+    return Response(
+        output.getvalue(),
+        mimetype='text/plain; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )
+
+# ============================================
 # Запуск сервера
 # ============================================
 

@@ -2097,3 +2097,240 @@ async function rejectResponse(responseId) {
     }
 }
 
+
+// ============================================
+// СТАТИСТИКА
+// ============================================
+
+let currentStatsperiod = 'month';
+let statsData = null;
+
+async function initStatistics() {
+    // Устанавливаем текущую дату как макс. для date inputs
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('stats-date-to').value = today;
+    
+    const monthAgo = new Date();
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+    document.getElementById('stats-date-from').value = monthAgo.toISOString().split('T')[0];
+    
+    // Обработчики кнопок периода
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentStatsperiod = btn.dataset.period;
+            loadStatistics();
+        });
+    });
+    
+    // Применить кастомный период
+    document.getElementById('apply-custom-period').addEventListener('click', () => {
+        loadStatistics(true);
+    });
+    
+    // Экспорт
+    document.getElementById('export-stats-btn').addEventListener('click', exportStatistics);
+    
+    // Загрузить при открытии секции
+    loadStatistics();
+}
+
+async function loadStatistics(useCustomDates = false) {
+    try {
+        let url = `${MC_API_URL}/statistics?`;
+        
+        if (useCustomDates) {
+            const from = document.getElementById('stats-date-from').value;
+            const to = document.getElementById('stats-date-to').value;
+            url += `from=${from}&to=${to}`;
+        } else {
+            url += `period=${currentStatsperiod}`;
+        }
+        
+        const response = await fetch(url, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error('Ошибка загрузки статистики');
+        }
+        
+        statsData = await response.json();
+        renderStatistics(statsData);
+        
+    } catch (error) {
+        console.error('Ошибка загрузки статистики:', error);
+        showNotification('Ошибка загрузки статистики', 'error');
+    }
+}
+
+function renderStatistics(stats) {
+    // Основные метрики
+    document.getElementById('stat-requests').textContent = stats.blood_requests.total;
+    document.getElementById('stat-donors').textContent = stats.responses.unique_donors;
+    document.getElementById('stat-donations').textContent = stats.donations.total;
+    document.getElementById('stat-volume').textContent = stats.donations.total_volume_liters + ' л';
+    
+    // Изменения
+    renderStatChange('stat-requests-change', stats.blood_requests.change_percent);
+    renderStatChange('stat-donors-change', stats.responses.change_percent);
+    renderStatChange('stat-donations-change', stats.donations.change_percent);
+    renderStatChange('stat-volume-change', stats.donations.change_percent);
+    
+    // Диаграмма по срочности
+    renderUrgencyChart(stats.blood_requests.by_urgency);
+    
+    // Диаграмма по группам крови
+    renderBloodTypeChart(stats.donations.by_blood_type);
+    
+    // Детальная статистика
+    document.getElementById('detail-total-requests').textContent = stats.blood_requests.total;
+    document.getElementById('detail-active-requests').textContent = stats.blood_requests.active;
+    document.getElementById('detail-closed-requests').textContent = stats.blood_requests.closed;
+    document.getElementById('detail-cancelled-requests').textContent = stats.blood_requests.cancelled;
+    
+    document.getElementById('detail-total-responses').textContent = stats.responses.total_responses;
+    document.getElementById('detail-confirmed-responses').textContent = stats.responses.confirmed;
+    document.getElementById('detail-conversion-rate').textContent = stats.responses.conversion_rate + '%';
+}
+
+function renderStatChange(elementId, change) {
+    const el = document.getElementById(elementId);
+    el.textContent = (change > 0 ? '+' : '') + change + '%';
+    el.className = 'stat-change';
+    if (change > 0) el.classList.add('positive');
+    if (change < 0) el.classList.add('negative');
+}
+
+function renderUrgencyChart(urgencyData) {
+    const container = document.getElementById('urgency-chart');
+    const total = urgencyData.normal + urgencyData.needed + urgencyData.urgent + urgencyData.critical;
+    
+    if (total === 0) {
+        container.innerHTML = '<div class="chart-empty">Нет данных</div>';
+        return;
+    }
+    
+    const colors = {
+        'normal': '#95a5a6',
+        'needed': '#f39c12',
+        'urgent': '#e67e22',
+        'critical': '#e74c3c'
+    };
+    
+    const labels = {
+        'normal': 'Обычные',
+        'needed': 'Нужно пополнить',
+        'urgent': 'Срочные',
+        'critical': 'Критичные'
+    };
+    
+    const data = [
+        { key: 'normal', value: urgencyData.normal },
+        { key: 'needed', value: urgencyData.needed },
+        { key: 'urgent', value: urgencyData.urgent },
+        { key: 'critical', value: urgencyData.critical }
+    ].filter(d => d.value > 0);
+    
+    container.innerHTML = `
+        <div class="chart-pie-list">
+            ${data.map(d => `
+                <div class="chart-pie-item">
+                    <div class="chart-pie-color" style="background: ${colors[d.key]}"></div>
+                    <div class="chart-pie-label">${labels[d.key]}</div>
+                    <div class="chart-pie-value">${d.value}</div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderBloodTypeChart(bloodTypeData) {
+    const container = document.getElementById('blood-type-chart');
+    
+    if (!bloodTypeData || bloodTypeData.length === 0) {
+        container.innerHTML = '<div class="chart-empty">Нет данных</div>';
+        return;
+    }
+    
+    const maxCount = Math.max(...bloodTypeData.map(d => d.count));
+    
+    container.innerHTML = `
+        <div class="chart-bar-list">
+            ${bloodTypeData.map(d => `
+                <div class="chart-bar-item">
+                    <div class="chart-bar-label">${d.blood_type}</div>
+                    <div class="chart-bar-track">
+                        <div class="chart-bar-fill" style="width: ${(d.count / maxCount) * 100}%">
+                            ${d.count}
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+async function exportStatistics() {
+    try {
+        let url = `${MC_API_URL}/statistics/export?`;
+        
+        // Используем те же параметры, что и для текущей статистики
+        const from = document.getElementById('stats-date-from').value;
+        const to = document.getElementById('stats-date-to').value;
+        
+        if (from && to) {
+            url += `from=${from}&to=${to}`;
+        } else {
+            url += `period=${currentStatsperiod}`;
+        }
+        
+        const response = await fetch(url, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error('Ошибка экспорта');
+        }
+        
+        // Скачиваем файл
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        
+        // Получаем имя файла из заголовка
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = 'statistics.txt';
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+            if (filenameMatch) {
+                filename = filenameMatch[1];
+            }
+        }
+        
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        showNotification('Статистика успешно скачана', 'success');
+        
+    } catch (error) {
+        console.error('Ошибка экспорта:', error);
+        showNotification('Ошибка экспорта статистики', 'error');
+    }
+}
+
+// Инициализация статистики при открытии секции
+document.addEventListener('DOMContentLoaded', () => {
+    // Добавляем в обработчик навигации
+    const existingNavHandler = document.querySelector('[data-section="statistics"]');
+    if (existingNavHandler) {
+        existingNavHandler.addEventListener('click', () => {
+            setTimeout(initStatistics, 100);
+        });
+    }
+});
