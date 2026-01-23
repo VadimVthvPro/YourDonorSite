@@ -1150,6 +1150,12 @@ function initModals() {
         saveRequestBtn.addEventListener('click', saveEditedRequest);
     }
     
+    // Отправка сообщения донору
+    const sendMessageBtn = document.querySelector('[data-action="send-message"]');
+    if (sendMessageBtn) {
+        sendMessageBtn.addEventListener('click', sendMessageToDonor);
+    }
+    
     // Закрытие модалок
     document.querySelectorAll('.modal').forEach(modal => {
         modal.querySelector('.modal-close')?.addEventListener('click', () => closeModal(modal));
@@ -1203,65 +1209,66 @@ function openUrgentModal() {
 
 function openDonorModal(donor) {
     const modal = document.getElementById('donor-modal');
-    const content = document.getElementById('donor-modal-content');
+    const donorInfo = document.getElementById('donor-info');
+    const donorId = document.getElementById('donor-id');
     
-    content.innerHTML = `
-        <div class="donor-details">
-            <div class="donor-detail-row">
-                <span class="label">ФИО:</span>
-                <span class="value">${donor.name}</span>
-            </div>
-            <div class="donor-detail-row">
-                <span class="label">Группа крови:</span>
-                <span class="value blood">${donor.blood}</span>
-            </div>
-            <div class="donor-detail-row">
-                <span class="label">Последняя донация:</span>
-                <span class="value">${donor.lastDonation}</span>
-            </div>
-            <div class="donor-detail-row">
-                <span class="label">Статус:</span>
-                <span class="value ${donor.status}">${donor.status === 'available' ? 'Доступен' : 'Восстановление'}</span>
-            </div>
+    // Заполняем информацию о доноре
+    donorInfo.innerHTML = `
+        <div style="display: grid; gap: 10px;">
+            <div><strong>Донор:</strong> ${donor.donor_name || donor.name || 'Неизвестно'}</div>
+            <div><strong>Группа крови:</strong> <span class="blood-type-badge">${donor.blood_type || donor.blood || '—'}</span></div>
+            <div><strong>Телефон:</strong> ${donor.donor_phone || donor.phone || '—'}</div>
+            <div><strong>Email:</strong> ${donor.donor_email || donor.email || '—'}</div>
         </div>
     `;
     
-    // Добавляем стили
-    const style = document.createElement('style');
-    style.textContent = `
-        .donor-details {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-md);
-        }
-        .donor-detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding-bottom: var(--spacing-md);
-            border-bottom: 1px solid var(--color-gray-100);
-        }
-        .donor-detail-row .label {
-            color: var(--color-gray-500);
-        }
-        .donor-detail-row .value {
-            font-weight: 600;
-        }
-        .donor-detail-row .value.blood {
-            padding: 0.25rem 0.75rem;
-            background: var(--color-primary-lighter);
-            color: var(--color-primary);
-            border-radius: var(--radius-full);
-        }
-        .donor-detail-row .value.available {
-            color: var(--color-success);
-        }
-        .donor-detail-row .value.recovery {
-            color: var(--color-warning);
-        }
-    `;
-    document.head.appendChild(style);
+    donorId.value = donor.donor_id || donor.user_id || donor.id;
+    
+    // Очищаем форму
+    document.getElementById('message-type').value = 'invitation';
+    document.getElementById('message-text').value = '';
+    document.getElementById('send-telegram').checked = true;
     
     modal.classList.add('active');
+}
+
+/**
+ * Отправить сообщение донору
+ */
+async function sendMessageToDonor() {
+    const donorId = document.getElementById('donor-id').value;
+    const messageType = document.getElementById('message-type').value;
+    const messageText = document.getElementById('message-text').value;
+    const sendTelegram = document.getElementById('send-telegram').checked;
+    
+    if (!messageText.trim()) {
+        showNotification('❌ Введите текст сообщения', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${MC_API_URL}/messages`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                user_id: donorId,
+                message_type: messageType,
+                message: messageText,
+                send_telegram: sendTelegram
+            })
+        });
+        
+        if (response.ok) {
+            showNotification('✅ Сообщение отправлено', 'success');
+            closeModal(document.getElementById('donor-modal'));
+        } else {
+            const error = await response.json();
+            showNotification('❌ ' + (error.error || 'Ошибка отправки'), 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка отправки сообщения:', error);
+        showNotification('❌ Ошибка соединения', 'error');
+    }
 }
 
 function closeModal(modal) {

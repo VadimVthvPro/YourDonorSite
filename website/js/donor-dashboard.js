@@ -392,11 +392,18 @@ function updateRequestsBadges(requests) {
         navBadge.style.display = totalCount > 0 ? 'inline-flex' : 'none';
     }
     
-    // Бейджи в фильтрах
-    document.getElementById('filter-count-all').textContent = totalCount;
-    document.getElementById('filter-count-critical').textContent = criticalCount;
-    document.getElementById('filter-count-urgent').textContent = urgentCount;
-    document.getElementById('filter-count-responded').textContent = respondedCount;
+    // Бейджи в фильтрах (с проверкой существования)
+    const filterCountAll = document.getElementById('filter-count-all');
+    if (filterCountAll) filterCountAll.textContent = totalCount;
+    
+    const filterCountCritical = document.getElementById('filter-count-critical');
+    if (filterCountCritical) filterCountCritical.textContent = criticalCount;
+    
+    const filterCountUrgent = document.getElementById('filter-count-urgent');
+    if (filterCountUrgent) filterCountUrgent.textContent = urgentCount;
+    
+    const filterCountResponded = document.getElementById('filter-count-responded');
+    if (filterCountResponded) filterCountResponded.textContent = respondedCount;
 }
 
 /**
@@ -719,6 +726,30 @@ function initNavigation() {
             
             // Закрываем мобильное меню
             document.querySelector('.sidebar')?.classList.remove('active');
+        });
+    });
+    
+    // Обработка anchor-ссылок типа <a href="#donate">
+    document.querySelectorAll('a[href^="#"]').forEach(link => {
+        link.addEventListener('click', (e) => {
+            const hash = link.getAttribute('href').slice(1);
+            const targetSection = document.getElementById(hash);
+            
+            if (targetSection && targetSection.classList.contains('dashboard-section')) {
+                e.preventDefault();
+                
+                // Обновляем навигацию
+                navItems.forEach(nav => nav.classList.remove('active'));
+                const navItem = document.querySelector(`.nav-item[data-section="${hash}"]`);
+                if (navItem) navItem.classList.add('active');
+                
+                // Показываем секцию
+                sections.forEach(section => section.classList.remove('active'));
+                targetSection.classList.add('active');
+                
+                // Обновляем заголовок
+                updatePageTitle(hash);
+            }
         });
     });
     

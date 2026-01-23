@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="../css/styles.css">
     <link rel="stylesheet" href="../css/dashboard.css">
     <link rel="stylesheet" href="../css/medcenter.css">
+    <link rel="stylesheet" href="../css/request-form.css">
+    <link rel="stylesheet" href="../css/request-cards.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -184,7 +186,7 @@
                         </svg>
                     </div>
                     <div class="stat-info">
-                        <span class="stat-value" id="stat-total-donors">128</span>
+                        <span class="stat-value" id="stat-donors">0</span>
                         <span class="stat-label">Всего доноров</span>
                     </div>
                 </div>
@@ -197,8 +199,8 @@
                         </svg>
                     </div>
                     <div class="stat-info">
-                        <span class="stat-value" id="stat-available">67</span>
-                        <span class="stat-label">Доступны сейчас</span>
+                        <span class="stat-value" id="stat-requests">0</span>
+                        <span class="stat-label">Активных запросов</span>
                     </div>
                 </div>
                 
@@ -210,7 +212,7 @@
                         </svg>
                     </div>
                     <div class="stat-info">
-                        <span class="stat-value" id="stat-pending">5</span>
+                        <span class="stat-value" id="stat-pending">0</span>
                         <span class="stat-label">Ожидают отклика</span>
                     </div>
                 </div>
@@ -222,7 +224,7 @@
                         </svg>
                     </div>
                     <div class="stat-info">
-                        <span class="stat-value" id="stat-donations-month">23</span>
+                        <span class="stat-value" id="stat-donations-month">0</span>
                         <span class="stat-label">Донаций за месяц</span>
                     </div>
                 </div>
@@ -577,28 +579,42 @@
     </div>
 
     <!-- Модальное окно донора -->
+    <!-- Модалка: Связаться с донором -->
     <div id="donor-modal" class="modal">
-        <div class="modal-content">
-            <button class="modal-close">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-            </button>
+        <div class="modal-dialog">
             <div class="modal-header">
-                <div class="modal-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-                        <circle cx="12" cy="7" r="4"/>
-                    </svg>
-                </div>
-                <h2>Информация о доноре</h2>
+                <h3>✉️ Отправить сообщение донору</h3>
+                <button class="modal-close">&times;</button>
             </div>
-            <div class="modal-body" id="donor-modal-content">
-                <!-- Заполняется динамически -->
+            <div class="modal-body">
+                <div id="donor-info" style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                    <!-- Заполняется динамически -->
+                </div>
+                <form id="message-form">
+                    <input type="hidden" id="donor-id">
+                    <div class="form-group">
+                        <label>Тип сообщения *</label>
+                        <select id="message-type" required>
+                            <option value="invitation">Приглашение на донацию</option>
+                            <option value="confirmation">Подтверждение записи</option>
+                            <option value="other">Другое</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Текст сообщения *</label>
+                        <textarea id="message-text" rows="5" placeholder="Введите сообщение..." required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" id="send-telegram" style="margin-right: 10px;">
+                            <span>Также отправить в Telegram (если подключён)</span>
+                        </label>
+                    </div>
+                </form>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-outline" data-action="close">Закрыть</button>
-                <button class="btn btn-primary" data-action="contact">Связаться</button>
+                <button class="btn btn-outline" data-action="cancel">Отмена</button>
+                <button class="btn btn-primary" data-action="send-message">Отправить ➤</button>
             </div>
         </div>
     </div>
@@ -607,74 +623,130 @@
     <div id="create-request-modal" class="modal">
         <div class="modal-dialog modal-lg">
             <div class="modal-header">
-                <h3>Создать запрос на донацию</h3>
+                <h3>🩸 Создать запрос на донацию крови</h3>
                 <button class="modal-close">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="create-request-form">
+                    <!-- Группа крови -->
                     <div class="form-group">
-                        <label>Группа крови *</label>
-                        <div class="blood-type-selector">
-                            <label class="blood-option">
+                        <label class="form-label-enhanced">
+                            <span class="label-icon">🩸</span>
+                            <span>Группа крови *</span>
+                        </label>
+                        <div class="blood-type-grid">
+                            <label class="blood-type-card">
                                 <input type="radio" name="request_blood" value="A+" required>
-                                <span>A+</span>
+                                <span class="blood-type-content">
+                                    <span class="blood-text">A+</span>
+                                </span>
                             </label>
-                            <label class="blood-option">
+                            <label class="blood-type-card">
                                 <input type="radio" name="request_blood" value="A-">
-                                <span>A-</span>
+                                <span class="blood-type-content">
+                                    <span class="blood-text">A-</span>
+                                </span>
                             </label>
-                            <label class="blood-option">
+                            <label class="blood-type-card">
                                 <input type="radio" name="request_blood" value="B+">
-                                <span>B+</span>
+                                <span class="blood-type-content">
+                                    <span class="blood-text">B+</span>
+                                </span>
                             </label>
-                            <label class="blood-option">
+                            <label class="blood-type-card">
                                 <input type="radio" name="request_blood" value="B-">
-                                <span>B-</span>
+                                <span class="blood-type-content">
+                                    <span class="blood-text">B-</span>
+                                </span>
                             </label>
-                            <label class="blood-option">
+                            <label class="blood-type-card">
                                 <input type="radio" name="request_blood" value="AB+">
-                                <span>AB+</span>
+                                <span class="blood-type-content">
+                                    <span class="blood-text">AB+</span>
+                                </span>
                             </label>
-                            <label class="blood-option">
+                            <label class="blood-type-card">
                                 <input type="radio" name="request_blood" value="AB-">
-                                <span>AB-</span>
+                                <span class="blood-type-content">
+                                    <span class="blood-text">AB-</span>
+                                </span>
                             </label>
-                            <label class="blood-option">
+                            <label class="blood-type-card">
                                 <input type="radio" name="request_blood" value="O+">
-                                <span>O+</span>
+                                <span class="blood-type-content">
+                                    <span class="blood-text">O+</span>
+                                </span>
                             </label>
-                            <label class="blood-option">
+                            <label class="blood-type-card">
                                 <input type="radio" name="request_blood" value="O-">
-                                <span>O-</span>
+                                <span class="blood-type-content">
+                                    <span class="blood-text">O-</span>
+                                </span>
                             </label>
                         </div>
                     </div>
                     
+                    <!-- Срочность -->
                     <div class="form-group">
-                        <label>Срочность *</label>
-                        <select name="urgency" required>
-                            <option value="normal">Обычная</option>
-                            <option value="urgent">Срочная</option>
-                            <option value="critical">Критическая (с рассылкой)</option>
-                        </select>
+                        <label class="form-label-enhanced">
+                            <span class="label-icon">⚡</span>
+                            <span>Уровень срочности *</span>
+                        </label>
+                        <div class="urgency-selector">
+                            <label class="urgency-card urgency-normal">
+                                <input type="radio" name="urgency" value="normal" checked>
+                                <span class="urgency-content">
+                                    <span class="urgency-icon">🟢</span>
+                                    <span class="urgency-title">Обычный</span>
+                                    <span class="urgency-desc">Плановое пополнение запасов</span>
+                                </span>
+                            </label>
+                            <label class="urgency-card urgency-urgent">
+                                <input type="radio" name="urgency" value="urgent">
+                                <span class="urgency-content">
+                                    <span class="urgency-icon">🟠</span>
+                                    <span class="urgency-title">Срочный</span>
+                                    <span class="urgency-desc">Уведомления на сайте + email</span>
+                                </span>
+                            </label>
+                            <label class="urgency-card urgency-critical">
+                                <input type="radio" name="urgency" value="critical">
+                                <span class="urgency-content">
+                                    <span class="urgency-icon">🔴</span>
+                                    <span class="urgency-title">Критичный</span>
+                                    <span class="urgency-desc">Telegram рассылка всем донорам</span>
+                                </span>
+                            </label>
+                        </div>
                     </div>
                     
+                    <!-- Описание -->
                     <div class="form-group">
-                        <label>Описание / Комментарий</label>
-                        <textarea name="description" rows="4" placeholder="Укажите дополнительную информацию о запросе (необязательно)"></textarea>
+                        <label class="form-label-enhanced">
+                            <span class="label-icon">📝</span>
+                            <span>Дополнительная информация (необязательно)</span>
+                        </label>
+                        <textarea name="description" rows="4" placeholder="Укажите дополнительные детали запроса..." class="form-textarea"></textarea>
                     </div>
                     
+                    <!-- Срок действия -->
                     <div class="form-group">
-                        <label>Срок действия (дней)</label>
-                        <input type="number" name="expires_days" min="1" max="30" value="7" placeholder="7">
-                        <small>Запрос автоматически закроется через указанное количество дней</small>
+                        <label class="form-label-enhanced">
+                            <span class="label-icon">📅</span>
+                            <span>Срок действия запроса</span>
+                        </label>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <input type="number" name="expires_days" min="1" max="30" value="7" style="width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px;">
+                            <span style="color: #666;">дней</span>
+                            <span style="color: #999; font-size: 14px;">(запрос автоматически закроется)</span>
+                        </div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" data-action="cancel">Отмена</button>
                 <button class="btn btn-primary" data-action="create-request">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; margin-right: 8px;">
                         <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
                         <polyline points="22 4 12 14.01 9 11.01"/>
                     </svg>
@@ -685,20 +757,6 @@
     </div>
 
     <!-- Модалка: Написать донору -->
-    <div id="donor-modal" class="modal">
-        <div class="modal-dialog">
-            <div class="modal-header">
-                <h3>Связаться с донором</h3>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="donor-modal-content">
-                    <!-- Заполняется динамически -->
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Модальное окно: Редактирование запроса -->
     <div id="edit-request-modal" class="modal">
         <div class="modal-dialog modal-lg">

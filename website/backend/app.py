@@ -95,7 +95,7 @@ def require_auth(user_type=None):
         def decorated(*args, **kwargs):
             token = request.headers.get('Authorization', '').replace('Bearer ', '')
             if not token:
-                app.logger.warning(f"❌ Нет токена для {f.__name__}")
+                app.logger.warning(f"❌ Нет токена для {f.__name__}, путь: {request.path}")
                 return jsonify({'error': 'Требуется авторизация'}), 401
             
             session = query_db(
@@ -105,12 +105,12 @@ def require_auth(user_type=None):
             )
             
             if not session:
-                app.logger.warning(f"❌ Сессия не найдена или истекла для {f.__name__}, token={token[:10]}...")
-                return jsonify({'error': 'Сессия истекла'}), 401
+                app.logger.warning(f"❌ Сессия не найдена или истекла для {f.__name__}, token={token[:10]}..., путь: {request.path}")
+                return jsonify({'error': 'Сессия истекла. Войдите заново.'}), 401
             
             if user_type and session['user_type'] != user_type:
-                app.logger.warning(f"❌ Неверный тип пользователя для {f.__name__}: ожидается '{user_type}', получен '{session['user_type']}'")
-                return jsonify({'error': 'Нет доступа'}), 403
+                app.logger.warning(f"❌ 403 FORBIDDEN: {f.__name__} требует '{user_type}', но user_type='{session['user_type']}', user_id={session.get('user_id')}, путь: {request.path}")
+                return jsonify({'error': f'Доступ запрещён. Требуется роль: {user_type}'}), 403
             
             g.session = session
             return f(*args, **kwargs)
