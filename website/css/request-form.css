@@ -162,10 +162,10 @@
 }
 
 .urgency-urgent input:checked + .urgency-content {
-    background: #fff3cd;
-    border-color: #fd7e14;
+    background: #fff3e0;
+    border-color: #ff9800;
     border-width: 3px;
-    box-shadow: 0 4px 20px rgba(253, 126, 20, 0.2);
+    box-shadow: 0 4px 20px rgba(255, 152, 0, 0.3);
 }
 
 /* Критичный */
@@ -278,4 +278,36 @@
 
 .text-muted {
     color: #999;
+}
+
+/* ============================================
+   ФИКС МОДАЛЬНОГО ОКНА И ПРОКРУТКИ
+   ============================================ */
+
+/* Модальное окно - ограничить высоту и добавить прокрутку */
+#create-request-modal .modal-dialog {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+#create-request-modal .modal-body {
+    max-height: 75vh;
+    overflow-y: auto;
+}
+
+/* Список срочности - ограничить высоту */
+.urgency-selector {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Фикс для длинных карточек запросов */
+.request-card {
+    max-width: 100%;
+    overflow-x: hidden;
+    word-wrap: break-word;
+}
+
+.request-body {
+    overflow-x: auto;
 }

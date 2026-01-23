@@ -1448,3 +1448,191 @@ function showNotification(message, type = 'info') {
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 4000);
 }
+
+/**
+ * Показать все отклики на запрос (модальное окно с пагинацией)
+ */
+async function showAllResponses(requestId) {
+    try {
+        // Загружаем все отклики для запроса
+        const response = await fetch(`${API_URL}/responses?request_id=${requestId}`, {
+            headers: { 'Authorization': `Bearer ${getToken()}` }
+        });
+        
+        if (!response.ok) throw new Error('Ошибка загрузки откликов');
+        
+        const responses = await response.json();
+        
+        // Создаём модальное окно
+        const modal = document.createElement('div');
+        modal.id = 'all-responses-modal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content all-responses-modal">
+                <div class="modal-header">
+                    <h3>Все отклики на запрос (${responses.length})</h3>
+                    <button class="modal-close" onclick="closeAllResponsesModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="responses-filters">
+                        <input type="text" id="response-search" placeholder="Поиск по имени или телефону..." class="form-input">
+                        <select id="response-status-filter" class="form-select">
+                            <option value="all">Все статусы</option>
+                            <option value="pending">Ожидает</option>
+                            <option value="confirmed">Подтверждён</option>
+                            <option value="completed">Завершён</option>
+                            <option value="rejected">Отклонён</option>
+                        </select>
+                    </div>
+                    <div id="responses-table-container"></div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Рендерим отклики с пагинацией
+        renderResponsesTable(responses);
+        
+        // Обработчики фильтров
+        document.getElementById('response-search').addEventListener('input', () => {
+            const search = document.getElementById('response-search').value.toLowerCase();
+            const status = document.getElementById('response-status-filter').value;
+            const filtered = responses.filter(r => {
+                const matchSearch = !search || 
+                    r.donor_name?.toLowerCase().includes(search) ||
+                    r.donor_phone?.toLowerCase().includes(search) ||
+                    r.donor_email?.toLowerCase().includes(search);
+                const matchStatus = status === 'all' || r.status === status;
+                return matchSearch && matchStatus;
+            });
+            renderResponsesTable(filtered);
+        });
+        
+        document.getElementById('response-status-filter').addEventListener('change', () => {
+            document.getElementById('response-search').dispatchEvent(new Event('input'));
+        });
+        
+    } catch (error) {
+        console.error('Ошибка загрузки откликов:', error);
+        showNotification('Ошибка загрузки откликов', 'error');
+    }
+}
+
+/**
+ * Рендер таблицы откликов с пагинацией
+ */
+let currentResponsesPage = 1;
+let currentResponsesData = [];
+
+function renderResponsesTable(responses, page = 1) {
+    currentResponsesData = responses;
+    currentResponsesPage = page;
+    
+    const container = document.getElementById('responses-table-container');
+    if (!container) return;
+    
+    const pageSize = 20;
+    const totalPages = Math.ceil(responses.length / pageSize);
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const pageResponses = responses.slice(startIndex, endIndex);
+    
+    const statusLabels = {
+        'pending': 'Ожидает',
+        'confirmed': 'Подтверждён',
+        'completed': 'Завершён',
+        'rejected': 'Отклонён'
+    };
+    
+    const statusColors = {
+        'pending': '#ffc107',
+        'confirmed': '#28a745',
+        'completed': '#17a2b8',
+        'rejected': '#dc3545'
+    };
+    
+    container.innerHTML = `
+        <div class="responses-table">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Донор</th>
+                        <th>Группа крови</th>
+                        <th>Контакты</th>
+                        <th>Статус</th>
+                        <th>Дата отклика</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${pageResponses.map((r, idx) => `
+                        <tr>
+                            <td>${startIndex + idx + 1}</td>
+                            <td>
+                                <div class="donor-cell">
+                                    <div class="response-avatar-small">${getInitials(r.donor_name || 'НД')}</div>
+                                    <div>
+                                        <div class="donor-name">${r.donor_name || 'Донор'}</div>
+                                        ${r.donor_comment ? `<div class="donor-comment-small">"${r.donor_comment}"</div>` : ''}
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="blood-badge">${r.donor_blood_type || '-'}</span></td>
+                            <td>
+                                ${r.donor_phone ? `<div>📞 ${r.donor_phone}</div>` : ''}
+                                ${r.donor_email ? `<div>📧 ${r.donor_email}</div>` : ''}
+                            </td>
+                            <td>
+                                <span class="status-badge" style="background-color: ${statusColors[r.status]}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                                    ${statusLabels[r.status] || r.status}
+                                </span>
+                            </td>
+                            <td>${new Date(r.created_at).toLocaleString('ru-RU')}</td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn btn-sm btn-primary" onclick="openDonorModal({donor_id: ${r.user_id}, donor_name: '${(r.donor_name || '').replace(/'/g, "\\'")}', blood_type: '${r.donor_blood_type}', donor_phone: '${r.donor_phone || ''}', donor_email: '${r.donor_email || ''}'})">
+                                        ✉️
+                                    </button>
+                                    ${r.status === 'confirmed' ? `
+                                        <button class="btn btn-sm btn-success" onclick="recordDonation(${r.user_id}, ${r.id})">
+                                            ✓
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+        
+        ${totalPages > 1 ? `
+            <div class="pagination">
+                <button class="btn btn-sm" ${page === 1 ? 'disabled' : ''} onclick="changePage(${page - 1})">
+                    ← Назад
+                </button>
+                <span class="pagination-info">
+                    Страница ${page} из ${totalPages} (${responses.length} откликов)
+                </span>
+                <button class="btn btn-sm" ${page === totalPages ? 'disabled' : ''} onclick="changePage(${page + 1})">
+                    Вперёд →
+                </button>
+            </div>
+        ` : ''}
+    `;
+}
+
+function changePage(page) {
+    renderResponsesTable(currentResponsesData, page);
+}
+
+/**
+ * Закрыть модал всех откликов
+ */
+function closeAllResponsesModal() {
+    const modal = document.getElementById('all-responses-modal');
+    if (modal) modal.remove();
+}
+

@@ -1826,7 +1826,7 @@ async function uploadCertificate(file) {
     }
     
     const formData = new FormData();
-    formData.append('certificate', file);
+    formData.append('file', file);
     
     try {
         showNotification('Загрузка...', 'info');
@@ -1841,19 +1841,275 @@ async function uploadCertificate(file) {
         
         showNotification('✅ Справка загружена!', 'success');
         
-        document.getElementById('certificate-status').innerHTML = `
-            <div class="certificate-icon uploaded">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                    <path d="M14 2v6h6M12 18v-6M9 15h6"/>
-                </svg>
-            </div>
-            <div class="certificate-info">
-                <h3>Справка загружена</h3>
-                <p>${file.name}</p>
+        // Обновляем статус справки
+        await displayCertificateStatus();
+    } catch (error) {
+        console.error('Ошибка загрузки справки:', error);
+        showNotification('Ошибка загрузки справки', 'error');
+    }
+}
+
+/**
+ * Показать статус загруженной справки
+ */
+async function displayCertificateStatus() {
+    try {
+        const response = await fetch(`${DONOR_API_URL}/donor/medical-certificate`, {
+            headers: { 'Authorization': `Bearer ${getToken()}` }
+        });
+        
+        const data = await response.json();
+        
+        const statusDiv = document.getElementById('certificate-status');
+        if (!statusDiv) return;
+        
+        if (data.has_certificate) {
+            const uploadDate = new Date(data.uploaded_at).toLocaleDateString('ru-RU');
+            statusDiv.innerHTML = `
+                <div class="certificate-uploaded">
+                    <div class="certificate-icon uploaded">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                            <path d="M14 2v6h6M9 10h6M9 14h6M9 18h6"/>
+                            <circle cx="12" cy="12" r="10" stroke="#28a745" fill="none"/>
+                            <path d="M9 12l2 2 4-4" stroke="#28a745"/>
+                        </svg>
+                    </div>
+                    <div class="certificate-info">
+                        <p><strong>Справка загружена</strong></p>
+                        <p class="text-muted">Дата: ${uploadDate}</p>
+                    </div>
+                    <button class="btn btn-sm btn-outline" onclick="viewCertificate()">
+                        Просмотреть
+                    </button>
+                </div>
+            `;
+        } else {
+            // Показываем зону загрузки
+            statusDiv.innerHTML = `
+                <div class="upload-area" id="cert-drop-zone">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                    </svg>
+                    <p><strong>Перетащите файл сюда</strong></p>
+                    <p class="text-muted">или нажмите для выбора</p>
+                    <p class="text-small">PDF, JPG, PNG (макс. 5 МБ)</p>
+                    <input type="file" id="cert-file" accept=".pdf,.jpg,.jpeg,.png" style="display: none;">
+                </div>
+            `;
+            // Переинициализируем drag-n-drop после обновления HTML
+            setTimeout(initCertificateUpload, 100);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки статуса справки:', error);
+    }
+}
+
+/**
+ * Открыть справку для просмотра
+ */
+function viewCertificate() {
+    const token = getToken();
+    if (!token) return;
+    
+    // Открываем в новой вкладке
+    const url = `${DONOR_API_URL}/donor/medical-certificate/view?token=${token}`;
+    window.open(url, '_blank');
+}
+
+// ============================================
+// СИСТЕМА ЧАТОВ
+// ============================================
+
+/**
+ * Загрузить список чатов донора
+ */
+async function loadDonorChats() {
+    try {
+        const response = await fetch(`${DONOR_API_URL}/donor/chats`, {
+            headers: { 'Authorization': `Bearer ${getToken()}` }
+        });
+        
+        if (!response.ok) throw new Error('Ошибка загрузки чатов');
+        
+        const chats = await response.json();
+        renderDonorChats(chats);
+    } catch (error) {
+        console.error('Ошибка загрузки чатов:', error);
+    }
+}
+
+/**
+ * Рендер списка чатов
+ */
+function renderDonorChats(chats) {
+    const container = document.getElementById('chats-list');
+    if (!container) return;
+    
+    if (!chats || chats.length === 0) {
+        container.innerHTML = '<p class="no-data">Нет переписок</p>';
+        return;
+    }
+    
+    container.innerHTML = chats.map(chat => {
+        const lastMessageTime = chat.last_message_time ? 
+            new Date(chat.last_message_time).toLocaleString('ru-RU', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit'
+            }) : '';
+        
+        return `
+            <div class="chat-card ${chat.unread_count > 0 ? 'unread' : ''}" 
+                 onclick="openChat(${chat.medcenter_id}, '${chat.medcenter_name}')">
+                <div class="chat-avatar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                        <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                </div>
+                <div class="chat-info">
+                    <div class="chat-header">
+                        <span class="chat-name">${chat.medcenter_name}</span>
+                        ${chat.unread_count > 0 ? `<span class="chat-badge">${chat.unread_count}</span>` : ''}
+                    </div>
+                    <div class="chat-last-message">${chat.last_message || 'Нет сообщений'}</div>
+                    <div class="chat-time">${lastMessageTime}</div>
+                </div>
             </div>
         `;
+    }).join('');
+}
+
+/**
+ * Открыть чат с медцентром
+ */
+async function openChat(medcenterId, medcenterName) {
+    try {
+        const response = await fetch(`${DONOR_API_URL}/donor/chats/${medcenterId}`, {
+            headers: { 'Authorization': `Bearer ${getToken()}` }
+        });
+        
+        if (!response.ok) throw new Error('Ошибка загрузки истории');
+        
+        const data = await response.json();
+        
+        // Создаём модальное окно чата
+        const modal = document.createElement('div');
+        modal.id = 'chat-modal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content chat-modal">
+                <div class="modal-header">
+                    <h3>💬 ${medcenterName}</h3>
+                    <button class="modal-close" onclick="closeChatModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="chat-messages" id="chat-messages"></div>
+                    <div class="chat-input-container">
+                        <textarea id="chat-input" placeholder="Введите сообщение..." rows="2"></textarea>
+                        <button class="btn btn-primary" onclick="sendChatMessage(${medcenterId})">
+                            Отправить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Рендерим сообщения
+        renderChatMessages(data.messages);
+        
+        // Автоматическая прокрутка вниз
+        setTimeout(() => {
+            const messagesDiv = document.getElementById('chat-messages');
+            if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }, 100);
+        
+        // Enter для отправки
+        document.getElementById('chat-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChatMessage(medcenterId);
+            }
+        });
+        
     } catch (error) {
-        showNotification('❌ Ошибка загрузки', 'error');
+        console.error('Ошибка открытия чата:', error);
+        showNotification('Ошибка загрузки чата', 'error');
     }
+}
+
+/**
+ * Рендер сообщений чата
+ */
+function renderChatMessages(messages) {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+    
+    if (!messages || messages.length === 0) {
+        container.innerHTML = '<p class="no-messages">Нет сообщений</p>';
+        return;
+    }
+    
+    container.innerHTML = messages.map(msg => {
+        const time = new Date(msg.created_at).toLocaleTimeString('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        const isOwn = msg.sender_type === 'donor';
+        
+        return `
+            <div class="chat-message ${isOwn ? 'own' : 'other'}">
+                <div class="message-content">${msg.message}</div>
+                <div class="message-time">${time}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Отправить сообщение в чат
+ */
+async function sendChatMessage(medcenterId) {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    try {
+        const response = await fetch(`${DONOR_API_URL}/donor/chats/${medcenterId}/send`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${getToken()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message })
+        });
+        
+        if (!response.ok) throw new Error('Ошибка отправки');
+        
+        // Очищаем поле ввода
+        input.value = '';
+        
+        // Перезагружаем чат
+        closeChatModal();
+        const medcenterName = document.querySelector('.chat-modal h3')?.textContent.replace('💬 ', '');
+        setTimeout(() => openChat(medcenterId, medcenterName || 'Медцентр'), 300);
+        
+    } catch (error) {
+        console.error('Ошибка отправки сообщения:', error);
+        showNotification('Ошибка отправки сообщения', 'error');
+    }
+}
+
+/**
+ * Закрыть модал чата
+ */
+function closeChatModal() {
+    const modal = document.getElementById('chat-modal');
+    if (modal) modal.remove();
 }

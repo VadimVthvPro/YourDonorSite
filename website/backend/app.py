@@ -6,10 +6,11 @@
 
 import os
 import secrets
+import time
 from datetime import datetime, timedelta
 from functools import wraps
 
-from flask import Flask, request, jsonify, g
+from flask import Flask, request, jsonify, g, send_file
 from flask_cors import CORS
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -457,6 +458,182 @@ def update_donor_profile():
     return jsonify({'message': 'Профиль обновлён'})
 
 # ============================================
+# API: Медицинская справка донора
+# ============================================
+
+@app.route('/api/donor/medical-certificate', methods=['POST'])
+@require_auth('donor')
+def upload_medical_certificate():
+    """Загрузка медицинской справки"""
+    donor_id = g.session['user_id']
+    
+    if 'file' not in request.files:
+        return jsonify({'error': 'Файл не предоставлен'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'error': 'Файл не выбран'}), 400
+    
+    # Проверка типа файла
+    allowed_extensions = {'pdf', 'jpg', 'jpeg', 'png'}
+    file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+    
+    if file_ext not in allowed_extensions:
+        return jsonify({'error': 'Недопустимый тип файла. Разрешены: PDF, JPG, PNG'}), 400
+    
+    # Проверка размера (макс. 10 МБ)
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+    
+    if file_size > 10 * 1024 * 1024:  # 10 MB
+        return jsonify({'error': 'Файл слишком большой. Максимум 10 МБ'}), 400
+    
+    # Создаем директорию для хранения справок
+    upload_dir = os.path.join(os.path.dirname(__file__), 'uploads', 'certificates')
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Генерируем уникальное имя файла
+    safe_filename = f"donor_{donor_id}_{int(time.time())}.{file_ext}"
+    file_path = os.path.join(upload_dir, safe_filename)
+    
+    # Сохраняем файл
+    file.save(file_path)
+    
+    # Обновляем запись в БД
+    query_db(
+        """UPDATE users 
+           SET medical_certificate_path = %s, medical_certificate_uploaded_at = NOW() 
+           WHERE id = %s""",
+        (safe_filename, donor_id), commit=True
+    )
+    
+    app.logger.info(f"✅ Медицинская справка загружена для донора ID={donor_id}, файл={safe_filename}")
+    
+    return jsonify({
+        'message': 'Справка успешно загружена',
+        'filename': safe_filename,
+        'uploaded_at': datetime.now().isoformat()
+    }), 201
+
+@app.route('/api/donor/medical-certificate', methods=['GET'])
+@require_auth('donor')
+def get_donor_certificate_status():
+    """Получить статус медицинской справки донора"""
+    donor_id = g.session['user_id']
+    
+    user = query_db(
+        "SELECT medical_certificate_path, medical_certificate_uploaded_at FROM users WHERE id = %s",
+        (donor_id,), one=True
+    )
+    
+    if not user or not user['medical_certificate_path']:
+        return jsonify({'has_certificate': False}), 200
+    
+    return jsonify({
+        'has_certificate': True,
+        'filename': user['medical_certificate_path'],
+        'uploaded_at': user['medical_certificate_uploaded_at'].isoformat() if user['medical_certificate_uploaded_at'] else None
+    })
+
+@app.route('/api/medical-center/donors/<int:donor_id>/medical-certificate', methods=['GET'])
+@require_auth('medcenter')
+def get_donor_certificate_info(donor_id):
+    """Получить информацию о справке донора (для медцентра)"""
+    mc_id = g.session['medical_center_id']
+    
+    # Проверяем, что донор привязан к этому медцентру
+    donor = query_db(
+        """SELECT medical_certificate_path, medical_certificate_uploaded_at, full_name
+           FROM users 
+           WHERE id = %s AND medical_center_id = %s""",
+        (donor_id, mc_id), one=True
+    )
+    
+    if not donor:
+        return jsonify({'error': 'Донор не найден или не привязан к вашему медцентру'}), 404
+    
+    if not donor['medical_certificate_path']:
+        return jsonify({'has_certificate': False}), 200
+    
+    return jsonify({
+        'has_certificate': True,
+        'filename': donor['medical_certificate_path'],
+        'uploaded_at': donor['medical_certificate_uploaded_at'].isoformat() if donor['medical_certificate_uploaded_at'] else None,
+        'donor_name': donor['full_name']
+    })
+
+@app.route('/api/medical-center/donors/<int:donor_id>/medical-certificate/view', methods=['GET'])
+@require_auth('medcenter')
+def view_donor_certificate(donor_id):
+    """Просмотр справки донора (для медцентра)"""
+    mc_id = g.session['medical_center_id']
+    
+    # Проверяем, что донор привязан к этому медцентру
+    donor = query_db(
+        "SELECT medical_certificate_path FROM users WHERE id = %s AND medical_center_id = %s",
+        (donor_id, mc_id), one=True
+    )
+    
+    if not donor or not donor['medical_certificate_path']:
+        return jsonify({'error': 'Справка не найдена'}), 404
+    
+    # Формируем путь к файлу
+    upload_dir = os.path.join(os.path.dirname(__file__), 'uploads', 'certificates')
+    file_path = os.path.join(upload_dir, donor['medical_certificate_path'])
+    
+    if not os.path.exists(file_path):
+        app.logger.error(f"❌ Файл справки не найден: {file_path}")
+        return jsonify({'error': 'Файл справки не найден на сервере'}), 404
+    
+    # Определяем MIME-тип
+    file_ext = donor['medical_certificate_path'].rsplit('.', 1)[1].lower()
+    mime_types = {
+        'pdf': 'application/pdf',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png'
+    }
+    
+    mimetype = mime_types.get(file_ext, 'application/octet-stream')
+    
+    return send_file(file_path, mimetype=mimetype)
+
+@app.route('/api/donor/medical-certificate/view', methods=['GET'])
+@require_auth('donor')
+def view_own_certificate():
+    """Просмотр собственной справки (для донора)"""
+    donor_id = g.session['user_id']
+    
+    donor = query_db(
+        "SELECT medical_certificate_path FROM users WHERE id = %s",
+        (donor_id,), one=True
+    )
+    
+    if not donor or not donor['medical_certificate_path']:
+        return jsonify({'error': 'Справка не загружена'}), 404
+    
+    upload_dir = os.path.join(os.path.dirname(__file__), 'uploads', 'certificates')
+    file_path = os.path.join(upload_dir, donor['medical_certificate_path'])
+    
+    if not os.path.exists(file_path):
+        app.logger.error(f"❌ Файл справки не найден: {file_path}")
+        return jsonify({'error': 'Файл справки не найден на сервере'}), 404
+    
+    file_ext = donor['medical_certificate_path'].rsplit('.', 1)[1].lower()
+    mime_types = {
+        'pdf': 'application/pdf',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png'
+    }
+    
+    mimetype = mime_types.get(file_ext, 'application/octet-stream')
+    
+    return send_file(file_path, mimetype=mimetype)
+
+# ============================================
 # API: Авторизация медцентра
 # ============================================
 
@@ -646,7 +823,9 @@ def get_blood_needs(mc_id):
 @app.route('/api/blood-needs/<int:mc_id>', methods=['PUT'])
 @require_auth('medcenter')
 def update_blood_needs(mc_id):
+    app.logger.info(f"✅ update_blood_needs вызван для mc_id={mc_id}, session_mc_id={g.session.get('medical_center_id')}")
     if g.session['medical_center_id'] != mc_id:
+        app.logger.warning(f"❌ Нет доступа: mc_id={mc_id} != session_mc_id={g.session['medical_center_id']}")
         return jsonify({'error': 'Нет доступа'}), 403
     
     data = request.json
@@ -1752,6 +1931,295 @@ def get_donor_unread_count():
     return jsonify({'unread': result['count'] if result else 0})
 
 # ============================================
+# API: Система переписки (ЧАТЫ)
+# ============================================
+
+# --- ЭНДПОИНТЫ ДЛЯ МЕДЦЕНТРА ---
+
+@app.route('/api/medcenter/chats', methods=['GET'])
+@require_auth('medcenter')
+def get_medcenter_chats():
+    """Получить список чатов (донорыс которыми есть переписка)"""
+    mc_id = g.session['medical_center_id']
+    
+    # Получаем список доноров с количеством непрочитанных сообщений
+    chats = query_db("""
+        SELECT DISTINCT
+            u.id as donor_id,
+            u.full_name as donor_name,
+            u.blood_type,
+            u.phone as donor_phone,
+            u.email as donor_email,
+            (SELECT COUNT(*) 
+             FROM chat_messages 
+             WHERE donor_id = u.id 
+               AND medcenter_id = %s 
+               AND sender_type = 'donor' 
+               AND is_read = FALSE
+            ) as unread_count,
+            (SELECT message 
+             FROM chat_messages 
+             WHERE donor_id = u.id AND medcenter_id = %s 
+             ORDER BY created_at DESC 
+             LIMIT 1
+            ) as last_message,
+            (SELECT created_at 
+             FROM chat_messages 
+             WHERE donor_id = u.id AND medcenter_id = %s 
+             ORDER BY created_at DESC 
+             LIMIT 1
+            ) as last_message_time
+        FROM users u
+        INNER JOIN chat_messages cm ON u.id = cm.donor_id
+        WHERE cm.medcenter_id = %s AND u.medical_center_id = %s
+        ORDER BY last_message_time DESC
+    """, (mc_id, mc_id, mc_id, mc_id, mc_id))
+    
+    return jsonify(chats or [])
+
+@app.route('/api/medcenter/chats/<int:donor_id>', methods=['GET'])
+@require_auth('medcenter')
+def get_medcenter_chat_history(donor_id):
+    """Получить историю переписки с конкретным донором"""
+    mc_id = g.session['medical_center_id']
+    
+    # Проверяем, что донор привязан к этому медцентру
+    donor = query_db(
+        "SELECT id, full_name FROM users WHERE id = %s AND medical_center_id = %s",
+        (donor_id, mc_id), one=True
+    )
+    
+    if not donor:
+        return jsonify({'error': 'Донор не найден или не привязан к вашему медцентру'}), 404
+    
+    # Получаем последние 100 сообщений
+    messages = query_db("""
+        SELECT 
+            id,
+            sender_type,
+            message,
+            is_read,
+            created_at
+        FROM chat_messages
+        WHERE donor_id = %s AND medcenter_id = %s
+        ORDER BY created_at ASC
+        LIMIT 100
+    """, (donor_id, mc_id))
+    
+    # Отмечаем все сообщения от донора как прочитанные
+    query_db("""
+        UPDATE chat_messages 
+        SET is_read = TRUE 
+        WHERE donor_id = %s 
+          AND medcenter_id = %s 
+          AND sender_type = 'donor' 
+          AND is_read = FALSE
+    """, (donor_id, mc_id), commit=True)
+    
+    return jsonify({
+        'donor': donor,
+        'messages': messages or []
+    })
+
+@app.route('/api/medcenter/chats/<int:donor_id>/send', methods=['POST'])
+@require_auth('medcenter')
+def send_medcenter_chat_message(donor_id):
+    """Отправить сообщение донору"""
+    mc_id = g.session['medical_center_id']
+    data = request.json
+    
+    message_text = data.get('message', '').strip()
+    if not message_text:
+        return jsonify({'error': 'Сообщение не может быть пустым'}), 400
+    
+    # Проверяем, что донор привязан к этому медцентру
+    donor = query_db(
+        "SELECT id, full_name, telegram_id FROM users WHERE id = %s AND medical_center_id = %s",
+        (donor_id, mc_id), one=True
+    )
+    
+    if not donor:
+        return jsonify({'error': 'Донор не найден'}), 404
+    
+    # Сохраняем сообщение
+    message_id = query_db("""
+        INSERT INTO chat_messages (donor_id, medcenter_id, sender_type, message, created_at)
+        VALUES (%s, %s, 'medcenter', %s, NOW())
+        RETURNING id
+    """, (donor_id, mc_id, message_text), commit=True, one=True)['id']
+    
+    # Отправляем уведомление в Telegram (если привязан)
+    if donor['telegram_id']:
+        try:
+            from telegram_bot import send_chat_message_notification
+            mc_name = query_db("SELECT name FROM medical_centers WHERE id = %s", (mc_id,), one=True)['name']
+            send_chat_message_notification(
+                donor['telegram_id'],
+                mc_name,
+                message_text[:100]  # Первые 100 символов
+            )
+        except Exception as e:
+            app.logger.error(f"Ошибка отправки Telegram уведомления: {e}")
+    
+    return jsonify({
+        'message_id': message_id,
+        'status': 'sent'
+    }), 201
+
+# --- ЭНДПОИНТЫ ДЛЯ ДОНОРА ---
+
+@app.route('/api/donor/chats', methods=['GET'])
+@require_auth('donor')
+def get_donor_chats():
+    """Получить список чатов (медцентры с которыми есть переписка)"""
+    donor_id = g.session['user_id']
+    
+    # Получаем список медцентров с количеством непрочитанных сообщений
+    chats = query_db("""
+        SELECT DISTINCT
+            mc.id as medcenter_id,
+            mc.name as medcenter_name,
+            mc.address,
+            mc.phone as medcenter_phone,
+            mc.email as medcenter_email,
+            (SELECT COUNT(*) 
+             FROM chat_messages 
+             WHERE medcenter_id = mc.id 
+               AND donor_id = %s 
+               AND sender_type = 'medcenter' 
+               AND is_read = FALSE
+            ) as unread_count,
+            (SELECT message 
+             FROM chat_messages 
+             WHERE medcenter_id = mc.id AND donor_id = %s 
+             ORDER BY created_at DESC 
+             LIMIT 1
+            ) as last_message,
+            (SELECT created_at 
+             FROM chat_messages 
+             WHERE medcenter_id = mc.id AND donor_id = %s 
+             ORDER BY created_at DESC 
+             LIMIT 1
+            ) as last_message_time
+        FROM medical_centers mc
+        INNER JOIN chat_messages cm ON mc.id = cm.medcenter_id
+        WHERE cm.donor_id = %s
+        ORDER BY last_message_time DESC
+    """, (donor_id, donor_id, donor_id, donor_id))
+    
+    return jsonify(chats or [])
+
+@app.route('/api/donor/chats/<int:medcenter_id>', methods=['GET'])
+@require_auth('donor')
+def get_donor_chat_history(medcenter_id):
+    """Получить историю переписки с конкретным медцентром"""
+    donor_id = g.session['user_id']
+    
+    # Проверяем, что медцентр существует
+    medcenter = query_db(
+        "SELECT id, name, address, phone FROM medical_centers WHERE id = %s",
+        (medcenter_id,), one=True
+    )
+    
+    if not medcenter:
+        return jsonify({'error': 'Медцентр не найден'}), 404
+    
+    # Получаем последние 100 сообщений
+    messages = query_db("""
+        SELECT 
+            id,
+            sender_type,
+            message,
+            is_read,
+            created_at
+        FROM chat_messages
+        WHERE donor_id = %s AND medcenter_id = %s
+        ORDER BY created_at ASC
+        LIMIT 100
+    """, (donor_id, medcenter_id))
+    
+    # Отмечаем все сообщения от медцентра как прочитанные
+    query_db("""
+        UPDATE chat_messages 
+        SET is_read = TRUE 
+        WHERE donor_id = %s 
+          AND medcenter_id = %s 
+          AND sender_type = 'medcenter' 
+          AND is_read = FALSE
+    """, (donor_id, medcenter_id), commit=True)
+    
+    return jsonify({
+        'medcenter': medcenter,
+        'messages': messages or []
+    })
+
+@app.route('/api/donor/chats/<int:medcenter_id>/send', methods=['POST'])
+@require_auth('donor')
+def send_donor_chat_message(medcenter_id):
+    """Отправить сообщение медцентру"""
+    donor_id = g.session['user_id']
+    data = request.json
+    
+    message_text = data.get('message', '').strip()
+    if not message_text:
+        return jsonify({'error': 'Сообщение не может быть пустым'}), 400
+    
+    # Проверяем, что медцентр существует
+    medcenter = query_db(
+        "SELECT id, name FROM medical_centers WHERE id = %s",
+        (medcenter_id,), one=True
+    )
+    
+    if not medcenter:
+        return jsonify({'error': 'Медцентр не найден'}), 404
+    
+    # Сохраняем сообщение
+    message_id = query_db("""
+        INSERT INTO chat_messages (donor_id, medcenter_id, sender_type, message, created_at)
+        VALUES (%s, %s, 'donor', %s, NOW())
+        RETURNING id
+    """, (donor_id, medcenter_id, message_text), commit=True, one=True)['id']
+    
+    app.logger.info(f"✅ Сообщение отправлено: донор {donor_id} → медцентр {medcenter_id}")
+    
+    return jsonify({
+        'message_id': message_id,
+        'status': 'sent'
+    }), 201
+
+# --- ОБЩИЕ ЭНДПОИНТЫ ---
+
+@app.route('/api/chats/unread-count', methods=['GET'])
+@require_auth()
+def get_unread_count():
+    """Получить количество непрочитанных сообщений"""
+    session = g.session
+    user_type = session['user_type']
+    
+    if user_type == 'donor':
+        donor_id = session['user_id']
+        result = query_db("""
+            SELECT COUNT(*) as count 
+            FROM chat_messages 
+            WHERE donor_id = %s 
+              AND sender_type = 'medcenter' 
+              AND is_read = FALSE
+        """, (donor_id,), one=True)
+    elif user_type == 'medcenter':
+        mc_id = session['medical_center_id']
+        result = query_db("""
+            SELECT COUNT(*) as count 
+            FROM chat_messages 
+            WHERE medcenter_id = %s 
+              AND sender_type = 'donor' 
+              AND is_read = FALSE
+        """, (mc_id,), one=True)
+    else:
+        return jsonify({'unread': 0})
+    
+    return jsonify({'unread': result['count'] if result else 0})
+
+# ============================================
 # API: Медцентры (для доноров)
 # ============================================
 
@@ -1830,7 +2298,7 @@ def health():
 
 @app.route('/api/medcenter/donors/<int:donor_id>/certificate', methods=['GET'])
 @require_auth('medcenter')
-def get_donor_certificate_info(donor_id):
+def get_donor_certificate_info_alt(donor_id):
     """Получить информацию о мед.справке донора"""
     donor = query_db(
         "SELECT medical_certificate_path, certificate_uploaded_at, medical_certificate_filename FROM users WHERE id = %s",
@@ -1852,7 +2320,7 @@ def get_donor_certificate_info(donor_id):
 
 @app.route('/api/medcenter/donors/<int:donor_id>/certificate/view', methods=['GET'])
 @require_auth('medcenter')
-def view_donor_certificate(donor_id):
+def view_donor_certificate_alt(donor_id):
     """Просмотр/скачивание мед.справки донора"""
     donor = query_db(
         "SELECT medical_certificate_path, medical_certificate_filename FROM users WHERE id = %s",

@@ -88,6 +88,7 @@
 .request-urgency.urgent {
     background: #fff3e0;
     color: #e65100;
+    border: 2px solid #ff9800;
 }
 
 .request-urgency.critical {
@@ -356,4 +357,137 @@
         width: 100%;
         justify-content: center;
     }
+}
+
+/* ============================================
+   МОДАЛЬНОЕ ОКНО ВСЕХ ОТКЛИКОВ
+   ============================================ */
+
+.all-responses-modal {
+    max-width: 1200px;
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.responses-filters {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.form-input, .form-select {
+    flex: 1;
+    padding: 10px 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.responses-table {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.table thead {
+    background: #f8f9fa;
+}
+
+.table th {
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 2px solid #dee2e6;
+    font-size: 13px;
+    text-transform: uppercase;
+}
+
+.table td {
+    padding: 12px;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+
+.table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.donor-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.response-avatar-small {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.donor-name {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.donor-comment-small {
+    font-size: 12px;
+    color: #999;
+    font-style: italic;
+    margin-top: 4px;
+}
+
+.blood-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    background: #ffebee;
+    color: #c62828;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+/* Пагинация */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    border-top: 1px solid #dee2e6;
+}
+
+.pagination-info {
+    font-size: 14px;
+    color: #666;
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
