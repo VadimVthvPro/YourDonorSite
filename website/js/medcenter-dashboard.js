@@ -8,6 +8,27 @@ console.log('==== medcenter-dashboard.js ЗАГРУЖЕН ====');
 // Используем API_URL из app.js или определяем свой
 const MC_API_URL = window.API_URL || 'http://localhost:5001/api';
 
+/**
+ * Форматирование чисел с разделением на триады (пробелами)
+ * Пример: 1000000 → "1 000 000"
+ */
+function formatNumber(num) {
+    if (num === null || num === undefined) return '0';
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
+
+/**
+ * Форматирование объёма (мл → литры с триадами)
+ * Пример: 450000 → "450 л"
+ */
+function formatVolume(ml) {
+    if (!ml || ml === 0) return '0 л';
+    const liters = (ml / 1000).toFixed(1);
+    // Убираем .0 если целое число
+    const cleanLiters = liters.replace(/\.0$/, '');
+    return formatNumber(cleanLiters) + ' л';
+}
+
 // Кэш для запросов крови
 let bloodRequestsCache = [];
 // Кэш для откликов доноров
@@ -796,26 +817,26 @@ async function loadStatisticsFromAPI() {
 function renderDashboardStatistics(apiStats) {
     console.log('📊 Обновление статистики на главной:', apiStats);
     
-    // Обновляем счётчики на главной
+    // Обновляем счётчики на главной С ФОРМАТИРОВАНИЕМ
     const totalDonors = document.getElementById('stat-donors');
     const activeRequests = document.getElementById('stat-requests');
     const pendingResponses = document.getElementById('stat-pending');
-    const monthDonations = document.getElementById('stat-donations-month'); // ПРАВИЛЬНЫЙ ID!
+    const monthDonations = document.getElementById('stat-donations-month');
     
     if (totalDonors) {
-        totalDonors.textContent = apiStats.total_donors || 0;
+        totalDonors.textContent = formatNumber(apiStats.total_donors || 0);
         console.log('✓ Доноры обновлены:', apiStats.total_donors);
     }
     if (activeRequests) {
-        activeRequests.textContent = apiStats.active_requests || 0;
+        activeRequests.textContent = formatNumber(apiStats.active_requests || 0);
         console.log('✓ Запросы обновлены:', apiStats.active_requests);
     }
     if (pendingResponses) {
-        pendingResponses.textContent = apiStats.pending_responses || 0;
+        pendingResponses.textContent = formatNumber(apiStats.pending_responses || 0);
         console.log('✓ Ожидают обновлены:', apiStats.pending_responses);
     }
     if (monthDonations) {
-        monthDonations.textContent = apiStats.month_donations || 0;
+        monthDonations.textContent = formatNumber(apiStats.month_donations || 0);
         console.log('✓ Донации за месяц обновлены:', apiStats.month_donations);
     }
     
@@ -837,12 +858,12 @@ function renderDashboardStatistics(apiStats) {
                 <div class="blood-stat-bar">
                     <div class="blood-stat-fill" style="width: ${(s.count / max) * 100}%"></div>
                 </div>
-                <span class="blood-stat-value">${s.count}</span>
+                <span class="blood-stat-value">${formatNumber(s.count)}</span>
             </div>
         `).join('');
     }
     
-    // График донаций (пока статический, можно расширить)
+    // График донаций (с форматированием)
     const chartContainer = document.getElementById('donations-chart');
     if (chartContainer) {
         const months = ['Авг', 'Сен', 'Окт', 'Ноя', 'Дек', 'Янв'];
@@ -851,7 +872,7 @@ function renderDashboardStatistics(apiStats) {
         
         chartContainer.innerHTML = months.map((m, i) => `
             <div class="chart-bar">
-                <span class="bar-value">${values[i]}</span>
+                <span class="bar-value">${formatNumber(values[i])}</span>
                 <div class="bar-fill" style="height: ${(values[i] / max) * 150}px"></div>
                 <span class="bar-label">${m}</span>
             </div>
@@ -2252,11 +2273,11 @@ function renderStatistics(stats) {
         return;
     }
     
-    // Основные метрики
-    document.getElementById('stat-requests').textContent = stats.blood_requests.total || 0;
-    document.getElementById('stat-donors').textContent = stats.responses.unique_donors || 0;
-    document.getElementById('stat-donations').textContent = stats.donations.total || 0;
-    document.getElementById('stat-volume').textContent = (stats.donations.total_volume_liters || 0) + ' л';
+    // Основные метрики (с форматированием)
+    document.getElementById('stat-requests').textContent = formatNumber(stats.blood_requests.total || 0);
+    document.getElementById('stat-donors').textContent = formatNumber(stats.responses.unique_donors || 0);
+    document.getElementById('stat-donations').textContent = formatNumber(stats.donations.total || 0);
+    document.getElementById('stat-volume').textContent = formatVolume(stats.donations.total_volume_ml || 0);
     
     // Изменения
     renderStatChange('stat-requests-change', stats.blood_requests.change_percent || 0);
@@ -2270,29 +2291,29 @@ function renderStatistics(stats) {
     // Диаграмма по группам крови
     renderBloodTypeChart(stats.donations.by_blood_type);
     
-    // Детальная статистика ЗАПРОСОВ
-    document.getElementById('detail-total-requests').textContent = stats.blood_requests.total;
-    document.getElementById('detail-active-requests').textContent = stats.blood_requests.active;
-    document.getElementById('detail-closed-requests').textContent = stats.blood_requests.closed;
-    document.getElementById('detail-cancelled-requests').textContent = stats.blood_requests.cancelled;
-    document.getElementById('detail-expired-requests').textContent = stats.blood_requests.expired || 0;
-    document.getElementById('detail-critical-requests').textContent = stats.blood_requests.by_urgency?.critical || 0;
-    document.getElementById('detail-urgent-requests').textContent = stats.blood_requests.by_urgency?.urgent || 0;
+    // Детальная статистика ЗАПРОСОВ (с форматированием)
+    document.getElementById('detail-total-requests').textContent = formatNumber(stats.blood_requests.total);
+    document.getElementById('detail-active-requests').textContent = formatNumber(stats.blood_requests.active);
+    document.getElementById('detail-closed-requests').textContent = formatNumber(stats.blood_requests.closed);
+    document.getElementById('detail-cancelled-requests').textContent = formatNumber(stats.blood_requests.cancelled);
+    document.getElementById('detail-expired-requests').textContent = formatNumber(stats.blood_requests.expired || 0);
+    document.getElementById('detail-critical-requests').textContent = formatNumber(stats.blood_requests.by_urgency?.critical || 0);
+    document.getElementById('detail-urgent-requests').textContent = formatNumber(stats.blood_requests.by_urgency?.urgent || 0);
     
-    // Детальная статистика ОТКЛИКОВ
-    document.getElementById('detail-total-responses').textContent = stats.responses.total_responses;
-    document.getElementById('detail-confirmed-responses').textContent = stats.responses.confirmed;
-    document.getElementById('detail-pending-responses').textContent = stats.responses.pending || 0;
-    document.getElementById('detail-declined-responses').textContent = stats.responses.declined || 0;
+    // Детальная статистика ОТКЛИКОВ (с форматированием)
+    document.getElementById('detail-total-responses').textContent = formatNumber(stats.responses.total_responses);
+    document.getElementById('detail-confirmed-responses').textContent = formatNumber(stats.responses.confirmed);
+    document.getElementById('detail-pending-responses').textContent = formatNumber(stats.responses.pending || 0);
+    document.getElementById('detail-declined-responses').textContent = formatNumber(stats.responses.declined || 0);
     document.getElementById('detail-conversion-rate').textContent = stats.responses.conversion_rate + '%';
-    document.getElementById('detail-unique-donors').textContent = stats.responses.unique_donors;
+    document.getElementById('detail-unique-donors').textContent = formatNumber(stats.responses.unique_donors);
     
-    // Детальная статистика ДОНАЦИЙ
-    document.getElementById('detail-total-donations').textContent = stats.donations.total;
-    document.getElementById('detail-total-volume-ml').textContent = stats.donations.total_volume_ml + ' мл';
-    document.getElementById('detail-total-volume-liters').textContent = stats.donations.total_volume_liters + ' л';
+    // Детальная статистика ДОНАЦИЙ (с форматированием)
+    document.getElementById('detail-total-donations').textContent = formatNumber(stats.donations.total);
+    document.getElementById('detail-total-volume-ml').textContent = formatNumber(stats.donations.total_volume_ml) + ' мл';
+    document.getElementById('detail-total-volume-liters').textContent = formatVolume(stats.donations.total_volume_ml);
     
-    // Средние показатели
+    // Средние показатели (с форматированием)
     const avgResponsesPerRequest = stats.blood_requests.total > 0 
         ? (stats.responses.total_responses / stats.blood_requests.total).toFixed(1) 
         : 0;
@@ -2301,7 +2322,7 @@ function renderStatistics(stats) {
     const avgVolume = stats.donations.total > 0 
         ? (stats.donations.total_volume_ml / stats.donations.total).toFixed(0) 
         : 0;
-    document.getElementById('detail-avg-volume').textContent = avgVolume + ' мл';
+    document.getElementById('detail-avg-volume').textContent = formatNumber(avgVolume) + ' мл';
 }
 
 function renderStatChange(elementId, change) {

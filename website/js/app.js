@@ -327,13 +327,18 @@ function animateCounter(element) {
     const increment = target / steps;
     let current = 0;
     
+    // Функция форматирования числа с триадами
+    const formatNumber = (num) => {
+        return Math.floor(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    };
+    
     const timer = setInterval(() => {
         current += increment;
         if (current >= target) {
-            element.textContent = target;
+            element.textContent = formatNumber(target);
             clearInterval(timer);
         } else {
-            element.textContent = Math.floor(current);
+            element.textContent = formatNumber(current);
         }
     }, duration / steps);
 }
