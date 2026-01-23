@@ -7,6 +7,7 @@
 import os
 import secrets
 import time
+import json
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -1561,8 +1562,123 @@ def update_response(response_id):
             (resp['user_id'],), commit=True
         )
     
-    # АВТОЗАКРЫТИЕ: проверяем, достигнут ли лимит
+    # ПРИ ПОДТВЕРЖДЕНИИ: создать диалог и отправить уведомление
     if new_status == 'confirmed':
+        # Получаем данные донора и медцентра для создания диалога
+        donor = query_db(
+            "SELECT * FROM users WHERE id = %s",
+            (resp['user_id'],), one=True
+        )
+        
+        medical_center = query_db(
+            "SELECT * FROM medical_centers WHERE id = %s",
+            (resp['medical_center_id'],), one=True
+        )
+        
+        if donor and medical_center:
+            # Создаём или получаем существующий диалог
+            conversation = query_db(
+                """SELECT * FROM conversations 
+                   WHERE donor_id = %s AND medical_center_id = %s""",
+                (resp['user_id'], resp['medical_center_id']), one=True
+            )
+            
+            if not conversation:
+                query_db(
+                    """INSERT INTO conversations (donor_id, medical_center_id, status)
+                       VALUES (%s, %s, 'active')""",
+                    (resp['user_id'], resp['medical_center_id']), commit=True
+                )
+                conversation = query_db(
+                    """SELECT * FROM conversations 
+                       WHERE donor_id = %s AND medical_center_id = %s""",
+                    (resp['user_id'], resp['medical_center_id']), one=True
+                )
+            
+            # Отправляем приглашение на донацию
+            blood_request = query_db(
+                "SELECT * FROM blood_requests WHERE id = %s",
+                (resp['request_id'],), one=True
+            )
+            
+            donation_date = data.get('donation_date', 'будет уточнена')
+            donation_time = data.get('donation_time', 'будет уточнено')
+            
+            message_text = f"""✅ ВАША ЗАЯВКА ОДОБРЕНА!
+
+📅 Дата и время: {donation_date}, {donation_time}
+
+🏥 Медицинский центр:
+{medical_center['name']}
+📍 {medical_center['address']}
+📞 {medical_center['phone']}
+
+🩸 Группа крови: {donor['blood_type']}
+
+📋 ПОДГОТОВКА К ДОНАЦИИ
+
+За 48 часов до сдачи:
+• Исключите алкогольные напитки
+• Избегайте жирной, жареной, острой и копчёной пищи
+• Не принимайте лекарства (кроме жизненно необходимых)
+
+За 24 часа до сдачи:
+• Хорошо выспитесь (не менее 8 часов)
+• Пейте больше жидкости (вода, чай, сок)
+
+В день сдачи:
+• Лёгкий завтрак за 2-3 часа до визита
+• Не курите за 1 час до сдачи
+• Возьмите с собой паспорт
+
+❌ ПРОТИВОПОКАЗАНИЯ (при наличии — сообщите врачу):
+• Повышенная температура, простуда
+• Приём антибиотиков в последние 2 недели
+• Недавние операции или удаление зубов
+• Татуировки или пирсинг менее 1 года назад
+
+💬 Есть вопросы? Напишите нам в этом чате.
+📅 Не можете прийти? Сообщите заранее."""
+            
+            # Сохраняем сообщение
+            query_db(
+                """INSERT INTO messages 
+                   (conversation_id, sender_role, message_type, content, metadata, created_at)
+                   VALUES (%s, %s, %s, %s, %s, NOW())""",
+                (
+                    conversation['id'],
+                    'medcenter',
+                    'invitation',
+                    message_text,
+                    json.dumps({
+                        'donation_date': str(donation_date),
+                        'donation_time': str(donation_time),
+                        'medical_center_id': medical_center['id'],
+                        'blood_type': donor['blood_type']
+                    })
+                ),
+                commit=True
+            )
+            
+            # Отправляем в Telegram
+            if donor.get('telegram_id'):
+                try:
+                    telegram_text = f"""✅ Ваша заявка на донацию одобрена!
+
+📅 {donation_date}, {donation_time}
+🏥 {medical_center['name']}
+📍 {medical_center['address']}
+
+⚠️ Важно: За 48 часов исключите алкоголь и жирную пищу.
+
+📋 Полные правила подготовки на сайте
+💬 {APP_URL}/donor-dashboard.html"""
+                    
+                    send_telegram_message(donor['telegram_id'], telegram_text)
+                except Exception as e:
+                    app.logger.error(f"Ошибка отправки в Telegram: {e}")
+        
+        # АВТОЗАКРЫТИЕ: проверяем, достигнут ли лимит
         blood_request = query_db(
             "SELECT * FROM blood_requests WHERE id = %s",
             (resp['request_id'],), one=True
@@ -2193,6 +2309,246 @@ def cancel_blood_request_response(request_id):
     
     return jsonify({'message': 'Отклик отменён'})
 
+
+@app.route('/api/medcenter/responses/<int:response_id>/approve', methods=['POST'])
+@require_auth('medcenter')
+def approve_donor_response(response_id):
+    """Одобрить донора на донацию (создаёт диалог и отправляет уведомление)"""
+    medical_center_id = g.session['medical_center_id']
+    data = request.json
+    
+    # Получаем отклик
+    response_data = query_db(
+        """SELECT dr.*, u.full_name, u.blood_type, u.phone, 
+                  br.blood_type as requested_blood_type,
+                  mc.name as medical_center_name, mc.address, mc.phone as mc_phone
+           FROM donation_responses dr
+           JOIN users u ON dr.user_id = u.id
+           JOIN blood_requests br ON dr.request_id = br.id
+           JOIN medical_centers mc ON dr.medical_center_id = mc.id
+           WHERE dr.id = %s AND dr.medical_center_id = %s""",
+        (response_id, medical_center_id), one=True
+    )
+    
+    if not response_data:
+        return jsonify({'error': 'Отклик не найден'}), 404
+    
+    if response_data['status'] == 'approved':
+        return jsonify({'error': 'Донор уже одобрен'}), 400
+    
+    # Получаем дату и время из запроса
+    donation_date = data.get('donation_date')  # ISO формат: 2026-02-15
+    donation_time = data.get('donation_time', '10:00')  # Формат: HH:MM
+    
+    if not donation_date:
+        return jsonify({'error': 'Не указана дата донации'}), 400
+    
+    # Обновляем статус отклика
+    query_db(
+        """UPDATE donation_responses 
+           SET status = 'approved', 
+               approved_at = NOW(),
+               donation_date = %s,
+               donation_time = %s
+           WHERE id = %s""",
+        (donation_date, donation_time, response_id), commit=True
+    )
+    
+    # Создаём или получаем диалог
+    conversation = get_or_create_conversation(
+        response_data['user_id'], 
+        medical_center_id, 
+        query_db
+    )
+    
+    # Формируем сообщение-уведомление
+    from datetime import datetime
+    date_obj = datetime.fromisoformat(donation_date)
+    formatted_date = date_obj.strftime('%d %B %Y')  # 15 февраля 2026
+    
+    # Загружаем правила подготовки из файла проекта
+    preparation_rules = """
+📋 ПОДГОТОВКА К ДОНАЦИИ
+
+За 48 часов до сдачи:
+• Исключите алкогольные напитки
+• Избегайте жирной, жареной, острой и копчёной пищи
+• Не принимайте лекарства (кроме жизненно необходимых)
+
+За 24 часа до сдачи:
+• Хорошо выспитесь (не менее 8 часов)
+• Пейте больше жидкости (вода, чай, сок)
+
+В день сдачи:
+• Лёгкий завтрак за 2-3 часа до визита (каша на воде, сухое печенье, сладкий чай)
+• Не курите за 1 час до сдачи
+• Возьмите с собой паспорт
+
+❌ ПРОТИВОПОКАЗАНИЯ (при наличии — сообщите врачу):
+• Повышенная температура, простуда
+• Приём антибиотиков в последние 2 недели
+• Недавние операции или удаление зубов
+• Татуировки или пирсинг менее 1 года назад
+    """.strip()
+    
+    notification_content = f"""✅ ВАША ЗАЯВКА ОДОБРЕНА!
+
+📅 Дата и время: {formatted_date}, {donation_time}
+
+🏥 Медицинский центр:
+{response_data['medical_center_name']}
+📍 {response_data['address']}
+📞 {response_data['mc_phone']}
+
+🩸 Группа крови: {response_data['blood_type']}
+
+{preparation_rules}
+
+💬 Есть вопросы? Напишите нам в этом чате.
+📅 Не можете прийти? Сообщите заранее.
+    """
+    
+    # Сохраняем уведомление в БД
+    query_db(
+        """INSERT INTO messages 
+           (conversation_id, sender_id, sender_role, content, message_type, metadata, created_at)
+           VALUES (%s, NULL, 'system', %s, 'notification', %s, NOW())""",
+        (conversation['id'], notification_content, {
+            'type': 'approval',
+            'response_id': response_id,
+            'donation_date': donation_date,
+            'donation_time': donation_time,
+            'medical_center_id': medical_center_id
+        }),
+        commit=True
+    )
+    
+    app.logger.info(f"✅ Донор {response_data['user_id']} одобрен, уведомление отправлено")
+    
+    # TODO: Отправка в Telegram
+    try:
+        # Получаем telegram_id донора
+        donor_tg = query_db(
+            """SELECT telegram_id FROM telegram_link_codes 
+               WHERE user_id = %s AND linked = TRUE 
+               ORDER BY created_at DESC LIMIT 1""",
+            (response_data['user_id'],), one=True
+        )
+        
+        if donor_tg and donor_tg['telegram_id']:
+            telegram_message = f"""✅ Ваша заявка на донацию одобрена!
+
+📅 {formatted_date}, {donation_time}
+🏥 {response_data['medical_center_name']}
+📍 {response_data['address']}
+
+⚠️ Важно: За 48 часов исключите алкоголь и жирную пищу.
+
+📋 Полные правила подготовки на сайте"""
+            
+            send_notification(donor_tg['telegram_id'], telegram_message)
+            app.logger.info(f"📲 Telegram уведомление отправлено донору {response_data['user_id']}")
+    except Exception as e:
+        app.logger.error(f"Ошибка отправки Telegram: {e}")
+    
+    return jsonify({
+        'message': 'Донор одобрен',
+        'conversation_id': conversation['id'],
+        'notification_sent': True
+    }), 200
+
+
+@app.route('/api/medcenter/responses/<int:response_id>/reject', methods=['POST'])
+@require_auth('medcenter')
+def reject_donor_response(response_id):
+    """Отклонить донора (создаёт диалог и отправляет уведомление)"""
+    medical_center_id = g.session['medical_center_id']
+    data = request.json
+    
+    # Получаем отклик
+    response_data = query_db(
+        """SELECT dr.*, u.full_name, mc.name as medical_center_name
+           FROM donation_responses dr
+           JOIN users u ON dr.user_id = u.id
+           JOIN medical_centers mc ON dr.medical_center_id = mc.id
+           WHERE dr.id = %s AND dr.medical_center_id = %s""",
+        (response_id, medical_center_id), one=True
+    )
+    
+    if not response_data:
+        return jsonify({'error': 'Отклик не найден'}), 404
+    
+    if response_data['status'] == 'rejected':
+        return jsonify({'error': 'Донор уже отклонён'}), 400
+    
+    reason = data.get('reason', 'Не указана')
+    
+    # Обновляем статус
+    query_db(
+        """UPDATE donation_responses 
+           SET status = 'rejected', rejection_reason = %s 
+           WHERE id = %s""",
+        (reason, response_id), commit=True
+    )
+    
+    # Создаём или получаем диалог
+    conversation = get_or_create_conversation(
+        response_data['user_id'], 
+        medical_center_id, 
+        query_db
+    )
+    
+    # Формируем сообщение
+    notification_content = f"""❌ ЗАЯВКА ОТКЛОНЕНА
+
+К сожалению, ваша заявка на донацию отклонена.
+
+Причина: {reason}
+
+Вы можете откликнуться на другие запросы крови или связаться с нами для уточнения.
+    """
+    
+    # Сохраняем уведомление
+    query_db(
+        """INSERT INTO messages 
+           (conversation_id, sender_id, sender_role, content, message_type, metadata, created_at)
+           VALUES (%s, NULL, 'system', %s, 'notification', %s, NOW())""",
+        (conversation['id'], notification_content, {
+            'type': 'rejection',
+            'response_id': response_id,
+            'reason': reason
+        }),
+        commit=True
+    )
+    
+    app.logger.info(f"❌ Донор {response_data['user_id']} отклонён")
+    
+    # TODO: Отправка в Telegram
+    try:
+        donor_tg = query_db(
+            """SELECT telegram_id FROM telegram_link_codes 
+               WHERE user_id = %s AND linked = TRUE 
+               ORDER BY created_at DESC LIMIT 1""",
+            (response_data['user_id'],), one=True
+        )
+        
+        if donor_tg and donor_tg['telegram_id']:
+            telegram_message = f"""❌ Ваша заявка на донацию отклонена.
+
+Причина: {reason}
+
+Вы можете откликнуться на другие запросы."""
+            
+            send_notification(donor_tg['telegram_id'], telegram_message)
+    except Exception as e:
+        app.logger.error(f"Ошибка отправки Telegram: {e}")
+    
+    return jsonify({
+        'message': 'Донор отклонён',
+        'conversation_id': conversation['id']
+    }), 200
+
+
 # ============================================
 # API: Сообщения для доноров
 # ============================================
@@ -2228,27 +2584,112 @@ def schedule_donation():
     
     # Получаем информацию о доноре
     donor = query_db(
-        """SELECT full_name, blood_type, phone, email FROM users WHERE id = %s""",
+        """SELECT * FROM users WHERE id = %s""",
         (user_id,), one=True
     )
     
     if not donor:
         return jsonify({'error': 'Донор не найден'}), 404
     
+    # Проверяем, прошло ли 60 дней с последней донации
+    if donor.get('last_donation_date'):
+        from datetime import date, timedelta
+        last_date = donor['last_donation_date']
+        if isinstance(last_date, str):
+            from datetime import datetime as dt
+            last_date = dt.strptime(last_date, '%Y-%m-%d').date()
+        
+        days_since = (date.today() - last_date).days
+        if days_since < 60:
+            return jsonify({
+                'error': f'С последней донации прошло только {days_since} дней. Вы сможете сдать кровь через {60 - days_since} дней.'
+            }), 400
+    
     # Получаем информацию о медцентре
     mc = query_db(
-        """SELECT name FROM medical_centers WHERE id = %s""",
+        """SELECT * FROM medical_centers WHERE id = %s""",
         (medical_center_id,), one=True
     )
     
     if not mc:
         return jsonify({'error': 'Медицинский центр не найден'}), 404
     
+    # Ищем активный запрос крови для этой группы в этом медцентре
+    blood_request = query_db(
+        """SELECT * FROM blood_requests 
+           WHERE medical_center_id = %s 
+           AND blood_type = %s 
+           AND status = 'active'
+           ORDER BY created_at DESC
+           LIMIT 1""",
+        (medical_center_id, donor['blood_type']), one=True
+    )
+    
+    # Если запроса нет - создаём автоматически для плановой донации
+    if not blood_request:
+        query_db(
+            """INSERT INTO blood_requests 
+               (medical_center_id, blood_type, urgency, status, description, needed_donors, auto_close)
+               VALUES (%s, %s, 'planned', 'active', 'Плановая донация', NULL, false)""",
+            (medical_center_id, donor['blood_type']),
+            commit=True
+        )
+        blood_request = query_db(
+            """SELECT * FROM blood_requests 
+               WHERE medical_center_id = %s 
+               AND blood_type = %s 
+               AND status = 'active'
+               ORDER BY created_at DESC
+               LIMIT 1""",
+            (medical_center_id, donor['blood_type']), one=True
+        )
+    
+    # Создаём отклик донора со статусом 'pending'
+    query_db(
+        """INSERT INTO donation_responses 
+           (request_id, user_id, medical_center_id, status, donor_comment, created_at)
+           VALUES (%s, %s, %s, 'pending', %s, NOW())""",
+        (
+            blood_request['id'],
+            user_id,
+            medical_center_id,
+            f"Плановая донация. Предпочтительная дата: {data.get('planned_date', 'любая')}. {data.get('comment', '')}"
+        ),
+        commit=True
+    )
+    
+    # Получаем ID созданного отклика
+    response_record = query_db(
+        """SELECT * FROM donation_responses 
+           WHERE request_id = %s AND user_id = %s
+           ORDER BY created_at DESC LIMIT 1""",
+        (blood_request['id'], user_id), one=True
+    )
+    
+    # Создаём или получаем диалог
+    conversation = query_db(
+        """SELECT * FROM conversations 
+           WHERE donor_id = %s AND medical_center_id = %s""",
+        (user_id, medical_center_id), one=True
+    )
+    
+    if not conversation:
+        query_db(
+            """INSERT INTO conversations (donor_id, medical_center_id, status)
+               VALUES (%s, %s, 'active')""",
+            (user_id, medical_center_id), commit=True
+        )
+        conversation = query_db(
+            """SELECT * FROM conversations 
+               WHERE donor_id = %s AND medical_center_id = %s""",
+            (user_id, medical_center_id), one=True
+        )
+    
     # Формируем сообщение для медцентра
     planned_date = data.get('planned_date')
     comment = data.get('comment')
     
-    message_text = f"""Заявка на плановую донацию от донора:
+    message_text = f"""📋 Заявка на плановую донацию
 
 ФИО: {donor['full_name']}
 Группа крови: {donor['blood_type']}
@@ -2258,19 +2699,30 @@ Email: {donor['email'] or 'не указан'}
 
 {f'Комментарий донора: {comment}' if comment else ''}
 
-Донор готов сдать кровь в удобное для медцентра время. Пожалуйста, свяжитесь с ним для уточнения деталей."""
+Донор готов сдать кровь. Пожалуйста, подтвердите заявку и согласуйте время визита."""
     
-    # Отправляем сообщение медцентру
+    # Отправляем сообщение в диалог
     query_db(
-        """INSERT INTO messages (from_user_id, to_medcenter_id, subject, message)
-           VALUES (%s, %s, %s, %s)""",
-        (user_id, medical_center_id, 'Заявка на плановую донацию', message_text),
+        """INSERT INTO messages 
+           (conversation_id, sender_role, message_type, content, metadata, created_at)
+           VALUES (%s, %s, %s, %s, %s, NOW())""",
+        (
+            conversation['id'],
+            'donor',
+            'text',
+            message_text,
+            json.dumps({
+                'planned_date': planned_date,
+                'response_id': response_record['id']
+            })
+        ),
         commit=True
     )
     
     return jsonify({
         'message': 'Заявка отправлена',
-        'medical_center_name': mc['name']
+        'medical_center_name': mc['name'],
+        'response_id': response_record['id']
     }), 201
 
 @app.route('/api/donor/messages/<int:message_id>/read', methods=['POST'])
@@ -2966,6 +3418,604 @@ def export_statistics():
             'Content-Disposition': f'attachment; filename="{filename_safe}"; filename*=UTF-8\'\'{quote(filename_display)}'
         }
     )
+
+# ============================================
+# API: СИСТЕМА СООБЩЕНИЙ (Мессенджер)
+# ============================================
+
+# Импорт функций из messaging_api
+from messaging_api import (
+    get_or_create_conversation,
+    format_conversation,
+    format_message,
+    get_avatar_initials
+)
+
+# Диалоги
+@app.route('/api/messages/conversations', methods=['GET'])
+@require_auth()
+def get_conversations():
+    """Список диалогов пользователя"""
+    user_type = g.session.get('user_type')
+    user_id = g.session.get('user_id')
+    medical_center_id = g.session.get('medical_center_id')
+    
+    status = request.args.get('status', 'active')
+    limit = min(int(request.args.get('limit', 50)), 100)
+    offset = int(request.args.get('offset', 0))
+    
+    if user_type == 'donor':
+        conversations = query_db(
+            """SELECT c.*, 
+                      c.donor_unread_count as unread_count,
+                      mc.id as partner_id,
+                      mc.name as partner_name,
+                      mc.address,
+                      mc.phone
+               FROM conversations c
+               JOIN medical_centers mc ON c.medical_center_id = mc.id
+               WHERE c.donor_id = %s AND c.status = %s
+               ORDER BY c.last_message_at DESC NULLS LAST
+               LIMIT %s OFFSET %s""",
+            (user_id, status, limit, offset)
+        )
+        
+        result = []
+        for conv in conversations:
+            partner_info = {
+                'id': conv['partner_id'],
+                'name': conv['partner_name'],
+                'type': 'medical_center',
+                'address': conv.get('address'),
+                'phone': conv.get('phone')
+            }
+            result.append(format_conversation(conv, partner_info, conv['unread_count'], query_db))
+        
+        return jsonify({'conversations': result, 'total': len(result)})
+    
+    elif user_type == 'medcenter':
+        conversations = query_db(
+            """SELECT c.*, 
+                      c.medcenter_unread_count as unread_count,
+                      u.id as partner_id,
+                      u.full_name as partner_name,
+                      u.blood_type,
+                      u.donation_count
+               FROM conversations c
+               JOIN users u ON c.donor_id = u.id
+               WHERE c.medical_center_id = %s AND c.status = %s
+               ORDER BY c.last_message_at DESC NULLS LAST
+               LIMIT %s OFFSET %s""",
+            (medical_center_id, status, limit, offset)
+        )
+        
+        result = []
+        for conv in conversations:
+            partner_info = {
+                'id': conv['partner_id'],
+                'full_name': conv['partner_name'],
+                'type': 'donor',
+                'blood_type': conv.get('blood_type'),
+                'donation_count': conv.get('donation_count', 0)
+            }
+            result.append(format_conversation(conv, partner_info, conv['unread_count'], query_db))
+        
+        return jsonify({'conversations': result, 'total': len(result)})
+    
+    return jsonify({'error': 'Неизвестный тип пользователя'}), 400
+
+
+@app.route('/api/messages/conversations/<int:conversation_id>', methods=['GET'])
+@require_auth()
+def get_conversation(conversation_id):
+    """Получить один диалог"""
+    user_type = g.session.get('user_type')
+    user_id = g.session.get('user_id')
+    medical_center_id = g.session.get('medical_center_id')
+    
+    if user_type == 'donor':
+        conversation = query_db(
+            """SELECT c.*, 
+                      mc.id as partner_id,
+                      mc.name as partner_name,
+                      mc.address,
+                      mc.phone
+               FROM conversations c
+               JOIN medical_centers mc ON c.medical_center_id = mc.id
+               WHERE c.id = %s AND c.donor_id = %s""",
+            (conversation_id, user_id), one=True
+        )
+        
+        if not conversation:
+            return jsonify({'error': 'Диалог не найден'}), 404
+        
+        partner_info = {
+            'id': conversation['partner_id'],
+            'name': conversation['partner_name'],
+            'type': 'medical_center',
+            'address': conversation.get('address'),
+            'phone': conversation.get('phone')
+        }
+        unread_count = conversation.get('donor_unread_count', 0)
+    
+    elif user_type == 'medcenter':
+        conversation = query_db(
+            """SELECT c.*, 
+                      u.id as partner_id,
+                      u.full_name as partner_name,
+                      u.blood_type,
+                      u.donation_count,
+                      u.phone,
+                      u.email
+               FROM conversations c
+               JOIN users u ON c.donor_id = u.id
+               WHERE c.id = %s AND c.medical_center_id = %s""",
+            (conversation_id, medical_center_id), one=True
+        )
+        
+        if not conversation:
+            return jsonify({'error': 'Диалог не найден'}), 404
+        
+        partner_info = {
+            'id': conversation['partner_id'],
+            'full_name': conversation['partner_name'],
+            'type': 'donor',
+            'blood_type': conversation.get('blood_type'),
+            'donation_count': conversation.get('donation_count', 0),
+            'phone': conversation.get('phone'),
+            'email': conversation.get('email')
+        }
+        unread_count = conversation.get('medcenter_unread_count', 0)
+    
+    else:
+        return jsonify({'error': 'Неизвестный тип пользователя'}), 400
+    
+    return jsonify(format_conversation(conversation, partner_info, unread_count, query_db))
+
+
+@app.route('/api/messages/conversations', methods=['POST'])
+@require_auth()
+def create_conversation():
+    """Создать новый диалог"""
+    data = request.json
+    recipient_id = data.get('recipient_id')
+    
+    if not recipient_id:
+        return jsonify({'error': 'Не указан получатель'}), 400
+    
+    user_type = g.session.get('user_type')
+    user_id = g.session.get('user_id')
+    medical_center_id = g.session.get('medical_center_id')
+    
+    if user_type == 'donor':
+        conversation = get_or_create_conversation(user_id, recipient_id, query_db)
+    elif user_type == 'medcenter':
+        conversation = get_or_create_conversation(recipient_id, medical_center_id, query_db)
+    else:
+        return jsonify({'error': 'Неизвестный тип пользователя'}), 400
+    
+    return jsonify({'conversation_id': conversation['id'], 'message': 'Диалог создан'}), 201
+
+
+@app.route('/api/messages/conversations/<int:conversation_id>/archive', methods=['PUT'])
+@require_auth()
+def archive_conversation(conversation_id):
+    """Архивировать диалог"""
+    user_type = g.session.get('user_type')
+    user_id = g.session.get('user_id')
+    medical_center_id = g.session.get('medical_center_id')
+    
+    if user_type == 'donor':
+        conversation = query_db(
+            "SELECT id FROM conversations WHERE id = %s AND donor_id = %s",
+            (conversation_id, user_id), one=True
+        )
+    elif user_type == 'medcenter':
+        conversation = query_db(
+            "SELECT id FROM conversations WHERE id = %s AND medical_center_id = %s",
+            (conversation_id, medical_center_id), one=True
+        )
+    else:
+        return jsonify({'error': 'Неизвестный тип пользователя'}), 400
+    
+    if not conversation:
+        return jsonify({'error': 'Диалог не найден'}), 404
+    
+    query_db(
+        "UPDATE conversations SET status = 'archived', updated_at = NOW() WHERE id = %s",
+        (conversation_id,), commit=True
+    )
+    
+    return jsonify({'message': 'Диалог архивирован'})
+
+
+@app.route('/api/messages/conversations/<int:conversation_id>/unarchive', methods=['PUT'])
+@require_auth()
+def unarchive_conversation(conversation_id):
+    """Восстановить диалог"""
+    user_type = g.session.get('user_type')
+    user_id = g.session.get('user_id')
+    medical_center_id = g.session.get('medical_center_id')
+    
+    if user_type == 'donor':
+        conversation = query_db(
+            "SELECT id FROM conversations WHERE id = %s AND donor_id = %s",
+            (conversation_id, user_id), one=True
+        )
+    elif user_type == 'medcenter':
+        conversation = query_db(
+            "SELECT id FROM conversations WHERE id = %s AND medical_center_id = %s",
+            (conversation_id, medical_center_id), one=True
+        )
+    else:
+        return jsonify({'error': 'Неизвестный тип пользователя'}), 400
+    
+    if not conversation:
+        return jsonify({'error': 'Диалог не найден'}), 404
+    
+    query_db(
+        "UPDATE conversations SET status = 'active', updated_at = NOW() WHERE id = %s",
+        (conversation_id,), commit=True
+    )
+    
+    return jsonify({'message': 'Диалог восстановлен'})
+
+
+# Сообщения
+@app.route('/api/messages/conversations/<int:conversation_id>/messages', methods=['GET'])
+@require_auth()
+def get_conversation_messages(conversation_id):
+    """Получить сообщения в диалоге"""
+    user_type = g.session.get('user_type')
+    user_id = g.session.get('user_id')
+    medical_center_id = g.session.get('medical_center_id')
+    
+    if user_type == 'donor':
+        conversation = query_db(
+            "SELECT id FROM conversations WHERE id = %s AND donor_id = %s",
+            (conversation_id, user_id), one=True
+        )
+    elif user_type == 'medcenter':
+        conversation = query_db(
+            "SELECT id FROM conversations WHERE id = %s AND medical_center_id = %s",
+            (conversation_id, medical_center_id), one=True
+        )
+    else:
+        return jsonify({'error': 'Неизвестный тип пользователя'}), 400
+    
+    if not conversation:
+        return jsonify({'error': 'Диалог не найден'}), 404
+    
+    limit = min(int(request.args.get('limit', 50)), 100)
+    before_id = request.args.get('before_id')
+    
+    if before_id:
+        messages = query_db(
+            """SELECT * FROM messages 
+               WHERE conversation_id = %s 
+                 AND deleted_at IS NULL 
+                 AND id < %s
+               ORDER BY created_at DESC 
+               LIMIT %s""",
+            (conversation_id, before_id, limit)
+        )
+    else:
+        messages = query_db(
+            """SELECT * FROM messages 
+               WHERE conversation_id = %s 
+                 AND deleted_at IS NULL
+               ORDER BY created_at DESC 
+               LIMIT %s""",
+            (conversation_id, limit)
+        )
+    
+    result = [format_message(msg) for msg in messages]
+    result.reverse()
+    
+    return jsonify({'messages': result, 'count': len(result)})
+
+
+@app.route('/api/messages/conversations/<int:conversation_id>/messages', methods=['POST'])
+@require_auth()
+def send_conversation_message(conversation_id):
+    """Отправить сообщение"""
+    data = request.json
+    content = data.get('content', '').strip()
+    message_type = data.get('type', 'text')
+    metadata = data.get('metadata')
+    
+    if not content:
+        return jsonify({'error': 'Сообщение не может быть пустым'}), 400
+    
+    user_type = g.session.get('user_type')
+    user_id = g.session.get('user_id')
+    medical_center_id = g.session.get('medical_center_id')
+    
+    if user_type == 'donor':
+        conversation = query_db(
+            "SELECT * FROM conversations WHERE id = %s AND donor_id = %s",
+            (conversation_id, user_id), one=True
+        )
+        sender_id = user_id
+        sender_role = 'donor'
+    elif user_type == 'medcenter':
+        conversation = query_db(
+            "SELECT * FROM conversations WHERE id = %s AND medical_center_id = %s",
+            (conversation_id, medical_center_id), one=True
+        )
+        sender_id = None
+        sender_role = 'medical_center'
+    else:
+        return jsonify({'error': 'Неизвестный тип пользователя'}), 400
+    
+    if not conversation:
+        return jsonify({'error': 'Диалог не найден'}), 404
+    
+    query_db(
+        """INSERT INTO messages 
+           (conversation_id, sender_id, sender_role, content, message_type, metadata, created_at)
+           VALUES (%s, %s, %s, %s, %s, %s, NOW())""",
+        (conversation_id, sender_id, sender_role, content, message_type, 
+         metadata if metadata else None),
+        commit=True
+    )
+    
+    message = query_db(
+        """SELECT * FROM messages 
+           WHERE conversation_id = %s 
+           ORDER BY created_at DESC 
+           LIMIT 1""",
+        (conversation_id,), one=True
+    )
+    
+    app.logger.info(f"✅ Сообщение отправлено: {sender_role} -> conversation {conversation_id}")
+    
+    # TODO: Отправка в Telegram
+    
+    return jsonify(format_message(message)), 201
+
+
+@app.route('/api/messages/messages/<int:message_id>', methods=['PUT'])
+@require_auth()
+def edit_message(message_id):
+    """Редактировать сообщение"""
+    data = request.json
+    new_content = data.get('content', '').strip()
+    
+    if not new_content:
+        return jsonify({'error': 'Сообщение не может быть пустым'}), 400
+    
+    user_type = g.session.get('user_type')
+    
+    message = query_db(
+        "SELECT * FROM messages WHERE id = %s AND deleted_at IS NULL",
+        (message_id,), one=True
+    )
+    
+    if not message:
+        return jsonify({'error': 'Сообщение не найдено'}), 404
+    
+    if message['message_type'] != 'text':
+        return jsonify({'error': 'Можно редактировать только обычные сообщения'}), 403
+    
+    if user_type == 'donor' and message['sender_role'] != 'donor':
+        return jsonify({'error': 'Вы не можете редактировать это сообщение'}), 403
+    
+    if user_type == 'medcenter' and message['sender_role'] != 'medical_center':
+        return jsonify({'error': 'Вы не можете редактировать это сообщение'}), 403
+    
+    query_db(
+        """UPDATE messages 
+           SET content = %s, edited_at = NOW() 
+           WHERE id = %s""",
+        (new_content, message_id), commit=True
+    )
+    
+    updated_message = query_db(
+        "SELECT * FROM messages WHERE id = %s",
+        (message_id,), one=True
+    )
+    
+    return jsonify(format_message(updated_message))
+
+
+@app.route('/api/messages/messages/<int:message_id>', methods=['DELETE'])
+@require_auth()
+def delete_message(message_id):
+    """Удалить сообщение"""
+    user_type = g.session.get('user_type')
+    
+    message = query_db(
+        "SELECT * FROM messages WHERE id = %s AND deleted_at IS NULL",
+        (message_id,), one=True
+    )
+    
+    if not message:
+        return jsonify({'error': 'Сообщение не найдено'}), 404
+    
+    if message['message_type'] != 'text':
+        return jsonify({'error': 'Можно удалять только обычные сообщения'}), 403
+    
+    if user_type == 'donor' and message['sender_role'] != 'donor':
+        return jsonify({'error': 'Вы не можете удалить это сообщение'}), 403
+    
+    if user_type == 'medcenter' and message['sender_role'] != 'medical_center':
+        return jsonify({'error': 'Вы не можете удалить это сообщение'}), 403
+    
+    query_db(
+        "UPDATE messages SET deleted_at = NOW() WHERE id = %s",
+        (message_id,), commit=True
+    )
+    
+    return jsonify({'message': 'Сообщение удалено'})
+
+
+@app.route('/api/messages/conversations/<int:conversation_id>/read', methods=['POST'])
+@require_auth()
+def mark_conversation_read(conversation_id):
+    """Отметить все сообщения как прочитанные"""
+    user_type = g.session.get('user_type')
+    user_id = g.session.get('user_id')
+    medical_center_id = g.session.get('medical_center_id')
+    
+    if user_type == 'donor':
+        conversation = query_db(
+            "SELECT id FROM conversations WHERE id = %s AND donor_id = %s",
+            (conversation_id, user_id), one=True
+        )
+        query_db(
+            """UPDATE messages 
+               SET is_read = TRUE, read_at = NOW() 
+               WHERE conversation_id = %s 
+                 AND is_read = FALSE 
+                 AND sender_role IN ('medical_center', 'system')""",
+            (conversation_id,), commit=True
+        )
+    elif user_type == 'medcenter':
+        conversation = query_db(
+            "SELECT id FROM conversations WHERE id = %s AND medical_center_id = %s",
+            (conversation_id, medical_center_id), one=True
+        )
+        query_db(
+            """UPDATE messages 
+               SET is_read = TRUE, read_at = NOW() 
+               WHERE conversation_id = %s 
+                 AND is_read = FALSE 
+                 AND sender_role = 'donor'""",
+            (conversation_id,), commit=True
+        )
+    else:
+        return jsonify({'error': 'Неизвестный тип пользователя'}), 400
+    
+    if not conversation:
+        return jsonify({'error': 'Диалог не найден'}), 404
+    
+    return jsonify({'message': 'Сообщения отмечены как прочитанные'})
+
+
+@app.route('/api/messages/updates', methods=['GET'])
+@require_auth()
+def get_message_updates():
+    """Long polling для новых сообщений"""
+    user_type = g.session.get('user_type')
+    user_id = g.session.get('user_id')
+    medical_center_id = g.session.get('medical_center_id')
+    
+    last_id = request.args.get('last_id', type=int, default=0)
+    
+    if user_type == 'donor':
+        messages = query_db(
+            """SELECT m.* 
+               FROM messages m
+               JOIN conversations c ON m.conversation_id = c.id
+               WHERE c.donor_id = %s 
+                 AND m.id > %s
+                 AND m.deleted_at IS NULL
+               ORDER BY m.created_at ASC
+               LIMIT 50""",
+            (user_id, last_id)
+        )
+        
+        unread_counts = query_db(
+            """SELECT id, donor_unread_count as unread_count
+               FROM conversations
+               WHERE donor_id = %s AND donor_unread_count > 0""",
+            (user_id,)
+        )
+    
+    elif user_type == 'medcenter':
+        messages = query_db(
+            """SELECT m.* 
+               FROM messages m
+               JOIN conversations c ON m.conversation_id = c.id
+               WHERE c.medical_center_id = %s 
+                 AND m.id > %s
+                 AND m.deleted_at IS NULL
+               ORDER BY m.created_at ASC
+               LIMIT 50""",
+            (medical_center_id, last_id)
+        )
+        
+        unread_counts = query_db(
+            """SELECT id, medcenter_unread_count as unread_count
+               FROM conversations
+               WHERE medical_center_id = %s AND medcenter_unread_count > 0""",
+            (medical_center_id,)
+        )
+    
+    else:
+        return jsonify({'error': 'Неизвестный тип пользователя'}), 400
+    
+    formatted_messages = [format_message(msg) for msg in messages]
+    
+    return jsonify({
+        'messages': formatted_messages,
+        'unread_counts': {str(row['id']): row['unread_count'] for row in unread_counts},
+        'timestamp': datetime.now().isoformat()
+    })
+
+
+# Шаблоны сообщений
+@app.route('/api/messages/templates', methods=['GET'])
+@require_auth('medcenter')
+def get_message_templates():
+    """Получить шаблоны сообщений"""
+    medical_center_id = g.session.get('medical_center_id')
+    
+    # Получаем предустановленные + свои шаблоны
+    templates = query_db(
+        """SELECT * FROM message_templates 
+           WHERE is_predefined = TRUE 
+              OR medical_center_id = %s
+           ORDER BY is_predefined DESC, name ASC""",
+        (medical_center_id,)
+    )
+    
+    result = [{
+        'id': t['id'],
+        'name': t['name'],
+        'content': t['content'],
+        'variables': t.get('variables', []),
+        'is_predefined': t.get('is_predefined', False)
+    } for t in templates]
+    
+    return jsonify({'templates': result})
+
+
+@app.route('/api/messages/templates', methods=['POST'])
+@require_auth('medcenter')
+def create_message_template():
+    """Создать свой шаблон"""
+    data = request.json
+    name = data.get('name', '').strip()
+    content = data.get('content', '').strip()
+    
+    if not name or not content:
+        return jsonify({'error': 'Название и содержимое обязательны'}), 400
+    
+    medical_center_id = g.session.get('medical_center_id')
+    
+    query_db(
+        """INSERT INTO message_templates (medical_center_id, name, content, created_at)
+           VALUES (%s, %s, %s, NOW())""",
+        (medical_center_id, name, content), commit=True
+    )
+    
+    template = query_db(
+        """SELECT * FROM message_templates 
+           WHERE medical_center_id = %s 
+           ORDER BY created_at DESC 
+           LIMIT 1""",
+        (medical_center_id,), one=True
+    )
+    
+    return jsonify({
+        'id': template['id'],
+        'name': template['name'],
+        'content': template['content'],
+        'message': 'Шаблон создан'
+    }), 201
+
 
 # ============================================
 # Запуск сервера

@@ -22,6 +22,9 @@ document.addEventListener('DOMContentLoaded', function() {
     initModal();
     initLogout();
     
+    // Инициализация мессенджера
+    window.messengerInstance = null;
+    
     // Асинхронная загрузка данных (последовательно)
     (async () => {
         try {
@@ -35,6 +38,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadDonateCenters()
             ]);
             console.log('✓ Все данные загружены');
+            
+            // Инициализируем мессенджер после загрузки данных
+            initMessenger();
         } catch (e) {
             console.error('✗ Ошибка загрузки данных:', e);
         }
@@ -2445,12 +2451,13 @@ async function updateLastDonationDate(newDate) {
             showNotification('✅ Дата последней донации обновлена', 'success');
             
             // Обновляем данные пользователя
-            const user = JSON.parse(localStorage.getItem('user')) || {};
-            user.last_donation_date = newDate;
-            localStorage.setItem('user', JSON.stringify(user));
+            await loadUserDataFromAPI();  // Перезагружаем данные с сервера
             
             // Обновляем виджет
-            updateMainCountdownWidget(user);
+            const user = JSON.parse(localStorage.getItem('donor_user'));
+            if (user) {
+                updateMainCountdownWidget(user);
+            }
             
             return true;
         } else {
@@ -2483,6 +2490,54 @@ document.addEventListener('DOMContentLoaded', () => {
             const donateSection = document.querySelector('[data-section="donate"]');
             if (donateSection) donateSection.click();
         });
+    }
+});
+
+// ============================================
+// МЕССЕНДЖЕР
+// ============================================
+
+/**
+ * Инициализация мессенджера
+ */
+function initMessenger() {
+    // Проверяем, что мы на странице с мессенджером
+    const messengerContainer = document.querySelector('.messenger-container');
+    if (!messengerContainer) {
+        console.log('ℹ️ Мессенджер не найден на странице');
+        return;
+    }
+    
+    // Проверяем, что класс Messenger доступен
+    if (typeof Messenger === 'undefined') {
+        console.error('❌ Класс Messenger не загружен');
+        return;
+    }
+    
+    try {
+        // Создаём экземпляр мессенджера
+        window.messengerInstance = new Messenger();
+        console.log('✅ Мессенджер инициализирован');
+        
+        // Слушаем переключение на секцию "Сообщения"
+        const messagesNav = document.querySelector('[data-section="messages"]');
+        if (messagesNav) {
+            messagesNav.addEventListener('click', () => {
+                // Обновляем диалоги при открытии секции
+                if (window.messengerInstance) {
+                    window.messengerInstance.loadConversations();
+                }
+            });
+        }
+    } catch (error) {
+        console.error('❌ Ошибка инициализации мессенджера:', error);
+    }
+}
+
+// Уничтожение мессенджера при выходе
+window.addEventListener('beforeunload', () => {
+    if (window.messengerInstance) {
+        window.messengerInstance.destroy();
     }
 });
 

@@ -76,6 +76,12 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('✓ Выход инициализирован');
     } catch (e) { console.error('✗ Ошибка initLogout:', e); }
     
+    // Инициализация мессенджера
+    try {
+        initMessenger();
+        console.log('✓ Мессенджер инициализирован');
+    } catch (e) { console.error('✗ Ошибка initMessenger:', e); }
+    
     // Асинхронные функции - загрузка данных (последовательно, чтобы данные загрузились)
     (async () => {
         try {
@@ -2580,5 +2586,15 @@ async function hideResponse(responseId) {
     } catch (error) {
         console.error('Ошибка скрытия отклика:', error);
         showNotification('❌ Ошибка при скрытии отклика', 'error');
+    }
+}
+
+/**
+ * Инициализация мессенджера
+ */
+function initMessenger() {
+    // Используем функцию из messenger.js, если она доступна
+    if (typeof initMessengerUI === 'function') {
+        initMessengerUI();
     }
 }
