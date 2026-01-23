@@ -182,8 +182,11 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="reg-donor-telegram">Telegram username (необязательно)</label>
-                        <input type="text" id="reg-donor-telegram" name="telegram_username" placeholder="@username">
+                        <label for="reg-donor-telegram">Telegram username <span style="color: var(--color-danger);">*</span></label>
+                        <input type="text" id="reg-donor-telegram" name="telegram_username" placeholder="@username" required>
+                        <small style="color: var(--color-text-secondary); display: block; margin-top: 4px;">
+                            Обязательно для получения срочных уведомлений
+                        </small>
                     </div>
 
                     <div class="form-group">

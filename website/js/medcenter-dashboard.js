@@ -1177,44 +1177,24 @@ function showNotification(message, type = 'info') {
     
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
+    
+    // SVG иконки в зависимости от типа
+    let svgIcon = '';
+    if (type === 'success') {
+        svgIcon = '<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>';
+    } else if (type === 'error') {
+        svgIcon = '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';
+    } else {
+        svgIcon = '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>';
+    }
+    
     notification.innerHTML = `
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            ${type === 'success' 
-                ? '<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>' 
-                : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
+            ${svgIcon}
         </svg>
         <span>${message}</span>
     `;
     
-    const style = document.createElement('style');
-    style.textContent = `
-        .notification {
-            position: fixed;
-            top: 100px;
-            right: 24px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 16px 24px;
-            background: var(--color-white);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-xl);
-            z-index: 1001;
-            animation: slideIn 0.3s ease;
-        }
-        .notification.success { border-left: 4px solid var(--color-success); }
-        .notification.success svg { color: var(--color-success); }
-        .notification.error { border-left: 4px solid var(--color-danger); }
-        .notification.error svg { color: var(--color-danger); }
-        .notification.info { border-left: 4px solid var(--color-accent); }
-        .notification.info svg { color: var(--color-accent); }
-        .notification svg { width: 20px; height: 20px; }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(100%); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-    `;
-    document.head.appendChild(style);
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 4000);
 }

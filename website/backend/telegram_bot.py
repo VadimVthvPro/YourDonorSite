@@ -196,7 +196,7 @@ async def unsubscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     telegram_id = update.effective_user.id
     
     result = query_db(
-        "UPDATE users SET notify_urgent = FALSE, notify_low = FALSE, notify_all = FALSE WHERE telegram_id = %s",
+        "UPDATE users SET notify_urgent = FALSE, notify_low = FALSE WHERE telegram_id = %s",
         (telegram_id,), commit=True
     )
     
@@ -390,7 +390,7 @@ def send_urgent_blood_request(blood_type: str, medical_center_name: str, address
            WHERE blood_type = %s 
            AND telegram_id IS NOT NULL
            AND is_active = TRUE
-           AND (notify_urgent = TRUE OR notify_all = TRUE)""",
+           AND notify_urgent = TRUE""",
         (blood_type,)
     )
     

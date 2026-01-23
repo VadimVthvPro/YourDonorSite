@@ -666,6 +666,12 @@ function initFormValidation() {
                 return;
             }
             
+            // Проверка Telegram
+            if (!data.telegram_username || data.telegram_username.trim() === '') {
+                showNotification('Укажите Telegram username для получения уведомлений', 'error');
+                return;
+            }
+            
             // Проверка пароля
             if (!data.password || data.password.length < 6) {
                 showNotification('Пароль должен быть не менее 6 символов', 'error');
@@ -706,10 +712,16 @@ function initFormValidation() {
                     localStorage.setItem('auth_token', result.token);
                     localStorage.setItem('user_type', 'donor');
                     localStorage.setItem('donor_user', JSON.stringify(result.user));
-                    showNotification('Регистрация успешна!', 'success');
-                    setTimeout(() => {
-                        window.location.href = 'donor-dashboard.html';
-                    }, 1000);
+                    
+                    // Проверяем, требуется ли верификация Telegram
+                    if (result.telegram_verification_required && result.telegram_code) {
+                        showTelegramVerificationModal(result.telegram_code, result.telegram_username);
+                    } else {
+                        showNotification('Регистрация успешна!', 'success');
+                        setTimeout(() => {
+                            window.location.href = 'donor-dashboard.html';
+                        }, 1000);
+                    }
                 } else {
                     showNotification(result.error || 'Ошибка регистрации', 'error');
                 }
@@ -860,6 +872,76 @@ function checkUrlParams() {
             }
         }
     }, 100);
+}
+
+/**
+ * Показать модальное окно верификации Telegram
+ */
+function showTelegramVerificationModal(code, telegram_username) {
+    // Создаём модальное окно
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 9999;';
+    
+    modal.innerHTML = `
+        <div class="telegram-verification-modal" style="background: white; padding: 40px; border-radius: 16px; max-width: 500px; width: 90%; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 16px;">🎉</div>
+            <h2 style="margin-bottom: 16px; color: var(--color-text);">Регистрация почти завершена!</h2>
+            <p style="margin-bottom: 24px; color: var(--color-text-secondary);">
+                Для получения срочных уведомлений подтвердите Telegram
+            </p>
+            
+            <div style="background: var(--color-gray-50, #f5f5f5); padding: 24px; border-radius: 12px; margin-bottom: 24px;">
+                <p style="margin-bottom: 12px; font-weight: 600;">Ваш код для привязки:</p>
+                <div style="font-size: 36px; font-weight: 800; color: var(--color-primary, #e74c3c); letter-spacing: 0.3em; font-family: 'Courier New', monospace; margin: 16px 0;">
+                    ${code}
+                </div>
+                <button onclick="navigator.clipboard.writeText('${code}')" style="padding: 8px 16px; background: var(--color-primary, #e74c3c); color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 12px;">
+                    📋 Скопировать код
+                </button>
+            </div>
+            
+            <div style="text-align: left; background: var(--color-info-bg, #e3f2fd); padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+                <p style="font-weight: 600; margin-bottom: 12px;">📱 Инструкция:</p>
+                <ol style="margin: 0; padding-left: 20px; line-height: 1.8;">
+                    <li>Откройте Telegram</li>
+                    <li>Найдите бот <strong>@your_donor_bot</strong></li>
+                    <li>Нажмите /start</li>
+                    <li>Отправьте команду: <code style="background: white; padding: 2px 6px; border-radius: 4px;">/link ${code}</code></li>
+                </ol>
+            </div>
+            
+            <div style="display: flex; gap: 12px;">
+                <button id="telegram-open-btn" style="flex: 1; padding: 14px; background: #0088cc; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    Открыть Telegram
+                </button>
+                <button id="telegram-skip-btn" style="flex: 1; padding: 14px; background: var(--color-gray-300, #ddd); color: var(--color-text); border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    Пропустить
+                </button>
+            </div>
+            
+            <p style="margin-top: 16px; font-size: 12px; color: var(--color-text-secondary);">
+                Код действителен 10 минут. Вы сможете привязать Telegram позже в профиле.
+            </p>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Обработчик кнопки "Открыть Telegram"
+    modal.querySelector('#telegram-open-btn').addEventListener('click', () => {
+        window.open(`https://t.me/your_donor_bot?start=link_${code}`, '_blank');
+        showNotification('Откройте Telegram и отправьте команду /link ' + code, 'info');
+    });
+    
+    // Обработчик кнопки "Пропустить"
+    modal.querySelector('#telegram-skip-btn').addEventListener('click', () => {
+        modal.remove();
+        showNotification('Вы можете привязать Telegram позже в профиле', 'info');
+        setTimeout(() => {
+            window.location.href = 'donor-dashboard.html';
+        }, 1500);
+    });
 }
 
 /**

@@ -246,12 +246,23 @@ def register_medcenter():
 def register_donor():
     data = request.json
     print(f"[DONOR REGISTER] Получены данные: {data}")
+    print(f"[DONOR REGISTER] Тип данных: {type(data)}")
+    
+    if not data:
+        print("[DONOR REGISTER] Пустой запрос!")
+        return jsonify({'error': 'Данные не получены'}), 400
     
     required = ['full_name', 'birth_year', 'blood_type', 'medical_center_id', 'password']
+    missing_fields = []
     for field in required:
         if not data.get(field):
-            print(f"[DONOR REGISTER] Отсутствует поле: {field}")
-            return jsonify({'error': f'Поле {field} обязательно'}), 400
+            missing_fields.append(field)
+            print(f"[DONOR REGISTER] Отсутствует поле: {field}, значение: {data.get(field)}")
+    
+    if missing_fields:
+        error_msg = f'Отсутствуют обязательные поля: {", ".join(missing_fields)}'
+        print(f"[DONOR REGISTER] {error_msg}")
+        return jsonify({'error': error_msg}), 400
     
     # Проверяем группу крови
     valid_blood = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-']
@@ -267,6 +278,7 @@ def register_donor():
     )
     
     if existing:
+        print(f"[DONOR REGISTER] Донор уже существует: ID {existing['id']}")
         return jsonify({'error': 'Донор уже зарегистрирован'}), 400
     
     # Получаем район медцентра
@@ -312,6 +324,20 @@ def register_donor():
         one=True
     )
     
+    # Генерируем код для привязки Telegram
+    import random
+    import string
+    code = ''.join(random.choices(string.digits, k=6))
+    
+    query_db(
+        """INSERT INTO telegram_link_codes (user_id, code, expires_at)
+           VALUES (%s, %s, NOW() + INTERVAL '10 minutes')""",
+        (user['id'], code), commit=True
+    )
+    
+    print(f"[DONOR REGISTER] Создан код привязки Telegram: {code} для user_id={user['id']}")
+    
+    # Создаём временную сессию (без полного доступа до верификации Telegram)
     token = generate_token()
     query_db(
         """INSERT INTO user_sessions (user_id, session_token, user_type, expires_at)
@@ -320,9 +346,12 @@ def register_donor():
     )
     
     return jsonify({
-        'message': 'Регистрация успешна',
+        'message': 'Регистрация успешна. Подтвердите Telegram.',
         'token': token,
-        'user': user
+        'user': user,
+        'telegram_verification_required': True,
+        'telegram_code': code,
+        'telegram_username': data.get('telegram_username')
     }), 201
 
 @app.route('/api/donor/login', methods=['POST'])
@@ -395,10 +424,27 @@ def get_donor_profile():
 @require_auth('donor')
 def update_donor_profile():
     data = request.json
-    allowed = ['phone', 'email', 'telegram_username', 'city', 'notify_urgent', 'notify_low']
+    allowed = ['phone', 'email', 'telegram_username', 'city', 'notify_urgent', 'notify_low', 
+               'blood_type', 'last_donation_date', 'medical_center_id']
     
     updates = []
     values = []
+    
+    # Если меняется медцентр, нужно обновить регион и район
+    if 'medical_center_id' in data:
+        mc = query_db(
+            """SELECT mc.district_id, d.region_id
+               FROM medical_centers mc
+               JOIN districts d ON mc.district_id = d.id
+               WHERE mc.id = %s""",
+            (data['medical_center_id'],), one=True
+        )
+        if mc:
+            updates.append("district_id = %s")
+            values.append(mc['district_id'])
+            updates.append("region_id = %s")
+            values.append(mc['region_id'])
+
     for field in allowed:
         if field in data:
             updates.append(f"{field} = %s")
@@ -544,7 +590,7 @@ def update_medcenter_profile():
     data = request.json
     
     # Разрешённые поля для обновления
-    allowed_fields = ['address', 'phone', 'email']
+    allowed_fields = ['name', 'address', 'phone', 'email']
     updates = []
     params = []
     

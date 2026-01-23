@@ -250,7 +250,7 @@
         <!-- Секция: Запросы крови -->
         <section id="requests" class="dashboard-section">
             <div class="section-header">
-                <h2>Запросы на донорство</h2>
+                <h2>Запросы крови</h2>
                 <p>Медицинские центры, которым нужна ваша группа крови</p>
             </div>
             
@@ -274,42 +274,8 @@
                 </div>
             </div>
             
-            <div id="requests-list" class="requests-list">
+            <div id="blood-requests-list" class="requests-list">
                 <!-- Заполняется динамически -->
-            </div>
-        </section>
-
-        <!-- Секция: Запросы крови -->
-        <section id="requests" class="dashboard-section">
-            <div class="section-header">
-                <h2>Запросы крови</h2>
-                <p>Актуальные запросы на донацию от медицинских центров</p>
-            </div>
-
-            <div class="requests-filters">
-                <button class="filter-btn active" data-filter="all">
-                    <span>Все</span>
-                    <span class="filter-count" id="filter-count-all">0</span>
-                </button>
-                <button class="filter-btn" data-filter="critical">
-                    <span>Критично</span>
-                    <span class="filter-count" id="filter-count-critical">0</span>
-                </button>
-                <button class="filter-btn" data-filter="urgent">
-                    <span>Срочно</span>
-                    <span class="filter-count" id="filter-count-urgent">0</span>
-                </button>
-                <button class="filter-btn" data-filter="responded">
-                    <span>Мои отклики</span>
-                    <span class="filter-count" id="filter-count-responded">0</span>
-                </button>
-            </div>
-
-            <div id="blood-requests-list" class="blood-requests-list">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>Загрузка запросов...</p>
-                </div>
             </div>
         </section>
 
@@ -583,14 +549,44 @@
                                 <p>Привяжите аккаунт для получения уведомлений о срочных запросах крови</p>
                             </div>
                         </div>
-                        <div class="telegram-input">
-                            <div class="input-group">
-                                <span>@</span>
-                                <input type="text" id="telegram-username" placeholder="username">
-                            </div>
-                            <button type="button" class="btn btn-primary" id="link-telegram">Привязать</button>
+                        
+                        <!-- Шаг 1: Генерация кода -->
+                        <div id="telegram-step-1" class="telegram-step">
+                            <button type="button" class="btn btn-primary btn-block" id="generate-code-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2s-.18-.04-.26-.02c-.12.02-1.96 1.25-5.54 3.67-.52.36-1 .53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.37-.49 1.02-.75 3.98-1.73 6.64-2.87 7.97-3.43 3.8-1.57 4.59-1.85 5.1-1.86.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .38z"/>
+                                </svg>
+                                Получить код для привязки
+                            </button>
+                            <p class="telegram-hint" style="margin-top: 12px;">После получения кода откройте Telegram бота @your_donor_bot и введите команду <code>/link КОД</code></p>
                         </div>
-                        <p class="telegram-hint">После привязки вам придёт подтверждение в Telegram от бота @BloodCollection_bot</p>
+                        
+                        <!-- Шаг 2: Отображение кода -->
+                        <div id="telegram-step-2" class="telegram-step" style="display: none;">
+                            <div class="telegram-code-display">
+                                <p style="font-weight: 600; margin-bottom: 8px;">Ваш код для привязки:</p>
+                                <div class="code-box">
+                                    <span id="telegram-code" class="telegram-code">------</span>
+                                    <button type="button" class="btn-copy" id="copy-code-btn" title="Скопировать код">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <p class="code-timer" id="code-timer">Код действителен: 10:00</p>
+                            </div>
+                            <div class="telegram-instructions">
+                                <p style="font-weight: 600; margin-bottom: 8px;">📱 Инструкция:</p>
+                                <ol style="margin-left: 20px; line-height: 1.6;">
+                                    <li>Откройте Telegram</li>
+                                    <li>Найдите бота <code>@your_donor_bot</code></li>
+                                    <li>Отправьте команду: <code>/link <span id="code-in-instructions">------</span></code></li>
+                                    <li>Готово! Вы получите подтверждение в боте</li>
+                                </ol>
+                            </div>
+                            <button type="button" class="btn btn-outline" id="cancel-link-btn">Отмена</button>
+                        </div>
                     </div>
                 </div>
                 

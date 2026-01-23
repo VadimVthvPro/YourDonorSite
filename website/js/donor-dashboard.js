@@ -72,6 +72,9 @@ async function loadUserDataFromAPI() {
             localStorage.setItem('donor_user', JSON.stringify(user));
             
             displayUserData(user);
+            
+            // Проверяем статус Telegram
+            await checkTelegramLinkStatus();
         } else {
             // Токен невалидный
             console.error('Ошибка загрузки профиля, статус:', response.status);
@@ -81,6 +84,34 @@ async function loadUserDataFromAPI() {
     } catch (error) {
         console.error('Ошибка загрузки профиля:', error);
         loadUserData(); // fallback
+    }
+}
+
+/**
+ * Проверка статуса привязки Telegram
+ */
+async function checkTelegramLinkStatus() {
+    try {
+        const response = await fetch(`${DONOR_API_URL}/donor/telegram/status`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const status = await response.json();
+            
+            if (status.linked && status.telegram_username) {
+                // Telegram привязан
+                updateTelegramStatus(true, status.telegram_username);
+                
+                // Скрываем кнопки привязки
+                const step1 = document.getElementById('telegram-step-1');
+                const step2 = document.getElementById('telegram-step-2');
+                if (step1) step1.style.display = 'none';
+                if (step2) step2.style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка проверки статуса Telegram:', error);
     }
 }
 
@@ -1046,45 +1077,126 @@ function initForms() {
     // Форма профиля
     const profileForm = document.getElementById('profile-form');
     if (profileForm) {
-        profileForm.addEventListener('submit', (e) => {
+        profileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const userData = JSON.parse(localStorage.getItem('donor_user') || '{}');
-            userData.phone = document.getElementById('profile-phone').value;
-            localStorage.setItem('donor_user', JSON.stringify(userData));
-            showNotification('Данные сохранены', 'success');
+            
+            const formData = {
+                phone: document.getElementById('profile-phone')?.value || ''
+            };
+            
+            try {
+                const response = await fetch(`${DONOR_API_URL}/donor/profile`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification('✅ Данные сохранены', 'success');
+                    // Перезагружаем профиль
+                    await loadUserDataFromAPI();
+                } else {
+                    showNotification('❌ ' + (result.error || 'Ошибка сохранения'), 'error');
+                }
+            } catch (error) {
+                console.error('Ошибка сохранения профиля:', error);
+                showNotification('❌ Ошибка соединения', 'error');
+            }
         });
     }
     
     // Форма медицинской информации
     const medicalForm = document.getElementById('medical-form');
     if (medicalForm) {
-        medicalForm.addEventListener('submit', (e) => {
+        medicalForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const userData = JSON.parse(localStorage.getItem('donor_user') || '{}');
+            
             const bloodType = document.querySelector('input[name="blood_type"]:checked');
-            if (bloodType) {
-                userData.blood_type = bloodType.value;
+            const lastDonation = document.getElementById('profile-last-donation')?.value;
+            
+            const formData = {};
+            if (bloodType) formData.blood_type = bloodType.value;
+            if (lastDonation) formData.last_donation_date = lastDonation;
+            
+            try {
+                const response = await fetch(`${DONOR_API_URL}/donor/profile`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification('✅ Медицинская информация обновлена', 'success');
+                    await loadUserDataFromAPI();
+                } else {
+                    showNotification('❌ ' + (result.error || 'Ошибка обновления'), 'error');
+                }
+            } catch (error) {
+                console.error('Ошибка обновления:', error);
+                showNotification('❌ Ошибка соединения', 'error');
             }
-            userData.last_donation = document.getElementById('profile-last-donation').value;
-            localStorage.setItem('donor_user', JSON.stringify(userData));
-            showNotification('Медицинская информация обновлена', 'success');
-            loadUserData();
         });
     }
     
-    // Привязка Telegram
-    const linkTelegramBtn = document.getElementById('link-telegram');
-    if (linkTelegramBtn) {
-        linkTelegramBtn.addEventListener('click', () => {
-            const username = document.getElementById('telegram-username').value.trim();
-            if (username) {
-                const userData = JSON.parse(localStorage.getItem('donor_user') || '{}');
-                userData.telegram = username;
-                localStorage.setItem('donor_user', JSON.stringify(userData));
-                updateTelegramStatus(true, username);
-                showNotification('Telegram привязан! Ожидайте подтверждения от бота.', 'success');
-            } else {
-                showNotification('Введите username', 'error');
+    // Привязка Telegram - Генерация кода
+    const generateCodeBtn = document.getElementById('generate-code-btn');
+    if (generateCodeBtn) {
+        generateCodeBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch(`${DONOR_API_URL}/donor/telegram/link-code`, {
+                    headers: getAuthHeaders()
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.code) {
+                    // Показываем шаг 2 с кодом
+                    document.getElementById('telegram-step-1').style.display = 'none';
+                    document.getElementById('telegram-step-2').style.display = 'block';
+                    
+                    // Отображаем код
+                    document.getElementById('telegram-code').textContent = result.code;
+                    document.getElementById('code-in-instructions').textContent = result.code;
+                    
+                    // Запускаем таймер обратного отсчёта
+                    startCodeTimer(result.expires_in || 600);
+                    
+                    showNotification('✅ Код сгенерирован! Откройте Telegram бота.', 'success');
+                } else {
+                    showNotification('❌ ' + (result.error || 'Ошибка генерации кода'), 'error');
+                }
+            } catch (error) {
+                console.error('Ошибка генерации кода:', error);
+                showNotification('❌ Ошибка соединения', 'error');
+            }
+        });
+    }
+    
+    // Копирование кода
+    const copyCodeBtn = document.getElementById('copy-code-btn');
+    if (copyCodeBtn) {
+        copyCodeBtn.addEventListener('click', () => {
+            const code = document.getElementById('telegram-code').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                showNotification('✅ Код скопирован!', 'success');
+            }).catch(() => {
+                showNotification('❌ Не удалось скопировать', 'error');
+            });
+        });
+    }
+    
+    // Отмена привязки
+    const cancelLinkBtn = document.getElementById('cancel-link-btn');
+    if (cancelLinkBtn) {
+        cancelLinkBtn.addEventListener('click', () => {
+            document.getElementById('telegram-step-1').style.display = 'block';
+            document.getElementById('telegram-step-2').style.display = 'none';
+            if (window.codeTimerInterval) {
+                clearInterval(window.codeTimerInterval);
             }
         });
     }
@@ -1096,7 +1208,7 @@ function initForms() {
             const file = e.target.files[0];
             if (file) {
                 // В реальном приложении здесь будет загрузка на сервер
-                showNotification('Справка загружена!', 'success');
+                showNotification('✅ Справка загружена!', 'success');
                 updateCertificateStatus(true);
             }
         });
@@ -1117,10 +1229,55 @@ function updateTelegramStatus(linked, username) {
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2s-.18-.04-.26-.02c-.12.02-1.96 1.25-5.54 3.67-.52.36-1 .53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.37-.49 1.02-.75 3.98-1.73 6.64-2.87 7.97-3.43 3.8-1.57 4.59-1.85 5.1-1.86.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .38z"/>
             </svg>
             <div class="telegram-info">
-                <h4>Telegram привязан</h4>
+                <h4>✅ Telegram привязан</h4>
                 <p>@${username}</p>
+                <button type="button" class="btn btn-outline btn-sm" id="unlink-telegram-btn" style="margin-top: 8px;">Отвязать аккаунт</button>
             </div>
         `;
+        
+        // Добавляем обработчик отвязки
+        const unlinkBtn = document.getElementById('unlink-telegram-btn');
+        if (unlinkBtn) {
+            unlinkBtn.addEventListener('click', async () => {
+                if (!confirm('Вы уверены, что хотите отвязать Telegram? Вы перестанете получать уведомления.')) {
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`${DONOR_API_URL}/donor/telegram/unlink`, {
+                        method: 'POST',
+                        headers: getAuthHeaders()
+                    });
+                    
+                    if (response.ok) {
+                        showNotification('✅ Telegram отвязан', 'success');
+                        
+                        // Возвращаем к шагу 1
+                        statusEl.className = 'telegram-status not-linked';
+                        statusEl.innerHTML = `
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2s-.18-.04-.26-.02c-.12.02-1.96 1.25-5.54 3.67-.52.36-1 .53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.37-.49 1.02-.75 3.98-1.73 6.64-2.87 7.97-3.43 3.8-1.57 4.59-1.85 5.10-1.86.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .38z"/>
+                            </svg>
+                            <div class="telegram-info">
+                                <h4>Telegram не привязан</h4>
+                                <p>Привяжите аккаунт для получения уведомлений</p>
+                            </div>
+                        `;
+                        
+                        const step1 = document.getElementById('telegram-step-1');
+                        if (step1) step1.style.display = 'block';
+                        
+                        await loadUserDataFromAPI();
+                    } else {
+                        const result = await response.json();
+                        showNotification('❌ ' + (result.error || 'Ошибка отвязки'), 'error');
+                    }
+                } catch (error) {
+                    console.error('Ошибка отвязки Telegram:', error);
+                    showNotification('❌ Ошибка соединения', 'error');
+                }
+            });
+        }
     }
 }
 
@@ -1432,6 +1589,33 @@ async function scheduleDonation(centerId, centerName, plannedDate, comment) {
 }
 
 /**
+ * Запуск таймера обратного отсчёта для кода
+ */
+function startCodeTimer(seconds) {
+    const timerEl = document.getElementById('code-timer');
+    if (!timerEl) return;
+    
+    let remaining = seconds;
+    
+    const updateTimer = () => {
+        const minutes = Math.floor(remaining / 60);
+        const secs = remaining % 60;
+        timerEl.textContent = `Код действителен: ${minutes}:${secs.toString().padStart(2, '0')}`;
+        
+        if (remaining <= 0) {
+            clearInterval(window.codeTimerInterval);
+            timerEl.textContent = 'Код истёк. Сгенерируйте новый.';
+            timerEl.style.color = 'var(--color-danger)';
+        }
+        
+        remaining--;
+    };
+    
+    updateTimer();
+    window.codeTimerInterval = setInterval(updateTimer, 1000);
+}
+
+/**
  * Показать уведомление
  */
 function showNotification(message, type = 'info') {
@@ -1440,64 +1624,27 @@ function showNotification(message, type = 'info') {
     
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
+    
+    // SVG иконки в зависимости от типа
+    let svgIcon = '';
+    if (type === 'success') {
+        svgIcon = '<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>';
+    } else if (type === 'error') {
+        svgIcon = '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';
+    } else {
+        svgIcon = '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>';
+    }
+    
     notification.innerHTML = `
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            ${type === 'success' 
-                ? '<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>' 
-                : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
+            ${svgIcon}
         </svg>
         <span>${message}</span>
     `;
     
-    // Стили для уведомления
-    const style = document.createElement('style');
-    style.textContent = `
-        .notification {
-            position: fixed;
-            top: 100px;
-            right: 24px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 16px 24px;
-            background: var(--color-white);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-xl);
-            z-index: 1001;
-            animation: slideIn 0.3s ease;
-        }
-        .notification.success {
-            border-left: 4px solid var(--color-success);
-        }
-        .notification.success svg {
-            color: var(--color-success);
-        }
-        .notification.error {
-            border-left: 4px solid var(--color-danger);
-        }
-        .notification.error svg {
-            color: var(--color-danger);
-        }
-        .notification svg {
-            width: 20px;
-            height: 20px;
-        }
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-    `;
-    document.head.appendChild(style);
-    
     document.body.appendChild(notification);
     
-    // Автоматическое скрытие
+    // Автоматическое скрытие через 4 секунды
     setTimeout(() => {
         notification.remove();
     }, 4000);
