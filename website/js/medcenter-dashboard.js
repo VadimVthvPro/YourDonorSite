@@ -903,28 +903,6 @@ function renderBloodRequests(requests) {
         bloodFilter.onchange = () => renderBloodRequests(requests);
     }
 }
-                    <div class="request-actions">
-                        ${req.status === 'active' ? `
-                            <button class="btn btn-sm btn-success" onclick="fulfillRequest(${req.id})">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                                Выполнен
-                            </button>
-                            <button class="btn btn-sm btn-outline" onclick="cancelRequest(${req.id})">Отменить</button>
-                        ` : ''}
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteRequest(${req.id})">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
 
 function updateRequestsBadge(requests) {
     const badge = document.getElementById('requests-badge');
@@ -1033,7 +1011,7 @@ async function deleteRequest(requestId) {
 // Алиасы для новых имён функций
 window.markRequestFulfilled = fulfillRequest;
 window.editRequest = function(requestId) {
-    showNotification('Функция редактирования в разработке', 'info');
+    openEditRequestModal(requestId);
 };
 window.archiveRequest = async function(requestId) {
     // В будущем можно добавить отдельный статус "archived"
@@ -1047,6 +1025,90 @@ window.showAllResponses = function(requestId) {
         showNotification(`Все отклики для запроса #${requestId}`, 'info');
     }
 };
+
+/**
+ * Открыть модальное окно редактирования запроса
+ */
+async function openEditRequestModal(requestId) {
+    try {
+        // Загружаем данные запроса
+        const response = await fetch(`${MC_API_URL}/blood-requests/${requestId}`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error('Ошибка загрузки запроса');
+        }
+        
+        const request = await response.json();
+        
+        // Заполняем форму
+        document.getElementById('edit-request-id').value = request.id;
+        
+        // Выбираем группу крови
+        const bloodTypeRadio = document.querySelector(`input[name="edit_blood_type"][value="${request.blood_type}"]`);
+        if (bloodTypeRadio) bloodTypeRadio.checked = true;
+        
+        // Заполняем остальные поля
+        document.getElementById('edit-urgency').value = request.urgency;
+        document.getElementById('edit-description').value = request.description || '';
+        
+        // Форматируем дату для input type="date" (YYYY-MM-DD)
+        if (request.expires_at) {
+            const expiresDate = new Date(request.expires_at);
+            const formattedDate = expiresDate.toISOString().split('T')[0];
+            document.getElementById('edit-expires-at').value = formattedDate;
+        }
+        
+        // Открываем модальное окно
+        document.getElementById('edit-request-modal').classList.add('active');
+        
+    } catch (error) {
+        console.error('Ошибка открытия модального окна редактирования:', error);
+        showNotification('Ошибка загрузки данных запроса', 'error');
+    }
+}
+
+/**
+ * Сохранить изменения запроса
+ */
+async function saveEditedRequest() {
+    const requestId = document.getElementById('edit-request-id').value;
+    const bloodType = document.querySelector('input[name="edit_blood_type"]:checked');
+    
+    if (!bloodType) {
+        showNotification('Выберите группу крови', 'error');
+        return;
+    }
+    
+    const data = {
+        blood_type: bloodType.value,
+        urgency: document.getElementById('edit-urgency').value,
+        description: document.getElementById('edit-description').value,
+        expires_at: document.getElementById('edit-expires-at').value
+    };
+    
+    try {
+        const response = await fetch(`${MC_API_URL}/blood-requests/${requestId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showNotification('✅ Запрос успешно обновлён', 'success');
+            closeModal(document.getElementById('edit-request-modal'));
+            await loadBloodRequestsFromAPI(); // Обновляем список
+        } else {
+            showNotification('❌ ' + (result.error || 'Ошибка обновления'), 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка сохранения запроса:', error);
+        showNotification('❌ Ошибка соединения', 'error');
+    }
+}
 
 /**
  * Модальные окна
@@ -1082,6 +1144,12 @@ function initModals() {
         });
     }
     
+    // Сохранение отредактированного запроса
+    const saveRequestBtn = document.querySelector('[data-action="save-request"]');
+    if (saveRequestBtn) {
+        saveRequestBtn.addEventListener('click', saveEditedRequest);
+    }
+    
     // Закрытие модалок
     document.querySelectorAll('.modal').forEach(modal => {
         modal.querySelector('.modal-close')?.addEventListener('click', () => closeModal(modal));
@@ -1094,16 +1162,38 @@ function initModals() {
     });
     
     // Отправка срочного запроса
-    document.querySelector('[data-action="send"]')?.addEventListener('click', () => {
+    document.querySelector('[data-action="send"]')?.addEventListener('click', async () => {
         const bloodType = document.querySelector('input[name="urgent_blood"]:checked');
         if (!bloodType) {
             showNotification('Выберите группу крови', 'error');
             return;
         }
         
-        const count = donorCounts[bloodType.value] || 0;
-        showNotification(`Срочный запрос отправлен ${count} донорам с группой ${bloodType.value}!`, 'success');
-        closeModal(document.getElementById('urgent-modal'));
+        // Создаём срочный запрос через API
+        try {
+            const response = await fetch(`${MC_API_URL}/blood-requests`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    blood_type: bloodType.value,
+                    urgency: 'urgent',
+                    description: 'Срочный запрос крови',
+                    expires_days: 2
+                })
+            });
+            
+            if (response.ok) {
+                showNotification(`Срочный запрос отправлен донорам с группой ${bloodType.value}!`, 'success');
+                closeModal(document.getElementById('urgent-modal'));
+                await loadBloodRequestsFromAPI(); // Обновляем список запросов
+            } else {
+                const error = await response.json();
+                showNotification('Ошибка отправки запроса: ' + (error.error || 'Неизвестная ошибка'), 'error');
+            }
+        } catch (error) {
+            console.error('Ошибка отправки срочного запроса:', error);
+            showNotification('Ошибка соединения с сервером', 'error');
+        }
     });
 }
 

@@ -157,6 +157,8 @@ function initScrollAnimations() {
  */
 function initHeader() {
     const header = document.querySelector('.header');
+    if (!header) return; // Проверка: элемент может отсутствовать на дашбордах
+    
     let lastScroll = 0;
     
     window.addEventListener('scroll', () => {
@@ -712,7 +714,8 @@ function initSmoothScroll() {
             const target = document.querySelector(this.getAttribute('href'));
             
             if (target) {
-                const headerHeight = document.querySelector('.header').offsetHeight;
+                const header = document.querySelector('.header');
+                const headerHeight = header ? header.offsetHeight : 0; // Проверка существования
                 const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight;
                 
                 window.scrollTo({

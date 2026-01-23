@@ -699,6 +699,90 @@
         </div>
     </div>
 
+    <!-- Модальное окно: Редактирование запроса -->
+    <div id="edit-request-modal" class="modal">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-header">
+                <h3>Редактировать запрос</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-request-form">
+                    <input type="hidden" id="edit-request-id">
+                    
+                    <div class="form-group">
+                        <label>Группа крови *</label>
+                        <div class="blood-type-selector">
+                            <label class="blood-option">
+                                <input type="radio" name="edit_blood_type" value="A+" required>
+                                <span>A+</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="edit_blood_type" value="A-">
+                                <span>A-</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="edit_blood_type" value="B+">
+                                <span>B+</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="edit_blood_type" value="B-">
+                                <span>B-</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="edit_blood_type" value="AB+">
+                                <span>AB+</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="edit_blood_type" value="AB-">
+                                <span>AB-</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="edit_blood_type" value="O+">
+                                <span>O+</span>
+                            </label>
+                            <label class="blood-option">
+                                <input type="radio" name="edit_blood_type" value="O-">
+                                <span>O-</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Срочность *</label>
+                        <select id="edit-urgency" name="urgency" required>
+                            <option value="normal">Обычная</option>
+                            <option value="urgent">Срочная</option>
+                            <option value="critical">Критическая (с рассылкой)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Описание / Комментарий</label>
+                        <textarea id="edit-description" name="description" rows="4" placeholder="Укажите дополнительную информацию о запросе (необязательно)"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Дата истечения *</label>
+                        <input type="date" id="edit-expires-at" name="expires_at" required>
+                        <small>Запрос автоматически закроется в указанную дату</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" data-action="cancel">Отмена</button>
+                <button class="btn btn-primary" data-action="save-request">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    Сохранить изменения
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="../js/app.js"></script>
     <script src="../js/medcenter-dashboard.js"></script>
 </body>

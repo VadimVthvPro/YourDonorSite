@@ -857,12 +857,27 @@ function getInitials(fio) {
 /**
  * Форматирование даты
  */
-function formatDate(date) {
-    return date.toLocaleDateString('ru-RU', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-    });
+function formatDate(dateString) {
+    if (!dateString) return '—';
+    
+    try {
+        const date = new Date(dateString);
+        
+        // Проверка валидности даты
+        if (isNaN(date.getTime())) {
+            console.warn('Невалидная дата:', dateString);
+            return dateString; // Возвращаем исходную строку
+        }
+        
+        return date.toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+    } catch (error) {
+        console.error('Ошибка форматирования даты:', error, dateString);
+        return dateString;
+    }
 }
 
 /**
@@ -883,127 +898,6 @@ function getMedcenterName(id) {
 
 // Mock function removed
 // loadRequestsFromAPI handles the data loading
-
-/**
- * Загрузка центров для донации
- */
-function loadDonateCenters(requests) {
-    const container = document.getElementById('donate-centers');
-    if (!container) return;
-    
-    if (requests.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <h3>Нет активных запросов</h3>
-                <p>Сейчас нет центров, которым нужна ваша группа крови</p>
-            </div>
-        `;
-        return;
-    }
-    
-    container.innerHTML = `
-        <p class="donate-intro">Найдено ${requests.length} центров, которым нужна ваша группа крови:</p>
-        <div class="donate-list">
-            ${requests.map(req => `
-                <div class="donate-card ${req.urgency}">
-                    <div class="donate-card-header">
-                        <span class="urgency-badge ${req.urgency}">
-                            ${req.urgency === 'urgent' ? 'Срочно' : 'Нужно'}
-                        </span>
-                        <span class="blood-badge">${req.bloodType}</span>
-                    </div>
-                    <h4>${req.center}</h4>
-                    <p class="address">${req.address}</p>
-                    <p class="distance">${req.distance} от вас</p>
-                    <button class="btn btn-primary btn-full respond-btn" data-id="${req.id}">
-                        Записаться на донацию
-                    </button>
-                </div>
-            `).join('')}
-        </div>
-    `;
-    
-    // Стили для карточек
-    const style = document.createElement('style');
-    style.textContent = `
-        .donate-intro {
-            color: var(--color-gray-600);
-            margin-bottom: var(--spacing-lg);
-        }
-        .donate-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: var(--spacing-lg);
-        }
-        .donate-card {
-            background: var(--color-white);
-            border-radius: var(--radius-xl);
-            padding: var(--spacing-lg);
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--color-gray-100);
-        }
-        .donate-card.urgent {
-            border-left: 4px solid var(--color-danger);
-        }
-        .donate-card.need {
-            border-left: 4px solid var(--color-warning);
-        }
-        .donate-card-header {
-            display: flex;
-            gap: var(--spacing-sm);
-            margin-bottom: var(--spacing-md);
-        }
-        .urgency-badge {
-            padding: 0.25rem 0.75rem;
-            font-size: var(--text-xs);
-            font-weight: 700;
-            border-radius: var(--radius-full);
-        }
-        .urgency-badge.urgent {
-            background: var(--color-danger-light);
-            color: var(--color-danger);
-        }
-        .urgency-badge.need {
-            background: var(--color-warning-light);
-            color: var(--color-warning);
-        }
-        .blood-badge {
-            padding: 0.25rem 0.75rem;
-            font-size: var(--text-xs);
-            font-weight: 700;
-            background: var(--color-primary-lighter);
-            color: var(--color-primary);
-            border-radius: var(--radius-full);
-        }
-        .donate-card h4 {
-            font-size: var(--text-base);
-            font-weight: 700;
-            color: var(--color-gray-900);
-            margin-bottom: var(--spacing-xs);
-        }
-        .donate-card .address {
-            font-size: var(--text-sm);
-            color: var(--color-gray-500);
-            margin-bottom: var(--spacing-xs);
-        }
-        .donate-card .distance {
-            font-size: var(--text-sm);
-            color: var(--color-gray-400);
-            margin-bottom: var(--spacing-md);
-        }
-    `;
-    document.head.appendChild(style);
-    
-    // Обработчики
-    container.querySelectorAll('.respond-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            showNotification('Ваша заявка отправлена! Ожидайте подтверждения.', 'success');
-        });
-    });
-}
 
 /**
  * Модальное окно
@@ -1264,6 +1158,127 @@ function initForms() {
                 updateCertificateStatus(true);
             }
         });
+    }
+    
+    // ============================================
+    // Форма привязки к медцентру
+    // ============================================
+    
+    // Загружаем регионы при инициализации
+    loadRegionsForMedcenterForm();
+    
+    const regionSelect = document.getElementById('profile-region');
+    const districtSelect = document.getElementById('profile-district');
+    const medcenterSelect = document.getElementById('profile-medcenter');
+    const medcenterForm = document.getElementById('medcenter-form');
+    
+    if (regionSelect) {
+        regionSelect.addEventListener('change', async () => {
+            const regionId = regionSelect.value;
+            
+            // Сброс районов и медцентров
+            districtSelect.innerHTML = '<option value="">Выберите район</option>';
+            districtSelect.disabled = !regionId;
+            medcenterSelect.innerHTML = '<option value="">Сначала выберите район</option>';
+            medcenterSelect.disabled = true;
+            
+            if (regionId) {
+                try {
+                    const response = await fetch(`${DONOR_API_URL}/regions/${regionId}/districts`);
+                    const districts = await response.json();
+                    
+                    districtSelect.innerHTML = '<option value="">Выберите район</option>' +
+                        districts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+                    districtSelect.disabled = false;
+                } catch (error) {
+                    console.error('Ошибка загрузки районов:', error);
+                    showNotification('❌ Ошибка загрузки районов', 'error');
+                }
+            }
+        });
+    }
+    
+    if (districtSelect) {
+        districtSelect.addEventListener('change', async () => {
+            const districtId = districtSelect.value;
+            
+            // Сброс медцентров
+            medcenterSelect.innerHTML = '<option value="">Выберите медцентр</option>';
+            medcenterSelect.disabled = !districtId;
+            
+            if (districtId) {
+                try {
+                    const response = await fetch(`${DONOR_API_URL}/medcenters?district_id=${districtId}`);
+                    const medcenters = await response.json();
+                    
+                    if (medcenters.length === 0) {
+                        medcenterSelect.innerHTML = '<option value="">Нет медцентров в этом районе</option>';
+                    } else {
+                        medcenterSelect.innerHTML = '<option value="">Выберите медцентр</option>' +
+                            medcenters.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+                        medcenterSelect.disabled = false;
+                    }
+                } catch (error) {
+                    console.error('Ошибка загрузки медцентров:', error);
+                    showNotification('❌ Ошибка загрузки медцентров', 'error');
+                }
+            }
+        });
+    }
+    
+    if (medcenterForm) {
+        medcenterForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const medcenterId = medcenterSelect?.value;
+            const districtId = districtSelect?.value;
+            
+            if (!medcenterId || !districtId) {
+                showNotification('❌ Выберите медцентр', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${DONOR_API_URL}/donor/profile`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        medical_center_id: parseInt(medcenterId),
+                        district_id: parseInt(districtId)
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification('✅ Медцентр успешно обновлён!', 'success');
+                    await loadUserDataFromAPI();
+                } else {
+                    showNotification('❌ ' + (result.error || 'Ошибка обновления'), 'error');
+                }
+            } catch (error) {
+                console.error('Ошибка обновления медцентра:', error);
+                showNotification('❌ Ошибка соединения', 'error');
+            }
+        });
+    }
+}
+
+/**
+ * Загрузка списка регионов для формы привязки к медцентру
+ */
+async function loadRegionsForMedcenterForm() {
+    const regionSelect = document.getElementById('profile-region');
+    if (!regionSelect) return;
+    
+    try {
+        const response = await fetch(`${DONOR_API_URL}/regions`);
+        const regions = await response.json();
+        
+        regionSelect.innerHTML = '<option value="">Выберите область</option>' +
+            regions.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+    } catch (error) {
+        console.error('Ошибка загрузки регионов:', error);
     }
 }
 

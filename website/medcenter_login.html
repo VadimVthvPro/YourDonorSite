@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head><title>Автологин медцентра</title></head>
+<body>
+<h1>Автоматический вход медцентра...</h1>
+<script>
+const token = 'guj9WNL5hZpvciAEdKYWXxXpdEz1PAyWyQjYlrhUy-EwLvsYZRoUSz4xKa-8iuPrZyRGCopNMro-TMafVi9EjA';
+const medcenterData = MC_DATA_PLACEHOLDER;
+
+localStorage.setItem('auth_token', token);
+localStorage.setItem('user_type', 'medcenter');
+localStorage.setItem('medcenter_user', JSON.stringify(medcenterData));
+
+console.log('✅ Данные сохранены в localStorage');
+console.log('Token:', token.substring(0, 30) + '...');
+console.log('Medcenter:', medcenterData);
+
+// Перенаправление
+setTimeout(() => {
+  window.location.href = 'pages/medcenter-dashboard.html';
+}, 500);
+</script>
+</body>
+</html>
