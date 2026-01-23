@@ -736,7 +736,7 @@ def get_requests():
     query = """
         SELECT dr.*, mc.name as medical_center_name, mc.address as medical_center_address,
                mc.phone as medical_center_phone, d.name as district_name, r.name as region_name
-        FROM donation_requests dr
+        FROM blood_requests dr
         JOIN medical_centers mc ON dr.medical_center_id = mc.id
         LEFT JOIN districts d ON mc.district_id = d.id
         LEFT JOIN regions r ON d.region_id = r.id
@@ -777,7 +777,7 @@ def create_request():
     valid_days = data.get('valid_days', 7)
     
     query_db(
-        """INSERT INTO donation_requests 
+        """INSERT INTO blood_requests 
            (medical_center_id, blood_type, urgency, needed_amount, description, 
             contact_info, target_district_id, valid_until)
            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW() + INTERVAL '%s days')
@@ -795,7 +795,7 @@ def create_request():
     )
     
     new_req = query_db(
-        "SELECT * FROM donation_requests WHERE medical_center_id = %s ORDER BY created_at DESC LIMIT 1",
+        "SELECT * FROM blood_requests WHERE medical_center_id = %s ORDER BY created_at DESC LIMIT 1",
         (mc_id,), one=True
     )
     
@@ -808,7 +808,7 @@ def create_request():
 @app.route('/api/requests/<int:request_id>', methods=['PUT'])
 @require_auth('medcenter')
 def update_request(request_id):
-    req = query_db("SELECT * FROM donation_requests WHERE id = %s", (request_id,), one=True)
+    req = query_db("SELECT * FROM blood_requests WHERE id = %s", (request_id,), one=True)
     
     if not req:
         return jsonify({'error': 'Запрос не найден'}), 404
@@ -828,19 +828,19 @@ def update_request(request_id):
     
     if updates:
         values.append(request_id)
-        query_db(f"UPDATE donation_requests SET {', '.join(updates)} WHERE id = %s", tuple(values), commit=True)
+        query_db(f"UPDATE blood_requests SET {', '.join(updates)} WHERE id = %s", tuple(values), commit=True)
     
     return jsonify({'message': 'Запрос обновлён'})
 
 @app.route('/api/requests/<int:request_id>', methods=['DELETE'])
 @require_auth('medcenter')
 def delete_request(request_id):
-    req = query_db("SELECT * FROM donation_requests WHERE id = %s", (request_id,), one=True)
+    req = query_db("SELECT * FROM blood_requests WHERE id = %s", (request_id,), one=True)
     
     if not req or req['medical_center_id'] != g.session['medical_center_id']:
         return jsonify({'error': 'Нет доступа'}), 403
     
-    query_db("DELETE FROM donation_requests WHERE id = %s", (request_id,), commit=True)
+    query_db("DELETE FROM blood_requests WHERE id = %s", (request_id,), commit=True)
     return jsonify({'message': 'Запрос удалён'})
 
 # ============================================
@@ -1001,7 +1001,7 @@ def get_responses():
                mc.name as medical_center_name
         FROM donation_responses dr
         JOIN users u ON dr.user_id = u.id
-        JOIN donation_requests req ON dr.request_id = req.id
+        JOIN blood_requests req ON dr.request_id = req.id
         JOIN medical_centers mc ON req.medical_center_id = mc.id
         WHERE 1=1
     """
@@ -1035,7 +1035,7 @@ def create_response():
     user_id = g.session['user_id']
     
     req = query_db(
-        "SELECT * FROM donation_requests WHERE id = %s AND status = 'active'",
+        "SELECT * FROM blood_requests WHERE id = %s AND status = 'active'",
         (data['request_id'],), one=True
     )
     
@@ -1065,7 +1065,7 @@ def create_response():
     )
     
     query_db(
-        "UPDATE donation_requests SET responses_count = responses_count + 1 WHERE id = %s",
+        "UPDATE blood_requests SET responses_count = responses_count + 1 WHERE id = %s",
         (data['request_id'],), commit=True
     )
     
@@ -1255,7 +1255,7 @@ def get_medcenter_stats():
     )
     
     active_requests = query_db(
-        "SELECT COUNT(*) as count FROM donation_requests WHERE medical_center_id = %s AND status = 'active'",
+        "SELECT COUNT(*) as count FROM blood_requests WHERE medical_center_id = %s AND status = 'active'",
         (mc_id,), one=True
     )
     

@@ -75,15 +75,32 @@ async function loadUserDataFromAPI() {
             
             // Проверяем статус Telegram
             await checkTelegramLinkStatus();
-        } else {
-            // Токен невалидный
-            console.error('Ошибка загрузки профиля, статус:', response.status);
+        } else if (response.status === 401 || response.status === 403) {
+            // Только при ошибке авторизации
+            console.error('Токен невалидный или истёк');
             localStorage.clear();
-            window.location.href = 'auth.html';
+            window.location.href = '../pages/auth.html';
+        } else {
+            // Другие ошибки - пробуем загрузить из localStorage
+            console.error('Ошибка загрузки профиля, статус:', response.status);
+            const cachedUser = localStorage.getItem('donor_user');
+            if (cachedUser) {
+                displayUserData(JSON.parse(cachedUser));
+                showNotification('Работаем в оффлайн режиме', 'info');
+            }
         }
     } catch (error) {
         console.error('Ошибка загрузки профиля:', error);
-        loadUserData(); // fallback
+        // Пробуем загрузить из кеша
+        const cachedUser = localStorage.getItem('donor_user');
+        if (cachedUser) {
+            try {
+                displayUserData(JSON.parse(cachedUser));
+                showNotification('Нет соединения. Показаны кешированные данные', 'info');
+            } catch (e) {
+                console.error('Ошибка загрузки кеша:', e);
+            }
+        }
     }
 }
 
@@ -116,11 +133,13 @@ async function checkTelegramLinkStatus() {
 }
 
 function displayUserData(user) {
-    // Имя пользователя
+    console.log('Отображение данных пользователя:', user);
+    
+    // Имя пользователя в шапке
     const userName = document.getElementById('user-name');
     if (userName) userName.textContent = user.full_name || 'Донор';
     
-    // Группа крови
+    // Группа крови в шапке
     const bloodType = document.getElementById('user-blood-type');
     if (bloodType) bloodType.textContent = user.blood_type || '-';
     
@@ -135,7 +154,32 @@ function displayUserData(user) {
             : 'Нет данных';
     }
     
-    // Информация о медцентре
+    // Информация в карточке "Моя информация"
+    const infoBloodType = document.getElementById('info-blood-type');
+    if (infoBloodType) infoBloodType.textContent = user.blood_type || '-';
+    
+    const infoMedcenter = document.getElementById('info-medcenter');
+    if (infoMedcenter) infoMedcenter.textContent = user.medical_center_name || '-';
+    
+    const infoLastDonation = document.getElementById('info-last-donation');
+    if (infoLastDonation) {
+        infoLastDonation.textContent = user.last_donation_date 
+            ? new Date(user.last_donation_date).toLocaleDateString('ru-RU')
+            : 'Нет данных';
+    }
+    
+    const infoTelegram = document.getElementById('info-telegram');
+    if (infoTelegram) {
+        if (user.telegram_id) {
+            infoTelegram.textContent = `✅ ${user.telegram_username}`;
+            infoTelegram.style.color = 'var(--color-success)';
+        } else {
+            infoTelegram.textContent = 'Не привязан';
+            infoTelegram.style.color = 'var(--color-text-secondary)';
+        }
+    }
+    
+    // Информация о медцентре (если есть элементы)
     const mcName = document.getElementById('user-medcenter');
     if (mcName) mcName.textContent = user.medical_center_name || '-';
     
@@ -145,16 +189,24 @@ function displayUserData(user) {
     const mcPhone = document.getElementById('medcenter-phone');
     if (mcPhone) mcPhone.textContent = user.medical_center_phone || '-';
     
-    // Заполняем форму профиля
-    const profileForm = document.getElementById('profile-form');
-    if (profileForm) {
-        const phoneInput = profileForm.querySelector('[name="phone"]');
-        const emailInput = profileForm.querySelector('[name="email"]');
-        const telegramInput = profileForm.querySelector('[name="telegram_username"]');
-        
-        if (phoneInput) phoneInput.value = user.phone || '';
-        if (emailInput) emailInput.value = user.email || '';
-        if (telegramInput) telegramInput.value = user.telegram_username || '';
+    // Заполняем форму профиля по ID
+    const profileFio = document.getElementById('profile-fio');
+    if (profileFio) profileFio.value = user.full_name || '';
+    
+    const profileBirth = document.getElementById('profile-birth');
+    if (profileBirth) profileBirth.value = user.birth_year || '';
+    
+    const profilePhone = document.getElementById('profile-phone');
+    if (profilePhone) profilePhone.value = user.phone || '';
+    
+    // Заполняем группу крови в форме (радиокнопки)
+    const bloodTypeRadio = document.querySelector(`input[name="blood_type"][value="${user.blood_type}"]`);
+    if (bloodTypeRadio) bloodTypeRadio.checked = true;
+    
+    // Заполняем дату последней донации
+    const profileLastDonation = document.getElementById('profile-last-donation');
+    if (profileLastDonation && user.last_donation_date) {
+        profileLastDonation.value = user.last_donation_date.split('T')[0];
     }
 }
 
