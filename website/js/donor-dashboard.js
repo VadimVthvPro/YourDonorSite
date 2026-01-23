@@ -74,6 +74,9 @@ async function loadUserDataFromAPI() {
             
             displayUserData(user);
             
+            // Обновляем виджет обратного отсчёта
+            updateMainCountdownWidget(user);
+            
             // Проверяем статус Telegram
             await checkTelegramLinkStatus();
         } else if (response.status === 401 || response.status === 403) {
@@ -502,6 +505,11 @@ function openRespondModal(requestId) {
  * Откликнуться на запрос крови
  */
 async function respondToBloodRequest(requestId, message = '') {
+    // Проверка: можно ли откликаться
+    if (!checkCanRespond()) {
+        return;
+    }
+    
     try {
         const response = await fetch(`${DONOR_API_URL}/donor/blood-requests/${requestId}/respond`, {
             method: 'POST',
@@ -1127,6 +1135,12 @@ function initForms() {
                 if (response.ok) {
                     showNotification('✅ Медицинская информация обновлена', 'success');
                     await loadUserDataFromAPI();
+                    
+                    // Обновляем виджет обратного отсчёта
+                    const user = JSON.parse(localStorage.getItem('donor_user'));
+                    if (user) {
+                        updateMainCountdownWidget(user);
+                    }
                 } else {
                     showNotification('❌ ' + (result.error || 'Ошибка обновления'), 'error');
                 }
@@ -2375,6 +2389,162 @@ function renderDonationsHistory(history) {
             <div class="donation-status completed">✅ Успешно</div>
         </div>
     `).join('');
+}
+
+// ============================================
+// ОБРАТНЫЙ ОТСЧЁТ НА ГЛАВНОЙ СТРАНИЦЕ
+// ============================================
+
+/**
+ * Глобальная переменная для хранения состояния донора
+ */
+let canDonateNow = true;
+
+/**
+ * Обновить виджет обратного отсчёта на главной странице
+ */
+function updateMainCountdownWidget(user) {
+    const widget = document.getElementById('countdown-widget');
+    const statNext = document.getElementById('stat-next');
+    
+    if (!widget || !user) return;
+    
+    // Рассчитываем данные обратного отсчёта
+    const countdownData = calculateCountdown(user.last_donation_date);
+    
+    if (!countdownData) {
+        // Нет даты последней донации
+        widget.style.display = 'none';
+        if (statNext) statNext.textContent = 'Нет данных';
+        canDonateNow = true;
+        return;
+    }
+    
+    widget.style.display = 'block';
+    
+    // Обновляем глобальное состояние
+    canDonateNow = countdownData.canDonate;
+    
+    // Обновляем виджет
+    const titleEl = document.getElementById('countdown-title');
+    const daysEl = document.getElementById('countdown-days');
+    const hoursEl = document.getElementById('countdown-hours');
+    const messageEl = document.getElementById('countdown-message');
+    const progressBar = document.getElementById('countdown-progress-bar-main');
+    
+    // Обновляем карточку статистики
+    if (statNext) {
+        if (countdownData.canDonate) {
+            statNext.textContent = '✅ Можно сдать';
+            statNext.style.color = '#059669';
+        } else {
+            statNext.textContent = `${countdownData.daysLeft} дней`;
+            statNext.style.color = '#dc2626';
+        }
+    }
+    
+    // Обновляем виджет
+    if (countdownData.canDonate) {
+        widget.classList.remove('blocked');
+        widget.classList.add('can-donate');
+        
+        if (titleEl) titleEl.textContent = '✅ Вы можете сдать кровь!';
+        if (daysEl) daysEl.textContent = '00';
+        if (hoursEl) hoursEl.textContent = '00';
+        if (messageEl) messageEl.textContent = 'Вы готовы стать героем снова';
+        if (progressBar) progressBar.style.width = '100%';
+    } else {
+        widget.classList.remove('can-donate');
+        widget.classList.add('blocked');
+        
+        if (titleEl) titleEl.textContent = 'До следующей донации';
+        if (daysEl) daysEl.textContent = String(countdownData.daysLeft).padStart(2, '0');
+        if (hoursEl) hoursEl.textContent = String(countdownData.hoursLeft).padStart(2, '0');
+        if (messageEl) messageEl.textContent = 'Организму нужно восстановиться (60 дней между донациями)';
+        if (progressBar) {
+            const progress = ((60 - countdownData.daysLeft) / 60) * 100;
+            progressBar.style.width = progress + '%';
+        }
+    }
+}
+
+/**
+ * Рассчитать обратный отсчёт до следующей донации
+ */
+function calculateCountdown(lastDonationDate) {
+    if (!lastDonationDate) return null;
+    
+    const last = new Date(lastDonationDate);
+    const now = new Date();
+    const nextAllowed = new Date(last);
+    nextAllowed.setDate(nextAllowed.getDate() + 60); // 60 дней
+    
+    const diffMs = nextAllowed - now;
+    
+    if (diffMs <= 0) {
+        return {
+            canDonate: true,
+            daysLeft: 0,
+            hoursLeft: 0
+        };
+    }
+    
+    const daysLeft = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hoursLeft = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    return {
+        canDonate: false,
+        daysLeft,
+        hoursLeft
+    };
+}
+
+/**
+ * Проверить, может ли донор откликнуться
+ */
+function checkCanRespond() {
+    if (!canDonateNow) {
+        showNotification('❌ Нельзя откликнуться! С последней донации должно пройти 60 дней.', 'error');
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Обновить дату последней донации через API
+ */
+async function updateLastDonationDate(newDate) {
+    try {
+        const response = await fetch(`${DONOR_API_URL}/donor/profile`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                last_donation_date: newDate
+            })
+        });
+        
+        if (response.ok) {
+            showNotification('✅ Дата последней донации обновлена', 'success');
+            
+            // Обновляем данные пользователя
+            const user = JSON.parse(localStorage.getItem('user')) || {};
+            user.last_donation_date = newDate;
+            localStorage.setItem('user', JSON.stringify(user));
+            
+            // Обновляем виджет
+            updateMainCountdownWidget(user);
+            
+            return true;
+        } else {
+            const error = await response.json();
+            showNotification('❌ ' + (error.error || 'Ошибка обновления'), 'error');
+            return false;
+        }
+    } catch (error) {
+        console.error('Ошибка обновления даты:', error);
+        showNotification('❌ Ошибка соединения', 'error');
+        return false;
+    }
 }
 
 // Инициализация статистики при загрузке секции

@@ -601,3 +601,30 @@ LINE 4:            total_volume_ml = COALESCE(total_volume_ml, 0) + ...
 2026-01-23 15:16:47,982 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:16:47] "GET /api/donor/statistics HTTP/1.1" 200 -
 2026-01-23 15:17:13,010 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:17:13] "OPTIONS /api/donor/statistics HTTP/1.1" 200 -
 2026-01-23 15:17:13,051 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:17:13] "GET /api/donor/statistics HTTP/1.1" 200 -
+2026-01-23 15:17:26,598 - werkzeug - INFO -  * Detected change in '/Users/VadimVthv/Your_donor/website/backend/app.py', reloading
+==================================================
+🩸 Твой Донор - API Server
+==================================================
+Порт: 5001
+БД: your_donor
+==================================================
+2026-01-23 15:17:26,676 - werkzeug - INFO -  * Restarting with stat
+2026-01-23 15:17:27,112 - werkzeug - WARNING -  * Debugger is active!
+2026-01-23 15:17:27,119 - werkzeug - INFO -  * Debugger PIN: 566-507-184
+2026-01-23 15:37:29,476 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:29] "OPTIONS /api/donor/profile HTTP/1.1" 200 -
+2026-01-23 15:37:29,879 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:29] "GET /api/regions HTTP/1.1" 200 -
+2026-01-23 15:37:29,961 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:29] "GET /api/donor/profile HTTP/1.1" 200 -
+2026-01-23 15:37:29,986 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:29] "OPTIONS /api/donor/telegram/status HTTP/1.1" 200 -
+2026-01-23 15:37:30,002 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:30] "GET /api/donor/telegram/status HTTP/1.1" 200 -
+2026-01-23 15:37:30,009 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:30] "OPTIONS /api/donor/blood-requests HTTP/1.1" 200 -
+2026-01-23 15:37:30,011 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:30] "OPTIONS /api/donor/messages HTTP/1.1" 200 -
+2026-01-23 15:37:30,024 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:30] "GET /api/donor/messages HTTP/1.1" 200 -
+2026-01-23 15:37:30,025 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:30] "GET /api/donor/profile HTTP/1.1" 200 -
+2026-01-23 15:37:30,027 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:30] "GET /api/donor/blood-requests HTTP/1.1" 200 -
+2026-01-23 15:37:30,028 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:30] "OPTIONS /api/medical-centers?district_id=31 HTTP/1.1" 200 -
+2026-01-23 15:37:30,042 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:30] "GET /api/medical-centers?district_id=31 HTTP/1.1" 200 -
+2026-01-23 15:37:47,734 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:47] "OPTIONS /api/donor/statistics HTTP/1.1" 200 -
+2026-01-23 15:37:47,764 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:47] "GET /api/donor/statistics HTTP/1.1" 200 -
+2026-01-23 15:37:52,747 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:52] "OPTIONS /api/donor/schedule-donation HTTP/1.1" 200 -
+2026-01-23 15:37:52,765 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:37:52] "[35m[1mPOST /api/donor/schedule-donation HTTP/1.1[0m" 201 -
+2026-01-23 15:38:17,044 - werkzeug - INFO - 127.0.0.1 - - [23/Jan/2026 15:38:17] "GET /api/health HTTP/1.1" 200 -
