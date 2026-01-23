@@ -93,7 +93,20 @@ class Messenger {
         this.pollingInterval = null;
         this.isLoading = false;
         
+        // Определяем роль пользователя
+        this.userRole = this.detectUserRole();
+        console.log('🔵 Роль пользователя:', this.userRole);
+        
         this.init();
+    }
+    
+    detectUserRole() {
+        // Проверяем по body классу
+        if (document.body.classList.contains('medcenter-page')) {
+            return 'medical_center';
+        }
+        // По умолчанию - донор
+        return 'donor';
     }
     
     init() {
@@ -370,12 +383,12 @@ class Messenger {
     }
     
     renderMessage(msg) {
-        const isOwn = msg.sender_role === 'donor';
+        const isOwn = msg.sender_role === this.userRole;
         const isSystem = msg.sender_role === 'system';
         
         const messageClass = isSystem ? 'system' : (isOwn ? 'own' : 'other');
         
-        if (msg.type === 'notification') {
+        if (msg.type === 'notification' || msg.type === 'invitation') {
             return this.renderNotificationMessage(msg);
         }
         
@@ -383,7 +396,7 @@ class Messenger {
             return `
                 <div class="message system">
                     <div class="message-bubble">
-                        <div class="message-content">${this.escapeHtml(msg.content)}</div>
+                        <div class="message-content">${this.formatMessageContent(msg.content)}</div>
                     </div>
                 </div>
             `;
@@ -399,7 +412,7 @@ class Messenger {
         return `
             <div class="message ${messageClass}">
                 <div class="message-bubble">
-                    <div class="message-content">${this.escapeHtml(msg.content)}</div>
+                    <div class="message-content">${this.formatMessageContent(msg.content)}</div>
                     <div class="message-time">
                         ${time}
                         ${readStatus}
@@ -410,15 +423,16 @@ class Messenger {
     }
     
     renderNotificationMessage(msg) {
-        // TODO: Парсить metadata и рендерить кнопки
+        const title = msg.type === 'invitation' ? '✅ Приглашение на донацию' : '📢 Уведомление';
+        
         return `
             <div class="message other">
                 <div class="message-bubble message-notification">
                     <div class="notification-header">
-                        ✅ ${msg.type === 'notification' ? 'Уведомление' : 'Сообщение'}
+                        ${title}
                     </div>
                     <div class="notification-content">
-                        ${this.escapeHtml(msg.content)}
+                        ${this.formatMessageContent(msg.content)}
                     </div>
                 </div>
             </div>
@@ -688,6 +702,27 @@ class Messenger {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+    
+    formatMessageContent(content) {
+        // Сначала экранируем HTML
+        let formatted = this.escapeHtml(content);
+        
+        // Конвертируем markdown в HTML
+        // **жирный текст**
+        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        // Разделители ---
+        formatted = formatted.replace(/^---$/gm, '<hr style="border: none; border-top: 1px solid #e0e0e0; margin: 12px 0;">');
+        
+        // Списки • пункт
+        formatted = formatted.replace(/^• (.+)$/gm, '<div style="margin-left: 16px; margin-bottom: 4px;">• $1</div>');
+        
+        // Переносы строк
+        formatted = formatted.replace(/\n\n/g, '<br><br>');
+        formatted = formatted.replace(/\n/g, '<br>');
+        
+        return formatted;
     }
     
     showError(message) {

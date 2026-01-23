@@ -7,14 +7,24 @@
 .dashboard-section#messages {
     padding: 0 !important;
     margin: 0 !important;
-    display: block !important;
+    height: calc(100vh - 80px);
+    min-height: 500px;
+}
+
+/* Явное правило для донора */
+.dashboard-page:not(.medcenter-page) .dashboard-section#messages {
+    padding: 0 !important;
+    margin: 0 !important;
     height: calc(100vh - 80px);
     min-height: 500px;
 }
 
 /* Для медцентра (такие же размеры) */
 .medcenter-page .dashboard-section#messages {
+    padding: 0 !important;
+    margin: 0 !important;
     height: calc(100vh - 80px);
+    min-height: 500px;
 }
 
 /* Скрываем section-header внутри мессенджера */

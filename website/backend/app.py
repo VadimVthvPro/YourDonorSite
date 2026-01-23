@@ -1690,9 +1690,11 @@ def update_response(response_id):
             )
             
             if not conversation:
+                app.logger.info(f"Создание нового диалога: donor_id={resp['user_id']}, medical_center_id={resp['medical_center_id']}")
                 query_db(
-                    """INSERT INTO conversations (donor_id, medical_center_id, status)
-                       VALUES (%s, %s, 'active')""",
+                    """INSERT INTO conversations 
+                       (donor_id, medical_center_id, status, created_at, updated_at)
+                       VALUES (%s, %s, 'active', NOW(), NOW())""",
                     (resp['user_id'], resp['medical_center_id']), commit=True
                 )
                 conversation = query_db(
@@ -1700,6 +1702,7 @@ def update_response(response_id):
                        WHERE donor_id = %s AND medical_center_id = %s""",
                     (resp['user_id'], resp['medical_center_id']), one=True
                 )
+                app.logger.info(f"✅ Диалог создан: conversation_id={conversation['id']}")
             
             # Отправляем приглашение на донацию
             blood_request = query_db(
@@ -1720,6 +1723,7 @@ def update_response(response_id):
             )
             
             # Сохраняем сообщение
+            app.logger.info(f"Отправка сообщения: conversation_id={conversation['id']}, type=invitation")
             query_db(
                 """INSERT INTO messages 
                    (conversation_id, sender_role, message_type, content, metadata, created_at)
@@ -1738,6 +1742,7 @@ def update_response(response_id):
                 ),
                 commit=True
             )
+            app.logger.info(f"✅ Сообщение отправлено донору {donor['id']}")
             
             # Отправляем в Telegram
             donor_telegram = query_db(
@@ -2741,9 +2746,11 @@ def schedule_donation():
     )
     
     if not conversation:
+        app.logger.info(f"Создание нового диалога: donor_id={user_id}, medical_center_id={medical_center_id}")
         query_db(
-            """INSERT INTO conversations (donor_id, medical_center_id, status)
-               VALUES (%s, %s, 'active')""",
+            """INSERT INTO conversations 
+               (donor_id, medical_center_id, status, created_at, updated_at)
+               VALUES (%s, %s, 'active', NOW(), NOW())""",
             (user_id, medical_center_id), commit=True
         )
         conversation = query_db(
@@ -2751,6 +2758,7 @@ def schedule_donation():
                WHERE donor_id = %s AND medical_center_id = %s""",
             (user_id, medical_center_id), one=True
         )
+        app.logger.info(f"✅ Диалог создан: conversation_id={conversation['id']}")
     
     # Формируем сообщение для медцентра
     planned_date = data.get('planned_date')
