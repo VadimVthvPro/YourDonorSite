@@ -837,8 +837,7 @@ function initFormValidation() {
                         address: data.address || null,
                         email: data.email,
                         phone: data.phone || null,
-                        password: data.password,
-                        is_blood_center: data.is_blood_center === 'on'
+                        password: data.password
                     })
                 });
                 

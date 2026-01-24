@@ -2692,3 +2692,94 @@ async function submitConfirmDonation(responseId, donationDate, donationTime) {
         showNotification('❌ Ошибка при подтверждении донации', 'error');
     }
 }
+
+// ============================================
+// Смена пароля для медцентра
+// ============================================
+
+// Валидация пароля в реальном времени
+const newPasswordInput = document.getElementById('new-password');
+if (newPasswordInput) {
+    newPasswordInput.addEventListener('input', function(e) {
+        const password = e.target.value;
+        const counter = document.getElementById('password-counter');
+        const MIN_LENGTH = 6;
+        
+        if (password.length < MIN_LENGTH) {
+            counter.textContent = `${password.length}/${MIN_LENGTH} символов`;
+            counter.classList.remove('success');
+            counter.classList.add('error');
+        } else {
+            counter.textContent = `✓ ${password.length} символов`;
+            counter.classList.remove('error');
+            counter.classList.add('success');
+        }
+    });
+}
+
+// Обработка формы смены пароля
+const passwordForm = document.getElementById('password-form');
+if (passwordForm) {
+    passwordForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const currentPassword = document.getElementById('current-password').value;
+        const newPassword = document.getElementById('new-password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+        
+        const MIN_LENGTH = 6;
+        
+        // Валидация на фронте
+        if (!currentPassword) {
+            showNotification('Введите текущий пароль', 'error');
+            document.getElementById('current-password').focus();
+            return;
+        }
+        
+        if (newPassword.length < MIN_LENGTH) {
+            showNotification(`Пароль должен содержать минимум ${MIN_LENGTH} символов`, 'error');
+            document.getElementById('new-password').focus();
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            showNotification('Пароли не совпадают', 'error');
+            document.getElementById('confirm-password').focus();
+            return;
+        }
+        
+        if (newPassword === currentPassword) {
+            showNotification('Новый пароль должен отличаться от текущего', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_URL}/api/medcenter/change-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('medcenter_token')}`
+                },
+                body: JSON.stringify({
+                    current_password: currentPassword,
+                    new_password: newPassword,
+                    confirm_password: confirmPassword
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                showNotification('✅ Пароль успешно изменён', 'success');
+                passwordForm.reset();
+                document.getElementById('password-counter').textContent = 'Минимум 6 символов';
+                document.getElementById('password-counter').classList.remove('error', 'success');
+            } else {
+                showNotification(data.error || 'Ошибка смены пароля', 'error');
+            }
+        } catch (error) {
+            console.error('Ошибка смены пароля:', error);
+            showNotification('Ошибка соединения с сервером', 'error');
+        }
+    });
+}

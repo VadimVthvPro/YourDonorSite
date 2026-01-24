@@ -27,8 +27,8 @@ except ImportError:
         print(f"[TELEGRAM] Уведомление для {telegram_id}: {message}")
         return False
     
-    def send_urgent_blood_request(blood_type, medical_center_name, address=None):
-        print(f"[TELEGRAM] Срочный запрос: {blood_type}, {medical_center_name}")
+    def send_urgent_blood_request(blood_type, medical_center_name, address=None, medical_center_id=None):
+        print(f"[TELEGRAM] Срочный запрос: {blood_type}, {medical_center_name}, медцентр ID={medical_center_id}")
         return 0
 
 load_dotenv()
@@ -535,6 +535,50 @@ def get_donor_profile():
     
     return jsonify(user)
 
+@app.route('/api/donor/change-password', methods=['POST'])
+@require_auth('donor')
+def change_donor_password():
+    """Смена пароля донора"""
+    data = request.json
+    user_id = g.session['user_id']
+    
+    MIN_PASSWORD_LENGTH = 6
+    
+    # Валидация
+    if not data.get('current_password'):
+        return jsonify({'error': 'Введите текущий пароль'}), 400
+    
+    if not data.get('new_password'):
+        return jsonify({'error': 'Введите новый пароль'}), 400
+    
+    if len(data['new_password']) < MIN_PASSWORD_LENGTH:
+        return jsonify({'error': f'Пароль должен содержать минимум {MIN_PASSWORD_LENGTH} символов'}), 400
+    
+    if data['new_password'] != data.get('confirm_password'):
+        return jsonify({'error': 'Пароли не совпадают'}), 400
+    
+    # Получаем текущий хеш пароля
+    user = query_db("SELECT password_hash FROM users WHERE id = %s", (user_id,), one=True)
+    
+    if not user:
+        return jsonify({'error': 'Пользователь не найден'}), 404
+    
+    # Проверяем текущий пароль
+    import hashlib
+    current_password_hash = hashlib.sha256(data['current_password'].encode()).hexdigest()
+    
+    if user.get('password_hash') != current_password_hash:
+        return jsonify({'error': 'Неверный текущий пароль'}), 401
+    
+    # Устанавливаем новый пароль
+    new_password_hash = hashlib.sha256(data['new_password'].encode()).hexdigest()
+    query_db("UPDATE users SET password_hash = %s, updated_at = NOW() WHERE id = %s", 
+             (new_password_hash, user_id), commit=True)
+    
+    app.logger.info(f"[PASSWORD] ✅ Донор ID={user_id} сменил пароль")
+    
+    return jsonify({'message': 'Пароль успешно изменён'})
+
 @app.route('/api/donor/statistics', methods=['GET'])
 @require_auth('donor')
 def get_donor_statistics():
@@ -919,6 +963,46 @@ def get_medcenter_profile():
     
     return jsonify(mc)
 
+@app.route('/api/medcenter/change-password', methods=['POST'])
+@require_auth('medcenter')
+def change_medcenter_password():
+    """Смена пароля медцентра"""
+    data = request.json
+    mc_id = g.session['medical_center_id']
+    
+    MIN_PASSWORD_LENGTH = 6
+    
+    # Валидация
+    if not data.get('current_password'):
+        return jsonify({'error': 'Введите текущий пароль'}), 400
+    
+    if not data.get('new_password'):
+        return jsonify({'error': 'Введите новый пароль'}), 400
+    
+    if len(data['new_password']) < MIN_PASSWORD_LENGTH:
+        return jsonify({'error': f'Пароль должен содержать минимум {MIN_PASSWORD_LENGTH} символов'}), 400
+    
+    if data['new_password'] != data.get('confirm_password'):
+        return jsonify({'error': 'Пароли не совпадают'}), 400
+    
+    # Получаем текущий пароль медцентра
+    mc = query_db("SELECT master_password FROM medical_centers WHERE id = %s", (mc_id,), one=True)
+    
+    if not mc:
+        return jsonify({'error': 'Медцентр не найден'}), 404
+    
+    # Проверяем текущий пароль
+    if data['current_password'] != mc.get('master_password', MASTER_PASSWORD):
+        return jsonify({'error': 'Неверный текущий пароль'}), 401
+    
+    # Устанавливаем новый пароль
+    query_db("UPDATE medical_centers SET master_password = %s, updated_at = NOW() WHERE id = %s", 
+             (data['new_password'], mc_id), commit=True)
+    
+    app.logger.info(f"[PASSWORD] ✅ Медцентр ID={mc_id} сменил пароль")
+    
+    return jsonify({'message': 'Пароль успешно изменён'})
+
 @app.route('/api/medcenter/profile', methods=['PUT'])
 @require_auth('medcenter')
 def update_medcenter_profile():
@@ -1029,12 +1113,12 @@ def update_blood_needs(mc_id):
             # 2. Если нет, создаём автоматический запрос
             request_id = query_db(
                 """INSERT INTO blood_requests 
-                   (medical_center_id, blood_type, urgency, status, description, expires_at, created_at)
-                   VALUES (%s, %s, 'urgent', 'active', 'Автоматический запрос из светофора', NOW() + INTERVAL '2 days', NOW())
+                   (medical_center_id, blood_type, urgency, status, description, expires_at, created_at, source)
+                   VALUES (%s, %s, 'urgent', 'active', 'Автоматический запрос из светофора', NOW() + INTERVAL '2 days', NOW(), 'traffic_light')
                    RETURNING id""",
                 (mc_id, blood_type), commit=True, one=True
             )['id']
-            print(f"[AUTO-REQUEST] Создан запрос ID {request_id} для {blood_type}")
+            print(f"[TRAFFIC LIGHT] 🚦 Создан запрос ID {request_id} для {blood_type} (источник: светофор)")
         else:
             request_id = active_request['id']
             # Обновляем срочность существующего запроса
@@ -1047,7 +1131,7 @@ def update_blood_needs(mc_id):
         if mc:
             try:
                 from telegram_bot import send_blood_status_notification
-                send_blood_status_notification(blood_type, 'urgent', mc['name'])
+                send_blood_status_notification(blood_type, 'urgent', mc['name'], medical_center_id=mc_id)
             except Exception as e:
                 logger.error(f"Ошибка отправки Telegram уведомления: {e}")
     
@@ -1056,9 +1140,26 @@ def update_blood_needs(mc_id):
         if mc:
             try:
                 from telegram_bot import send_blood_status_notification
-                send_blood_status_notification(blood_type, 'needed', mc['name'])
+                send_blood_status_notification(blood_type, 'needed', mc['name'], medical_center_id=mc_id)
             except Exception as e:
                 logger.error(f"Ошибка отправки Telegram уведомления: {e}")
+    
+    elif status == 'normal':
+        # Закрыть активные запросы крови из светофора для этой группы крови
+        closed_requests = query_db(
+            """UPDATE blood_requests 
+               SET status = 'closed', expires_at = NOW()
+               WHERE medical_center_id = %s 
+                 AND blood_type = %s 
+                 AND source = 'traffic_light'
+                 AND status = 'active'
+               RETURNING id""",
+            (mc_id, blood_type), commit=True
+        )
+        
+        if closed_requests:
+            for req in closed_requests:
+                print(f"[TRAFFIC LIGHT] 🟢 Закрыт запрос ID {req['id']} для {blood_type} (светофор в норме)")
     
     return jsonify({'message': 'Статус обновлён', 'blood_type': blood_type, 'status': status})
 
@@ -1209,7 +1310,7 @@ def get_blood_requests():
     blood_type = request.args.get('blood_type', 'all')
     
     query = """
-        SELECT id, blood_type, urgency, status, description,
+        SELECT id, blood_type, urgency, status, description, source,
                created_at, expires_at, fulfilled_at,
                (SELECT COUNT(*) FROM donation_responses dr 
                 WHERE dr.request_id = blood_requests.id) as responses_count,
@@ -1287,7 +1388,8 @@ def create_blood_request():
     if mc:
         try:
             from telegram_bot import send_blood_request_notification
-            send_blood_request_notification(data['blood_type'], data['urgency'], mc['name'], mc.get('address'))
+            send_blood_request_notification(data['blood_type'], data['urgency'], mc['name'], mc.get('address'), medical_center_id=mc_id)
+            app.logger.info(f"[CREATE REQUEST] ✅ Запрос ID={request_id} создан, уведомления отправлены донорам района медцентра ID={mc_id}")
         except Exception as e:
             logger.error(f"Ошибка отправки Telegram уведомления о запросе: {e}")
     
@@ -2084,39 +2186,47 @@ def send_telegram_message(chat_id, text):
         return False
 
 def send_urgent_notifications(mc_id, blood_type, request_id=None, target_district_id=None):
-    """Отправка срочных уведомлений донорам через Telegram"""
-    print(f"[TELEGRAM] Вызов send_urgent_notifications: mc_id={mc_id}, blood_type={blood_type}")
+    """Отправка срочных уведомлений донорам через Telegram
+    ⚠️ ВАЖНО: Отправка ТОЛЬКО донорам из того же района что и медцентр"""
+    print(f"[URGENT NOTIFY] Вызов: mc_id={mc_id}, blood_type={blood_type}")
     
     mc = query_db("SELECT name, address, district_id FROM medical_centers WHERE id = %s", (mc_id,), one=True)
     
     if not mc:
-        print(f"[TELEGRAM] Медцентр {mc_id} не найден")
+        print(f"[URGENT NOTIFY] ❌ Медцентр {mc_id} не найден")
         return
     
     # Используем район медцентра, если не указан target_district_id
-    if not target_district_id:
-        target_district_id = mc.get('district_id')
+    district_id = target_district_id or mc.get('district_id')
     
+    if not district_id:
+        print(f"[URGENT NOTIFY] ⚠️ У медцентра {mc_id} не указан район! Уведомления не отправлены.")
+        return
+    
+    # Находим доноров ТОЛЬКО из указанного района
     query = """
-        SELECT telegram_id, full_name, id FROM users
-        WHERE blood_type = %s AND is_active = TRUE
+        SELECT telegram_id, full_name, id, district_id FROM users
+        WHERE blood_type = %s 
+          AND district_id = %s
+          AND is_active = TRUE
+          AND telegram_id IS NOT NULL
     """
-    params = [blood_type]
-    
-    # Фильтр: либо привязан к медцентру, либо из того же района
-    if target_district_id:
-        query += " AND (medical_center_id = %s OR district_id = %s)"
-        params.extend([mc_id, target_district_id])
-    else:
-        query += " AND medical_center_id = %s"
-        params.append(mc_id)
+    params = [blood_type, district_id]
     
     donors = query_db(query, tuple(params))
     
-    print(f"[TELEGRAM] Найдено доноров с группой {blood_type}: {len(donors) if donors else 0}")
+    print(f"[URGENT NOTIFY] 🔍 Фильтр по району ID={district_id}: найдено {len(donors) if donors else 0} доноров группы {blood_type}")
+    
+    # Логирование первых 10 доноров
+    if donors:
+        print(f"[URGENT NOTIFY] 📋 Список получателей (первые 10):")
+        for i, donor in enumerate(donors[:10]):
+            print(f"[URGENT NOTIFY]   {i+1}. {donor['full_name']} (район ID={donor.get('district_id')})")
+        if len(donors) > 10:
+            print(f"[URGENT NOTIFY]   ... и ещё {len(donors) - 10}")
     
     if not donors:
-        print(f"[TELEGRAM] Нет подходящих доноров для уведомления")
+        print(f"[URGENT NOTIFY] ℹ️ Нет доноров для уведомления")
         return
     
     # Создаём запрос крови в БД, если ещё не создан

@@ -806,15 +806,16 @@
                     <form id="password-form">
                         <div class="form-group">
                             <label>Текущий пароль</label>
-                            <input type="password" id="current-password">
+                            <input type="password" id="current-password" required minlength="6" autocomplete="current-password">
                         </div>
                         <div class="form-group">
                             <label>Новый пароль</label>
-                            <input type="password" id="new-password">
+                            <input type="password" id="new-password" required minlength="6" autocomplete="new-password">
+                            <span id="password-counter" class="field-hint">Минимум 6 символов</span>
                         </div>
                         <div class="form-group">
                             <label>Подтверждение пароля</label>
-                            <input type="password" id="confirm-password">
+                            <input type="password" id="confirm-password" required minlength="6" autocomplete="new-password">
                         </div>
                         <button type="submit" class="btn btn-outline">Изменить пароль</button>
                     </form>

@@ -601,23 +601,53 @@ def send_notification(telegram_id: int, message: str):
         logger.error(f"Ошибка отправки: {e}")
         return False
 
-def send_urgent_blood_request(blood_type: str, medical_center_name: str, address: str = None):
+def send_urgent_blood_request(blood_type: str, medical_center_name: str, address: str = None, medical_center_id: int = None):
     """
-    Отправить срочный запрос всем донорам с подходящей группой крови
+    Отправить срочный запрос донорам с подходящей группой крови ИЗ ТОГО ЖЕ РАЙОНА
     """
-    # Находим доноров с подходящей группой крови
-    donors = query_db(
-        """SELECT telegram_id FROM users
-           WHERE blood_type = %s 
-           AND telegram_id IS NOT NULL
-           AND is_active = TRUE
-           AND notify_urgent = TRUE""",
-        (blood_type,)
-    )
+    # Получить район медцентра для фильтрации
+    district_id = None
+    if medical_center_id:
+        mc_info = query_db(
+            "SELECT district_id FROM medical_centers WHERE id = %s",
+            (medical_center_id,), one=True
+        )
+        if mc_info:
+            district_id = mc_info['district_id']
+            logger.info(f"[NOTIFICATION] Медцентр ID={medical_center_id}, district_id={district_id}")
+    
+    # Находим доноров с подходящей группой крови ИЗ ТОГО ЖЕ РАЙОНА
+    if district_id:
+        donors = query_db(
+            """SELECT telegram_id, full_name, district_id FROM users
+               WHERE blood_type = %s 
+               AND district_id = %s
+               AND telegram_id IS NOT NULL
+               AND is_active = TRUE
+               AND notify_urgent = TRUE""",
+            (blood_type, district_id)
+        )
+        logger.info(f"[NOTIFICATION] Фильтр по району {district_id}: найдено {len(donors) if donors else 0} доноров")
+    else:
+        # Если район не указан, отправляем всем (старое поведение для совместимости)
+        donors = query_db(
+            """SELECT telegram_id, full_name FROM users
+               WHERE blood_type = %s 
+               AND telegram_id IS NOT NULL
+               AND is_active = TRUE
+               AND notify_urgent = TRUE""",
+            (blood_type,)
+        )
+        logger.warning(f"[NOTIFICATION] Медцентр без района! Отправка всем донорам группы {blood_type}")
     
     if not donors:
-        logger.info(f"Нет доноров для уведомления (группа {blood_type})")
+        logger.info(f"[NOTIFICATION] Нет доноров для уведомления (группа {blood_type}, район {district_id})")
         return 0
+    
+    # Логирование списка доноров
+    for donor in donors:
+        district_info = f", район={donor.get('district_id')}" if 'district_id' in donor else ""
+        logger.info(f"[NOTIFICATION]   → {donor.get('full_name', 'N/A')}{district_info}")
     
     # Формируем сообщение
     message = (
@@ -641,25 +671,49 @@ def send_urgent_blood_request(blood_type: str, medical_center_name: str, address
         if send_notification(donor['telegram_id'], message):
             sent_count += 1
     
-    logger.info(f"Отправлено {sent_count}/{len(donors)} уведомлений для группы {blood_type}")
+    logger.info(f"[NOTIFICATION] ✅ Отправлено {sent_count}/{len(donors)} уведомлений для группы {blood_type}, район {district_id}")
     return sent_count
 
-def send_blood_status_notification(blood_type: str, status: str, medical_center_name: str):
+def send_blood_status_notification(blood_type: str, status: str, medical_center_name: str, medical_center_id: int = None):
     """
     Отправить уведомление об изменении статуса группы крови (светофор)
-    status: 'normal', 'needed', 'urgent'
+    status: 'normal', 'needed', 'urgent', 'critical'
     """
-    # Находим доноров с подходящей группой крови
-    donors = query_db(
-        """SELECT telegram_id FROM users
-           WHERE blood_type = %s 
-           AND telegram_id IS NOT NULL
-           AND is_active = TRUE""",
-        (blood_type,)
-    )
+    # Получить район медцентра для фильтрации
+    district_id = None
+    if medical_center_id:
+        mc_info = query_db(
+            "SELECT district_id FROM medical_centers WHERE id = %s",
+            (medical_center_id,), one=True
+        )
+        if mc_info:
+            district_id = mc_info['district_id']
+            logger.info(f"[TRAFFIC LIGHT] Медцентр ID={medical_center_id}, district_id={district_id}")
+    
+    # Находим доноров с подходящей группой крови ИЗ ТОГО ЖЕ РАЙОНА
+    if district_id:
+        donors = query_db(
+            """SELECT telegram_id, full_name, district_id FROM users
+               WHERE blood_type = %s 
+               AND district_id = %s
+               AND telegram_id IS NOT NULL
+               AND is_active = TRUE""",
+            (blood_type, district_id)
+        )
+        logger.info(f"[TRAFFIC LIGHT] Фильтр по району {district_id}: найдено {len(donors) if donors else 0} доноров")
+    else:
+        # Если район не указан, отправляем всем
+        donors = query_db(
+            """SELECT telegram_id, full_name FROM users
+               WHERE blood_type = %s 
+               AND telegram_id IS NOT NULL
+               AND is_active = TRUE""",
+            (blood_type,)
+        )
+        logger.warning(f"[TRAFFIC LIGHT] Медцентр без района! Отправка всем донорам группы {blood_type}")
     
     if not donors:
-        logger.info(f"Нет доноров для уведомления (группа {blood_type})")
+        logger.info(f"[TRAFFIC LIGHT] Нет доноров для уведомления (группа {blood_type}, район {district_id})")
         return 0
     
     # Формируем сообщение в зависимости от статуса
@@ -719,23 +773,62 @@ def send_message_notification(user_id: int, medcenter_name: str, subject: str, m
         logger.info(f"Уведомление о сообщении отправлено пользователю {user_id}")
     return success
 
-def send_blood_request_notification(blood_type: str, urgency: str, medical_center_name: str, address: str = None):
+def send_blood_request_notification(blood_type: str, urgency: str, medical_center_name: str, address: str = None, medical_center_id: int = None):
     """
     Отправить уведомление о запросе крови любой срочности
     urgency: 'normal', 'urgent', 'critical'
+    ⚠️ ВАЖНО: Отправка только донорам ИЗ ТОГО ЖЕ РАЙОНА что и медцентр
     """
-    # Находим доноров с подходящей группой крови
-    donors = query_db(
-        """SELECT telegram_id FROM users
-           WHERE blood_type = %s 
-           AND telegram_id IS NOT NULL
-           AND is_active = TRUE""",
-        (blood_type,)
-    )
+    # Получить район медцентра для фильтрации
+    district_id = None
+    district_name = "неизвестен"
+    
+    if medical_center_id:
+        mc_info = query_db(
+            """SELECT mc.district_id, d.name as district_name
+               FROM medical_centers mc
+               LEFT JOIN districts d ON mc.district_id = d.id
+               WHERE mc.id = %s""",
+            (medical_center_id,), one=True
+        )
+        if mc_info:
+            district_id = mc_info['district_id']
+            district_name = mc_info['district_name'] or "неизвестен"
+            logger.info(f"[BLOOD REQUEST] Медцентр ID={medical_center_id}, район='{district_name}' (ID={district_id})")
+    
+    # Находим доноров с подходящей группой крови ИЗ ТОГО ЖЕ РАЙОНА
+    if district_id:
+        donors = query_db(
+            """SELECT telegram_id, full_name, district_id FROM users
+               WHERE blood_type = %s 
+               AND district_id = %s
+               AND telegram_id IS NOT NULL
+               AND is_active = TRUE""",
+            (blood_type, district_id)
+        )
+        logger.info(f"[BLOOD REQUEST] 🔍 Фильтр по району '{district_name}': найдено {len(donors) if donors else 0} доноров группы {blood_type}")
+    else:
+        # Если район не указан, отправляем всем (старое поведение для совместимости)
+        donors = query_db(
+            """SELECT telegram_id, full_name FROM users
+               WHERE blood_type = %s 
+               AND telegram_id IS NOT NULL
+               AND is_active = TRUE""",
+            (blood_type,)
+        )
+        logger.warning(f"[BLOOD REQUEST] ⚠️ Медцентр без района! Отправка всем донорам группы {blood_type}: {len(donors) if donors else 0} чел.")
     
     if not donors:
-        logger.info(f"Нет доноров для уведомления (группа {blood_type})")
+        logger.info(f"[BLOOD REQUEST] ℹ️ Нет доноров для уведомления (группа {blood_type}, район '{district_name}')")
         return 0
+    
+    # Логирование списка получателей
+    logger.info(f"[BLOOD REQUEST] 📋 Список получателей:")
+    for donor in donors[:10]:  # Показываем первых 10
+        district_info = f", район ID={donor.get('district_id')}" if 'district_id' in donor else ""
+        logger.info(f"[BLOOD REQUEST]   → {donor.get('full_name', 'N/A')}{district_info}")
+    if len(donors) > 10:
+        logger.info(f"[BLOOD REQUEST]   ... и ещё {len(donors) - 10} донор(ов)")
     
     # Формируем сообщение в зависимости от срочности
     if urgency == 'critical' or urgency == 'urgent':
@@ -767,7 +860,7 @@ def send_blood_request_notification(blood_type: str, urgency: str, medical_cente
         if send_notification(donor['telegram_id'], message):
             sent_count += 1
     
-    logger.info(f"Отправлено {sent_count}/{len(donors)} уведомлений о запросе {urgency} для группы {blood_type}")
+    logger.info(f"[BLOOD REQUEST] ✅ Отправлено {sent_count}/{len(donors)} уведомлений ({urgency}) для группы {blood_type}, район '{district_name}'")
     return sent_count
 
 # ============================================

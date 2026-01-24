@@ -10,7 +10,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=your_donor
 DB_USER=postgres
-DB_PASSWORD=your_secure_password_here
+DB_PASSWORD=yourdonorishere
 
 # ============================================
 # БЕЗОПАСНОСТЬ
