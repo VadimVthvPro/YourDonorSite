@@ -1484,21 +1484,26 @@
 
 .donate-centers {
     display: grid;
-    gap: var(--spacing-lg);
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
 }
 
 .center-card {
     background: var(--color-surface);
     border: 2px solid var(--color-gray-200);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-xl);
+    border-radius: 16px;
+    padding: 24px;
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    min-height: 280px;
+    position: relative;
 }
 
 .center-card:hover {
     border-color: var(--color-primary-light);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px);
 }
 
 .center-card.needs-blood {
@@ -1533,10 +1538,18 @@
 }
 
 .center-header h3 {
-    font-size: var(--text-lg);
+    font-size: 1.125rem;
     font-weight: 600;
     color: var(--color-text);
     margin: 0;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.4;
+    word-wrap: break-word;
 }
 
 .needs-badge {
@@ -1562,6 +1575,9 @@
     gap: var(--spacing-sm);
     color: var(--color-gray-700);
     font-size: var(--text-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .center-info .info-row svg {
@@ -1672,6 +1688,325 @@
 .btn-schedule-donation:active {
     transform: translateY(0);
     box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
+}
+
+/* ============================================
+   КВАДРАТНЫЕ КАРТОЧКИ МЕДЦЕНТРОВ (НОВЫЙ ДИЗАЙН)
+   ============================================ */
+
+.center-card-square {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    min-height: 320px;
+    aspect-ratio: 1 / 1.1;
+}
+
+.center-card-square:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+}
+
+.center-card-square.urgent {
+    border-color: #ef4444;
+    border-width: 2px;
+}
+
+.center-card-square.needs-blood {
+    border-color: #dc2626;
+    background: linear-gradient(135deg, #fff 0%, #fef2f2 100%);
+}
+
+/* Urgent badge */
+.urgent-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+    animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Иконка больницы */
+.center-icon {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.center-icon svg {
+    width: 32px;
+    height: 32px;
+    color: white;
+}
+
+/* Название */
+.center-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 16px 0;
+    line-height: 1.35;
+    
+    /* Line clamp */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-wrap: break-word;
+    hyphens: auto;
+    
+    /* Min height для 3 строк */
+    min-height: 60px;
+}
+
+/* Контакты */
+.center-contacts {
+    width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 0.8125rem;
+    color: #64748b;
+    
+    /* Ellipsis для длинных адресов */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.contact-item svg {
+    width: 14px;
+    height: 14px;
+    color: #3b82f6;
+    flex-shrink: 0;
+}
+
+.contact-item a {
+    color: #3b82f6;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.contact-item a:hover {
+    text-decoration: underline;
+}
+
+/* Светофор крови */
+.blood-traffic-light {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 10px;
+}
+
+.blood-status-item {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    white-space: nowrap;
+}
+
+.blood-status-item[data-status="normal"] {
+    color: #059669;
+    background: #d1fae5;
+}
+
+.blood-status-item[data-status="low"] {
+    color: #d97706;
+    background: #fed7aa;
+}
+
+.blood-status-item[data-status="critical"] {
+    color: #dc2626;
+    background: #fecaca;
+}
+
+/* Кнопка записи */
+.btn-schedule-square {
+    width: 100%;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
+    margin-top: auto;
+}
+
+.btn-schedule-square:hover {
+    background: linear-gradient(135deg, #b91c1c, #991b1b);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+}
+
+.btn-schedule-square:active {
+    transform: translateY(0);
+}
+
+/* ============================================
+   АДАПТИВНОСТЬ ДЛЯ КВАДРАТНЫХ КАРТОЧЕК
+   ============================================ */
+
+/* Адаптивность для секции "Хочу сдать кровь" */
+@media (max-width: 1024px) {
+    .donate-centers {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+    
+    .center-card {
+        min-height: 260px;
+        padding: 20px;
+    }
+    
+    /* Квадратные карточки */
+    .center-card-square {
+        min-height: 300px;
+        padding: 20px 18px;
+    }
+    
+    .center-icon {
+        width: 56px;
+        height: 56px;
+    }
+    
+    .center-icon svg {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .center-name {
+        font-size: 0.9375rem;
+        min-height: 56px;
+    }
+}
+
+@media (max-width: 768px) {
+    .donate-centers {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .center-card {
+        min-height: auto;
+        padding: 20px;
+    }
+    
+    .center-header h3 {
+        font-size: 1.0625rem;
+    }
+    
+    .urgent-indicator {
+        font-size: 0.875rem;
+        padding: 8px 12px;
+    }
+    
+    /* Квадратные карточки */
+    .center-card-square {
+        min-height: auto;
+        aspect-ratio: auto;
+        padding: 20px;
+    }
+    
+    .center-name {
+        min-height: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .center-card {
+        padding: 16px;
+    }
+    
+    .center-header h3 {
+        font-size: 1rem;
+    }
+    
+    .center-info .info-row {
+        font-size: 0.875rem;
+    }
+    
+    .btn-schedule-donation {
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+    
+    /* Квадратные карточки */
+    .center-card-square {
+        padding: 16px;
+    }
+    
+    .center-icon {
+        width: 48px;
+        height: 48px;
+    }
+    
+    .center-icon svg {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .center-name {
+        font-size: 0.875rem;
+    }
+    
+    .contact-item {
+        font-size: 0.75rem;
+    }
+    
+    .btn-schedule-square {
+        padding: 10px 16px;
+        font-size: 0.875rem;
+    }
 }
 
 /* ================================================

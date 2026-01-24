@@ -317,11 +317,29 @@
     <!-- Противопоказания -->
     <section class="section section-alt">
         <div class="container">
-            <h2 class="section-title">Противопоказания</h2>
+            <div class="section-header">
+                <span class="section-badge">Важно знать</span>
+                <h2 class="section-title">Противопоказания</h2>
+                <p class="section-subtitle">Перед донацией убедитесь, что у вас нет противопоказаний</p>
+            </div>
+            
             <div class="contra-grid">
-                <div class="contra-block">
-                    <h3>🚫 Постоянные</h3>
-                    <ul>
+                <!-- Постоянные противопоказания -->
+                <div class="contra-card type-permanent">
+                    <div class="contra-card-header">
+                        <div class="contra-icon-wrapper">
+                            <svg class="contra-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="15" y1="9" x2="9" y2="15"/>
+                                <line x1="9" y1="9" x2="15" y2="15"/>
+                            </svg>
+                        </div>
+                        <div class="contra-header-text">
+                            <h3 class="contra-title">Постоянные противопоказания</h3>
+                            <p class="contra-subtitle">Донорство невозможно</p>
+                        </div>
+                    </div>
+                    <ul class="contra-list">
                         <li>ВИЧ-инфекция, гепатиты B и C</li>
                         <li>Онкологические заболевания</li>
                         <li>Заболевания крови</li>
@@ -330,15 +348,72 @@
                         <li>Психические заболевания</li>
                     </ul>
                 </div>
-                <div class="contra-block">
-                    <h3>⏳ Временные</h3>
-                    <ul>
-                        <li>ОРВИ, грипп — 1 месяц после выздоровления</li>
-                        <li>Удаление зуба — 10 дней</li>
-                        <li>Прививки — от 10 дней до 1 года</li>
-                        <li>Татуировки, пирсинг — 1 год</li>
-                        <li>Беременность и кормление — 1 год после</li>
-                        <li>Приём антибиотиков — 2 недели</li>
+
+                <!-- Временные противопоказания -->
+                <div class="contra-card type-temporary">
+                    <div class="contra-card-header">
+                        <div class="contra-icon-wrapper">
+                            <svg class="contra-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                        <div class="contra-header-text">
+                            <h3 class="contra-title">Временные противопоказания</h3>
+                            <p class="contra-subtitle">На определённый срок</p>
+                        </div>
+                    </div>
+                    <ul class="contra-list">
+                        <li data-period="1 месяц">ОРВИ, грипп <span class="period-badge">1 месяц</span></li>
+                        <li data-period="10 дней">Удаление зуба <span class="period-badge">10 дней</span></li>
+                        <li data-period="10 дн — 1 год">Прививки <span class="period-badge">10 дн — 1 год</span></li>
+                        <li data-period="1 год">Татуировки, пирсинг <span class="period-badge">1 год</span></li>
+                        <li data-period="1 год">Беременность и кормление <span class="period-badge">1 год</span></li>
+                        <li data-period="2 недели">Приём антибиотиков <span class="period-badge">2 недели</span></li>
+                    </ul>
+                </div>
+
+                <!-- Перед донацией -->
+                <div class="contra-card type-before-donation">
+                    <div class="contra-card-header">
+                        <div class="contra-icon-wrapper">
+                            <svg class="contra-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                        </div>
+                        <div class="contra-header-text">
+                            <h3 class="contra-title">Перед донацией</h3>
+                            <p class="contra-subtitle">Предупредите врача</p>
+                        </div>
+                    </div>
+                    <ul class="contra-list">
+                        <li>Повышенная температура</li>
+                        <li>Плохое самочувствие</li>
+                        <li>Хронические заболевания в обострении</li>
+                        <li>Менструация (для женщин)</li>
+                        <li>Контакт с инфекционными больными</li>
+                    </ul>
+                </div>
+
+                <!-- После процедур -->
+                <div class="contra-card type-after-procedures">
+                    <div class="contra-card-header">
+                        <div class="contra-icon-wrapper">
+                            <svg class="contra-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                            </svg>
+                        </div>
+                        <div class="contra-header-text">
+                            <h3 class="contra-title">После процедур</h3>
+                            <p class="contra-subtitle">Отложите донацию</p>
+                        </div>
+                    </div>
+                    <ul class="contra-list">
+                        <li data-period="6+ месяцев">Операции <span class="period-badge">6+ месяцев</span></li>
+                        <li data-period="6 месяцев">Эндоскопия <span class="period-badge">6 месяцев</span></li>
+                        <li data-period="1 год">Переливание крови <span class="period-badge">1 год</span></li>
+                        <li data-period="1 год">Акупунктура <span class="period-badge">1 год</span></li>
+                        <li data-period="3 месяца">Поездка в тропики <span class="period-badge">3 месяца</span></li>
                     </ul>
                 </div>
             </div>
@@ -589,7 +664,7 @@
                         <svg viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.538-.194 1.006.128.827.943z"/>
                         </svg>
-                        <span>@TvoyDonorBot</span>
+                        <span>@TvoyDonorZdesBot</span>
                     </div>
                 </div>
             </div>

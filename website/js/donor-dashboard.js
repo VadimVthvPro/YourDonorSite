@@ -1602,76 +1602,61 @@ function displayDonateCenters(centers, userBloodType) {
             need => need.blood_type === userBloodType && need.status === 'critical'
         );
         
+        // Светофор крови
+        const bloodStatus = center.blood_needs && center.blood_needs.length > 0 ? 
+            center.blood_needs.map(need => {
+                const statusEmoji = need.status === 'critical' ? '🔴' : need.status === 'low' ? '🟡' : '🟢';
+                return `<span class="blood-status-item" data-status="${need.status}">${statusEmoji} ${need.blood_type}</span>`;
+            }).join('') : '';
+        
         return `
-            <div class="center-card ${needsBlood ? 'needs-blood' : ''}" data-id="${center.id}">
-                ${urgentNeed ? '<div class="urgent-indicator">🚨 Срочно нужна ваша группа крови!</div>' : ''}
+            <div class="center-card-square ${needsBlood ? 'needs-blood' : ''} ${urgentNeed ? 'urgent' : ''}" data-id="${center.id}">
+                ${urgentNeed ? '<div class="urgent-badge">🚨 СРОЧНО!</div>' : ''}
                 
-                <div class="center-header">
-                    <h3>${center.name}</h3>
-                    ${needsBlood ? '<span class="needs-badge">Нужна ваша кровь</span>' : ''}
+                <div class="center-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                    </svg>
                 </div>
                 
-                <div class="center-info">
+                <h3 class="center-name" title="${center.name}">${center.name}</h3>
+                
+                <div class="center-contacts">
                     ${center.address ? `
-                        <div class="info-row">
+                        <div class="contact-item">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                                 <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                             </svg>
-                            ${center.address}
+                            <span>${center.address}</span>
                         </div>
                     ` : ''}
                     
                     ${center.phone ? `
-                        <div class="info-row">
+                        <div class="contact-item">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                             </svg>
                             <a href="tel:${center.phone}">${center.phone}</a>
                         </div>
                     ` : ''}
-                    
-                    ${center.email ? `
-                        <div class="info-row">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                            </svg>
-                            <a href="mailto:${center.email}">${center.email}</a>
-                        </div>
-                    ` : ''}
                 </div>
                 
-                ${center.blood_needs && center.blood_needs.length > 0 ? `
-                    <div class="blood-needs-indicator">
-                        <h4>Потребность в крови:</h4>
-                        <div class="blood-types-grid">
-                            ${center.blood_needs.map(need => `
-                                <div class="blood-type-status ${need.status}">
-                                    <span class="blood-type">${need.blood_type}</span>
-                                    <span class="status-dot"></span>
-                                </div>
-                            `).join('')}
-                        </div>
+                ${bloodStatus ? `
+                    <div class="blood-traffic-light">
+                        ${bloodStatus}
                     </div>
                 ` : ''}
                 
-                <div class="center-actions">
-                    <button class="btn-schedule-donation" data-center-id="${center.id}" data-center-name="${center.name}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                            <line x1="16" y1="2" x2="16" y2="6"/>
-                            <line x1="8" y1="2" x2="8" y2="6"/>
-                            <line x1="3" y1="10" x2="21" y2="10"/>
-                        </svg>
-                        Записаться на плановую донацию
-                    </button>
-                </div>
+                <button class="btn-schedule-square" data-center-id="${center.id}" data-center-name="${center.name}">
+                    Записаться
+                </button>
             </div>
         `;
     }).join('');
     
     // Добавляем обработчики для кнопок записи
-    container.querySelectorAll('.btn-schedule-donation').forEach(btn => {
+    container.querySelectorAll('.btn-schedule-square, .btn-schedule-donation').forEach(btn => {
         btn.addEventListener('click', () => {
             const centerId = btn.dataset.centerId;
             const centerName = btn.dataset.centerName;
