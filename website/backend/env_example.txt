@@ -1,27 +1,53 @@
 # ============================================
-# ДонорБай - Конфигурация окружения
+# Твой Донор - Конфигурация окружения
 # ============================================
 # Скопируйте этот файл в .env и заполните значения
 
-# База данных PostgreSQL
+# ============================================
+# БАЗА ДАННЫХ PostgreSQL
+# ============================================
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=donorbay
+DB_NAME=your_donor
 DB_USER=postgres
-DB_PASSWORD=your_secure_password
+DB_PASSWORD=your_secure_password_here
 
-# Секретный ключ для сессий (сгенерируйте уникальный)
+# ============================================
+# БЕЗОПАСНОСТЬ
+# ============================================
+# Секретный ключ для сессий Flask (сгенерируйте уникальный)
+# Можно сгенерировать командой: python3 -c "import secrets; print(secrets.token_hex(32))"
 SECRET_KEY=your-secret-key-here-generate-random-string
 
-# Мастер-пароль для входа медцентров
-MASTER_PASSWORD=doctor2024
+# Мастер-пароль для первого входа медцентров
+MASTER_PASSWORD=your_master_password_here
 
-# Telegram Bot API
+# ============================================
+# TELEGRAM BOT
+# ============================================
 # Получите токен у @BotFather в Telegram
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+# Создайте бота командой /newbot и скопируйте токен
+TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz123456789
 
+# ============================================
+# URLs и ДОМЕНЫ
+# ============================================
+# URL вашего сайта (для ссылок в уведомлениях)
+# В продакшене: https://tvoydonor.by
+# Для локальной разработки: http://localhost:8080
+WEBSITE_URL=https://tvoydonor.by
+
+# URL API (для внутренних запросов)
+# В продакшене: https://api.tvoydonor.by или https://tvoydonor.by
+# Для локальной разработки: http://localhost:5001
+APP_URL=http://localhost:8080
+
+# ============================================
+# СЕРВЕР
+# ============================================
 # Режим отладки (true/false)
-FLASK_DEBUG=true
+# В продакшене ОБЯЗАТЕЛЬНО ставьте false!
+FLASK_DEBUG=false
 
-# Порт сервера
-PORT=5000
+# Порт Flask API сервера
+PORT=5001

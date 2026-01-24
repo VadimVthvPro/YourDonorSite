@@ -1,9 +1,54 @@
-# Telegram Bot Token (получите у @BotFather)
-TELEGRAM_TOKEN=your_telegram_bot_token_here
+# ============================================
+# Твой Донор - Конфигурация окружения
+# ============================================
+# Скопируйте этот файл в .env и заполните значения
 
-# Database Configuration
+# ============================================
+# БАЗА ДАННЫХ PostgreSQL
+# ============================================
 DB_HOST=localhost
-DB_NAME=blood_donor_bot
+DB_PORT=5432
+DB_NAME=your_donor
 DB_USER=postgres
-DB_PASSWORD=your_database_password
-DB_PORT=5432 
+DB_PASSWORD=your_secure_password_here
+
+# ============================================
+# БЕЗОПАСНОСТЬ
+# ============================================
+# Секретный ключ для сессий Flask (сгенерируйте уникальный)
+# Можно сгенерировать командой: python3 -c "import secrets; print(secrets.token_hex(32))"
+SECRET_KEY=your-secret-key-here-generate-random-string
+
+# Мастер-пароль для первого входа медцентров
+MASTER_PASSWORD=your_master_password_here
+
+# ============================================
+# TELEGRAM BOT
+# ============================================
+# Получите токен у @BotFather в Telegram
+# Создайте бота командой /newbot и скопируйте токен
+TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz123456789
+
+# ============================================
+# URLs и ДОМЕНЫ
+# ============================================
+# URL вашего сайта (для ссылок в уведомлениях и WebApp)
+# В продакшене: https://tvoydonor.by
+# Для локальной разработки: http://localhost:8080
+# ВАЖНО: Для Telegram WebApp кнопки ОБЯЗАТЕЛЕН HTTPS!
+WEBSITE_URL=https://tvoydonor.by
+
+# URL API (для внутренних запросов)
+# В продакшене: https://api.tvoydonor.by или https://tvoydonor.by
+# Для локальной разработки: http://localhost:5001
+APP_URL=http://localhost:8080
+
+# ============================================
+# СЕРВЕР
+# ============================================
+# Режим отладки (true/false)
+# В продакшене ОБЯЗАТЕЛЬНО ставьте false!
+FLASK_DEBUG=false
+
+# Порт Flask API сервера
+PORT=5001

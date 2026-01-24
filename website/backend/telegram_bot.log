@@ -1,132 +1,16 @@
-2026-01-23 21:26:25,108 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getMe "HTTP/1.1 200 OK"
-2026-01-23 21:26:25,205 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/deleteWebhook "HTTP/1.1 200 OK"
-2026-01-23 21:26:25,208 - telegram.ext.Application - INFO - Application started
-2026-01-23 21:26:35,437 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:26:45,537 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:26:55,642 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:27:05,771 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:27:15,841 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:27:25,911 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:27:35,991 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:27:46,051 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:27:56,120 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:28:06,216 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:28:16,311 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:28:26,384 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:28:36,451 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:28:46,557 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:28:56,631 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:29:06,721 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:29:16,835 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:29:26,909 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:29:37,006 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:29:47,080 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:29:57,149 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:30:07,222 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:30:17,304 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:30:27,392 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:30:37,460 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:30:47,538 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:30:57,609 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:31:07,688 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:31:17,757 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:31:27,904 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
-2026-01-23 21:31:34,070 - telegram.ext.Updater - ERROR - Error while calling `get_updates` one more time to mark all fetched updates as read: %s. Suppressing error to ensure graceful shutdown. When polling for updates is restarted, updates may be fetched again. Please adjust timeouts via `ApplicationBuilder` or the parameter `get_updates_request` of `Bot`.
-Traceback (most recent call last):
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
-    yield
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpx/_transports/default.py", line 394, in handle_async_request
-    resp = await self._pool.handle_async_request(req)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 216, in handle_async_request
-    raise exc from None
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 196, in handle_async_request
-    response = await connection.handle_async_request(
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpcore/_async/connection.py", line 99, in handle_async_request
-    raise exc
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpcore/_async/connection.py", line 76, in handle_async_request
-    stream = await self._connect(request)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpcore/_async/connection.py", line 122, in _connect
-    stream = await self._network_backend.connect_tcp(**kwargs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpcore/_backends/auto.py", line 30, in connect_tcp
-    return await self._backend.connect_tcp(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 114, in connect_tcp
-    with map_exceptions(exc_map):
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py", line 158, in __exit__
-    self.gen.throw(value)
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
-    raise to_exc(exc) from exc
-httpcore.ConnectError: [Errno 8] nodename nor servname provided, or not known
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/telegram/request/_httpxrequest.py", line 276, in do_request
-    res = await self._client.request(
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpx/_client.py", line 1540, in request
-    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpx/_client.py", line 1629, in send
-    response = await self._send_handling_auth(
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpx/_client.py", line 1657, in _send_handling_auth
-    response = await self._send_handling_redirects(
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpx/_client.py", line 1694, in _send_handling_redirects
-    response = await self._send_single_request(request)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpx/_client.py", line 1730, in _send_single_request
-    response = await transport.handle_async_request(request)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpx/_transports/default.py", line 393, in handle_async_request
-    with map_httpcore_exceptions():
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py", line 158, in __exit__
-    self.gen.throw(value)
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
-    raise mapped_exc(message) from exc
-httpx.ConnectError: [Errno 8] nodename nor servname provided, or not known
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/telegram/ext/_updater.py", line 437, in _get_updates_cleanup
-    await self.bot.get_updates(
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/telegram/ext/_extbot.py", line 618, in get_updates
-    updates = await super().get_updates(
-              ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/telegram/_bot.py", line 541, in decorator
-    result = await func(self, *args, **kwargs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/telegram/_bot.py", line 4177, in get_updates
-    await self._post(
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/telegram/_bot.py", line 629, in _post
-    return await self._do_post(
-           ^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/telegram/ext/_extbot.py", line 347, in _do_post
-    return await super()._do_post(
-           ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/telegram/_bot.py", line 657, in _do_post
-    return await request.post(
-           ^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/telegram/request/_baserequest.py", line 200, in post
-    result = await self._request_wrapper(
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/telegram/request/_baserequest.py", line 340, in _request_wrapper
-    raise exc
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/telegram/request/_baserequest.py", line 330, in _request_wrapper
-    code, payload = await self.do_request(
-                    ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/telegram/request/_httpxrequest.py", line 300, in do_request
-    raise NetworkError(f"httpx.{err.__class__.__name__}: {err}") from err
-telegram.error.NetworkError: httpx.ConnectError: [Errno 8] nodename nor servname provided, or not known
-2026-01-23 21:31:34,112 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
-2026-01-23 21:31:34,115 - telegram.ext.Application - INFO - Application.stop() complete
-==================================================
-🤖 Твой Донор Telegram Bot
-==================================================
-✅ Бот запущен. Ожидание сообщений...
+2026-01-24 14:20:05,891 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getMe "HTTP/1.1 200 OK"
+2026-01-24 14:20:06,021 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/deleteWebhook "HTTP/1.1 200 OK"
+2026-01-24 14:20:06,024 - telegram.ext.Application - INFO - Application started
+2026-01-24 14:20:16,721 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
+2026-01-24 14:20:26,872 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
+2026-01-24 14:20:38,282 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
+2026-01-24 14:20:39,854 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
+2026-01-24 14:20:44,990 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/sendMessage "HTTP/1.1 200 OK"
+2026-01-24 14:20:49,977 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
+2026-01-24 14:20:51,434 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
+2026-01-24 14:20:54,561 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/answerCallbackQuery "HTTP/1.1 200 OK"
+2026-01-24 14:20:55,371 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/editMessageText "HTTP/1.1 200 OK"
+2026-01-24 14:21:00,946 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
+2026-01-24 14:21:01,336 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/answerCallbackQuery "HTTP/1.1 200 OK"
+2026-01-24 14:21:04,333 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/editMessageText "HTTP/1.1 200 OK"
+2026-01-24 14:21:11,248 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8212814214:AAG29mEQN2EWS1wFvKbDqC8nr6SgN3_VeZ8/getUpdates "HTTP/1.1 200 OK"
