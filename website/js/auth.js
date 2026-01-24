@@ -784,7 +784,15 @@ function initFormValidation() {
                     localStorage.setItem('medcenter_user', JSON.stringify(result.medical_center));
                     window.location.href = 'medcenter-dashboard.html';
                 } else {
-                    showNotification(result.error || 'Неверный пароль', 'error');
+                    // Проверяем статус подтверждения
+                    if (result.approval_status === 'pending') {
+                        showApprovalPendingModal(null);
+                        showNotification(result.message || 'Ожидайте подтверждения администратором', 'warning');
+                    } else if (result.approval_status === 'rejected') {
+                        showNotification(result.message || 'Заявка была отклонена. Обратитесь к @vadimvthv', 'error');
+                    } else {
+                        showNotification(result.error || 'Неверный пароль', 'error');
+                    }
                 }
                 
             } catch (error) {
@@ -798,15 +806,24 @@ function initFormValidation() {
     
     // Регистрация медцентра
     const mcRegisterForm = document.getElementById('medcenter-register-form');
-    if (mcRegisterForm) {
+    if (mcRegisterForm && !mcRegisterForm.dataset.listenerAdded) {
+        mcRegisterForm.dataset.listenerAdded = 'true';
         mcRegisterForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const formData = new FormData(mcRegisterForm);
             const data = Object.fromEntries(formData.entries());
             
+            console.log('📋 Данные формы регистрации медцентра:', data);
+            
+            // Проверка названия
+            if (!data.name || !data.name.trim()) {
+                showNotification('Укажите название медцентра', 'error');
+                return;
+            }
+            
             // Проверка email
-            if (!data.email) {
+            if (!data.email || !data.email.trim()) {
                 showNotification('Укажите рабочий email медцентра', 'error');
                 return;
             }
@@ -827,32 +844,50 @@ function initFormValidation() {
             btn.disabled = true;
             
             try {
+                const requestBody = {
+                    name: data.name.trim(),
+                    district_id: parseInt(data.district_id) || null,
+                    region_id: parseInt(data.region_id) || null,
+                    address: data.address?.trim() || null,
+                    email: data.email.trim(),
+                    phone: data.phone?.trim() || null,
+                    password: data.password
+                };
+                
+                console.log('🚀 Отправка данных:', requestBody);
+                
                 const response = await fetch(`${API_URL}/medcenter/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: data.name,
-                        district_id: parseInt(data.district_id) || null,
-                        region_id: parseInt(data.region_id) || null,
-                        address: data.address || null,
-                        email: data.email,
-                        phone: data.phone || null,
-                        password: data.password
-                    })
+                    body: JSON.stringify(requestBody)
                 });
                 
                 const result = await response.json();
                 
                 if (response.ok) {
-                    localStorage.setItem('auth_token', result.token);
-                    localStorage.setItem('user_type', 'medcenter');
-                    localStorage.setItem('medcenter_user', JSON.stringify(result.medical_center));
-                    showNotification('Медцентр зарегистрирован!', 'success');
-                    setTimeout(() => {
-                        window.location.href = 'medcenter-dashboard.html';
-                    }, 1000);
+                    // Проверяем статус подтверждения
+                    if (result.approval_status === 'pending') {
+                        // Показываем модальное окно ожидания
+                        showApprovalPendingModal(result.medical_center?.email || data.email);
+                    } else {
+                        // Если подтверждён сразу (не должно быть, но на всякий случай)
+                        localStorage.setItem('auth_token', result.token);
+                        localStorage.setItem('user_type', 'medcenter');
+                        localStorage.setItem('medcenter_user', JSON.stringify(result.medical_center));
+                        showNotification('Медцентр зарегистрирован!', 'success');
+                        setTimeout(() => {
+                            window.location.href = 'medcenter-dashboard.html';
+                        }, 1000);
+                    }
                 } else {
-                    showNotification(result.error || 'Ошибка регистрации', 'error');
+                    // Проверяем специальные статусы ошибок
+                    if (result.approval_status === 'pending') {
+                        showApprovalPendingModal(data.email);
+                    } else if (result.approval_status === 'rejected') {
+                        showNotification('Ваша заявка была отклонена. Обратитесь к администратору @vadimvthv', 'error');
+                    } else {
+                        showNotification(result.error || 'Ошибка регистрации', 'error');
+                    }
                 }
                 
             } catch (error) {
@@ -1248,3 +1283,121 @@ function highlightFieldError(input, message) {
         }
     }, { once: true });
 }
+
+// ============================================
+// СИСТЕМА ПОДТВЕРЖДЕНИЯ МЕДЦЕНТРОВ
+// ============================================
+
+/**
+ * Показать модальное окно ожидания подтверждения
+ */
+function showApprovalPendingModal(email) {
+    const modal = document.getElementById('approval-pending-modal');
+    const emailField = document.getElementById('registered-email');
+    
+    if (modal) {
+        modal.style.display = 'flex';
+        // Сохраняем email для проверки статуса
+        if (emailField) {
+            emailField.textContent = email;
+        }
+        // Сохраняем в localStorage для возможности проверки позже
+        if (email) {
+            localStorage.setItem('pending_medcenter_email', email);
+        }
+    }
+}
+
+/**
+ * Закрыть модальное окно ожидания
+ */
+function closeApprovalModal() {
+    const modal = document.getElementById('approval-pending-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+/**
+ * Проверить статус подтверждения медцентра
+ */
+async function checkApprovalStatus() {
+    const emailField = document.getElementById('registered-email');
+    const savedEmail = localStorage.getItem('pending_medcenter_email');
+    const email = emailField?.textContent || savedEmail;
+    
+    if (!email) {
+        showNotification('Email медцентра не найден', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/medcenter/check-approval`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            switch (result.approval_status) {
+                case 'pending':
+                    showNotification('Заявка ещё на рассмотрении. Пожалуйста, подождите.', 'info');
+                    break;
+                    
+                case 'approved':
+                    showNotification('Ваш медцентр подтверждён! Теперь вы можете войти.', 'success');
+                    closeApprovalModal();
+                    localStorage.removeItem('pending_medcenter_email');
+                    // Переключаемся на форму входа
+                    setTimeout(() => {
+                        const loginTab = document.querySelector('#medcenter-form .mode-tab[data-mode="login"]');
+                        if (loginTab) loginTab.click();
+                    }, 1500);
+                    break;
+                    
+                case 'rejected':
+                    showNotification('К сожалению, ваша заявка была отклонена. Обратитесь к администратору @vadimvthv', 'error');
+                    closeApprovalModal();
+                    localStorage.removeItem('pending_medcenter_email');
+                    break;
+                    
+                default:
+                    showNotification('Неизвестный статус', 'warning');
+            }
+        } else {
+            showNotification(result.error || 'Ошибка проверки статуса', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Ошибка проверки статуса:', error);
+        showNotification('Ошибка соединения с сервером', 'error');
+    }
+}
+
+/**
+ * Обработка ответа при входе медцентра (проверка статуса)
+ */
+function handleMedcenterLoginResponse(response, result) {
+    if (result.approval_status === 'pending') {
+        showApprovalPendingModal(localStorage.getItem('pending_medcenter_email'));
+        return true; // обработано
+    }
+    
+    if (result.approval_status === 'rejected') {
+        showNotification('Ваша заявка на регистрацию была отклонена. Обратитесь к администратору @vadimvthv', 'error');
+        return true; // обработано
+    }
+    
+    return false; // не обработано, продолжить стандартную логику
+}
+
+// Проверяем при загрузке страницы, есть ли ожидающая заявка
+document.addEventListener('DOMContentLoaded', function() {
+    const pendingEmail = localStorage.getItem('pending_medcenter_email');
+    if (pendingEmail) {
+        // Показываем подсказку что есть ожидающая заявка
+        console.log('📋 Есть ожидающая заявка медцентра:', pendingEmail);
+    }
+});

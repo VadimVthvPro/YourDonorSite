@@ -250,6 +250,7 @@ def get_districts(region_id):
 def get_medcenters():
     district_id = request.args.get('district_id')
     region_id = request.args.get('region_id')
+    include_pending = request.args.get('include_pending', 'false').lower() == 'true'
     
     query = """
         SELECT mc.id, mc.name, mc.address, mc.email, mc.is_blood_center,
@@ -260,6 +261,10 @@ def get_medcenters():
         WHERE mc.is_active = TRUE
     """
     params = []
+    
+    # По умолчанию показываем только подтверждённые медцентры
+    if not include_pending:
+        query += " AND (mc.approval_status = 'approved' OR mc.approval_status IS NULL)"
     
     if district_id:
         query += " AND mc.district_id = %s"
@@ -853,7 +858,7 @@ def update_donor_profile():
 
 @app.route('/api/medcenter/register', methods=['POST'])
 def register_medcenter_with_password():
-    """Регистрация нового медцентра с паролем"""
+    """Регистрация нового медцентра с паролем (требует подтверждения админа)"""
     data = request.json
     
     if not data.get('name'):
@@ -865,18 +870,30 @@ def register_medcenter_with_password():
     
     # Проверяем существует ли медцентр с таким email
     existing = query_db(
-        "SELECT id FROM medical_centers WHERE email = %s",
+        "SELECT id, approval_status FROM medical_centers WHERE email = %s",
         (data['email'],), one=True
     )
     
     if existing:
-        return jsonify({'error': 'Медцентр с таким email уже зарегистрирован'}), 400
+        if existing['approval_status'] == 'pending':
+            return jsonify({
+                'error': 'Заявка на регистрацию уже подана и ожидает подтверждения',
+                'approval_status': 'pending'
+            }), 400
+        elif existing['approval_status'] == 'rejected':
+            return jsonify({
+                'error': 'Заявка на регистрацию была отклонена. Обратитесь к администратору',
+                'approval_status': 'rejected'
+            }), 400
+        else:
+            return jsonify({'error': 'Медцентр с таким email уже зарегистрирован'}), 400
     
-    # Создаём медцентр
+    # Создаём медцентр со статусом pending (ожидает подтверждения)
     try:
         query_db(
-            """INSERT INTO medical_centers (name, district_id, address, email, phone, is_blood_center, master_password)
-               VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+            """INSERT INTO medical_centers 
+               (name, district_id, address, email, phone, is_blood_center, master_password, approval_status)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending')""",
             (data['name'], data.get('district_id'), data.get('address'), 
              data['email'], data.get('phone'), data.get('is_blood_center', False), 
              data['password']), commit=True
@@ -884,8 +901,8 @@ def register_medcenter_with_password():
         
         # Получаем созданный медцентр
         mc = query_db(
-            """SELECT mc.id, mc.name, mc.address, mc.email, mc.is_blood_center,
-                      d.name as district_name, r.name as region_name
+            """SELECT mc.id, mc.name, mc.address, mc.email, mc.phone, mc.is_blood_center,
+                      mc.approval_status, d.name as district_name, r.name as region_name
                FROM medical_centers mc
                LEFT JOIN districts d ON mc.district_id = d.id
                LEFT JOIN regions r ON d.region_id = r.id
@@ -896,32 +913,100 @@ def register_medcenter_with_password():
         if not mc:
             return jsonify({'error': 'Ошибка создания медцентра'}), 500
         
-        # Инициализируем светофор (все группы крови в норме)
-        blood_types = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-']
-        for bt in blood_types:
-            query_db(
-                """INSERT INTO blood_needs (medical_center_id, blood_type, status) 
-                   VALUES (%s, %s, 'normal') ON CONFLICT DO NOTHING""",
-                (mc['id'], bt), commit=True
-            )
+        app.logger.info(f"[MEDCENTER] Новая заявка на регистрацию: {mc['name']} (ID={mc['id']})")
         
-        # Создаём сессию
-        token = generate_token()
-        query_db(
-            """INSERT INTO user_sessions (session_token, user_type, medical_center_id, expires_at)
-               VALUES (%s, 'medcenter', %s, NOW() + INTERVAL '30 days')""",
-            (token, mc['id']), commit=True
-        )
+        # Отправляем уведомление супер-админу в Telegram
+        notification_sent = False
+        try:
+            notification_sent = send_medcenter_approval_request(mc)
+        except Exception as tg_error:
+            app.logger.error(f"[TELEGRAM] Ошибка отправки уведомления админу: {tg_error}")
         
+        # НЕ создаём сессию - медцентр должен ждать подтверждения
         return jsonify({
             'success': True,
-            'token': token,
-            'medical_center': mc
+            'approval_status': 'pending',
+            'message': 'Заявка на регистрацию принята и ожидает рассмотрения администратором.',
+            'notification_sent': notification_sent,
+            'medical_center': {
+                'id': mc['id'],
+                'name': mc['name'],
+                'email': mc['email']
+            }
         })
         
     except Exception as e:
-        print(f"Ошибка регистрации медцентра: {e}")
+        app.logger.error(f"Ошибка регистрации медцентра: {e}")
         return jsonify({'error': 'Ошибка регистрации медцентра'}), 500
+
+
+def send_medcenter_approval_request(mc):
+    """Отправляет запрос на подтверждение медцентра супер-админу в Telegram"""
+    import requests
+    
+    TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+    SUPER_ADMIN_USERNAME = os.getenv('SUPER_ADMIN_TELEGRAM_USERNAME', 'vadimvthv').lower()
+    
+    if not TELEGRAM_BOT_TOKEN:
+        app.logger.warning("[TELEGRAM] TELEGRAM_BOT_TOKEN не настроен")
+        return False
+    
+    # Ищем telegram_id админа по username в базе данных
+    admin = query_db(
+        "SELECT telegram_id FROM admin_users WHERE telegram_username = %s AND is_active = TRUE",
+        (SUPER_ADMIN_USERNAME,), one=True
+    )
+    
+    if not admin or not admin.get('telegram_id'):
+        app.logger.warning(f"[TELEGRAM] Супер-админ @{SUPER_ADMIN_USERNAME} не зарегистрирован в боте. "
+                          f"Попросите админа написать /start боту @TvoyDonorZdesBot")
+        return False
+    
+    admin_telegram_id = admin['telegram_id']
+    
+    # Формируем сообщение
+    message = (
+        f"🏥 <b>НОВАЯ ЗАЯВКА НА РЕГИСТРАЦИЮ МЕДЦЕНТРА</b>\n\n"
+        f"<b>Название:</b> {mc['name']}\n"
+        f"<b>Email:</b> {mc['email']}\n"
+        f"<b>Телефон:</b> {mc.get('phone') or 'не указан'}\n"
+        f"<b>Адрес:</b> {mc.get('address') or 'не указан'}\n"
+        f"<b>Район:</b> {mc.get('district_name') or 'не указан'}\n"
+        f"<b>Область:</b> {mc.get('region_name') or 'не указана'}\n\n"
+        f"<b>ID медцентра:</b> #{mc['id']}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"Подтвердите или отклоните заявку:"
+    )
+    
+    # Inline кнопки
+    keyboard = {
+        "inline_keyboard": [
+            [
+                {"text": "✅ Подтвердить", "callback_data": f"approve_mc_{mc['id']}"},
+                {"text": "❌ Отклонить", "callback_data": f"reject_mc_{mc['id']}"}
+            ]
+        ]
+    }
+    
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": admin_telegram_id,
+        "text": message,
+        "parse_mode": "HTML",
+        "reply_markup": keyboard
+    }
+    
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        if response.ok:
+            app.logger.info(f"[TELEGRAM] Уведомление о новом медцентре #{mc['id']} отправлено админу @{SUPER_ADMIN_USERNAME}")
+            return True
+        else:
+            app.logger.error(f"[TELEGRAM] Ошибка отправки: {response.text}")
+            return False
+    except Exception as e:
+        app.logger.error(f"[TELEGRAM] Исключение при отправке: {e}")
+        return False
 
 @app.route('/api/medcenter/login', methods=['POST'])
 def login_medcenter():
@@ -931,12 +1016,29 @@ def login_medcenter():
         return jsonify({'error': 'Укажите медцентр и пароль'}), 400
     
     mc = query_db(
-        "SELECT id, name, master_password FROM medical_centers WHERE id = %s AND is_active = TRUE",
+        "SELECT id, name, master_password, approval_status FROM medical_centers WHERE id = %s AND is_active = TRUE",
         (data['medical_center_id'],), one=True
     )
     
     if not mc:
         return jsonify({'error': 'Медцентр не найден'}), 404
+    
+    # Проверяем статус подтверждения
+    approval_status = mc.get('approval_status', 'approved')
+    
+    if approval_status == 'pending':
+        return jsonify({
+            'error': 'Ваша заявка на регистрацию ещё не подтверждена',
+            'approval_status': 'pending',
+            'message': 'Пожалуйста, дождитесь подтверждения администратором. Вы получите уведомление.'
+        }), 403
+    
+    if approval_status == 'rejected':
+        return jsonify({
+            'error': 'Ваша заявка на регистрацию была отклонена',
+            'approval_status': 'rejected',
+            'message': 'Обратитесь к администратору @vadimvthv для уточнения причины.'
+        }), 403
     
     # Проверяем пароль (индивидуальный или мастер)
     if data['password'] != mc.get('master_password', MASTER_PASSWORD) and data['password'] != MASTER_PASSWORD:
@@ -954,6 +1056,112 @@ def login_medcenter():
         'token': token,
         'medical_center': {'id': mc['id'], 'name': mc['name']}
     })
+
+
+@app.route('/api/medcenter/check-approval', methods=['POST'])
+def check_medcenter_approval():
+    """Проверка статуса подтверждения медцентра по email"""
+    data = request.json
+    
+    if not data.get('email'):
+        return jsonify({'error': 'Укажите email'}), 400
+    
+    mc = query_db(
+        "SELECT id, name, email, approval_status FROM medical_centers WHERE email = %s",
+        (data['email'],), one=True
+    )
+    
+    if not mc:
+        return jsonify({'error': 'Медцентр не найден', 'approval_status': 'not_found'}), 404
+    
+    return jsonify({
+        'id': mc['id'],
+        'name': mc['name'],
+        'email': mc['email'],
+        'approval_status': mc['approval_status']
+    })
+
+
+@app.route('/api/admin/medcenter/<int:mc_id>/approve', methods=['POST'])
+def approve_medcenter(mc_id):
+    """Подтверждение регистрации медцентра (вызывается из Telegram бота)"""
+    # Проверяем секретный ключ (простая защита)
+    secret = request.headers.get('X-Admin-Secret') or request.json.get('admin_secret')
+    expected_secret = os.getenv('SECRET_KEY', 'default-secret')
+    
+    if secret != expected_secret:
+        return jsonify({'error': 'Неавторизованный доступ'}), 401
+    
+    mc = query_db(
+        "SELECT id, name, email, approval_status FROM medical_centers WHERE id = %s",
+        (mc_id,), one=True
+    )
+    
+    if not mc:
+        return jsonify({'error': 'Медцентр не найден'}), 404
+    
+    if mc['approval_status'] == 'approved':
+        return jsonify({'message': 'Медцентр уже подтверждён', 'already_approved': True})
+    
+    # Обновляем статус
+    query_db(
+        "UPDATE medical_centers SET approval_status = 'approved', updated_at = NOW() WHERE id = %s",
+        (mc_id,), commit=True
+    )
+    
+    # Инициализируем светофор (все группы крови в норме)
+    blood_types = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-']
+    for bt in blood_types:
+        query_db(
+            """INSERT INTO blood_needs (medical_center_id, blood_type, status) 
+               VALUES (%s, %s, 'normal') ON CONFLICT DO NOTHING""",
+            (mc_id, bt), commit=True
+        )
+    
+    app.logger.info(f"[ADMIN] Медцентр #{mc_id} ({mc['name']}) подтверждён")
+    
+    return jsonify({
+        'success': True,
+        'message': f"Медцентр '{mc['name']}' подтверждён",
+        'medical_center': {'id': mc_id, 'name': mc['name'], 'email': mc['email']}
+    })
+
+
+@app.route('/api/admin/medcenter/<int:mc_id>/reject', methods=['POST'])
+def reject_medcenter(mc_id):
+    """Отклонение регистрации медцентра (вызывается из Telegram бота)"""
+    # Проверяем секретный ключ
+    secret = request.headers.get('X-Admin-Secret') or request.json.get('admin_secret')
+    expected_secret = os.getenv('SECRET_KEY', 'default-secret')
+    
+    if secret != expected_secret:
+        return jsonify({'error': 'Неавторизованный доступ'}), 401
+    
+    mc = query_db(
+        "SELECT id, name, email, approval_status FROM medical_centers WHERE id = %s",
+        (mc_id,), one=True
+    )
+    
+    if not mc:
+        return jsonify({'error': 'Медцентр не найден'}), 404
+    
+    if mc['approval_status'] == 'rejected':
+        return jsonify({'message': 'Медцентр уже отклонён', 'already_rejected': True})
+    
+    # Обновляем статус
+    query_db(
+        "UPDATE medical_centers SET approval_status = 'rejected', is_active = FALSE, updated_at = NOW() WHERE id = %s",
+        (mc_id,), commit=True
+    )
+    
+    app.logger.info(f"[ADMIN] Медцентр #{mc_id} ({mc['name']}) отклонён")
+    
+    return jsonify({
+        'success': True,
+        'message': f"Медцентр '{mc['name']}' отклонён",
+        'medical_center': {'id': mc_id, 'name': mc['name'], 'email': mc['email']}
+    })
+
 
 @app.route('/api/medcenter/profile', methods=['GET'])
 @require_auth('medcenter')

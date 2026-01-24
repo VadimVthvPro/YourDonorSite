@@ -315,9 +315,56 @@
             </div>
 
             <div id="auth-message" class="auth-message" style="display: none;"></div>
+            
+            <!-- Модальное окно ожидания подтверждения -->
+            <div id="approval-pending-modal" class="approval-modal" style="display: none;">
+                <div class="approval-modal-content">
+                    <div class="approval-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                    </div>
+                    <h2>Заявка принята!</h2>
+                    <p class="approval-subtitle">Ожидайте подтверждения</p>
+                    
+                    <div class="approval-info">
+                        <div class="info-item">
+                            <span class="info-icon">✅</span>
+                            <span class="info-text">Заявка сохранена в системе</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-icon">⏳</span>
+                            <span class="info-text">Рассмотрение занимает до 24 часов</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-icon">🔑</span>
+                            <span class="info-text">После подтверждения — войдите с вашим паролем</span>
+                        </div>
+                    </div>
+                    
+                    <div class="approval-contact">
+                        <p>Вопросы или ускорить рассмотрение:</p>
+                        <a href="https://t.me/vadimvthv" target="_blank" class="telegram-link">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.05-.2s-.16-.05-.23-.03c-.1.03-1.62 1.03-4.58 3.03-.43.3-.83.45-1.18.44-.39-.01-1.14-.22-1.7-.4-.68-.23-1.23-.35-1.18-.74.03-.2.36-.41.99-.63 3.87-1.69 6.46-2.8 7.75-3.34 3.7-1.54 4.47-1.81 4.97-1.81.11 0 .36.02.52.14.14.1.18.24.2.38.01.11.03.27.02.42z"/>
+                            </svg>
+                            Написать @vadimvthv
+                        </a>
+                    </div>
+                    
+                    <div class="approval-actions">
+                        <button type="button" class="btn btn-primary btn-full" onclick="closeApprovalModal()">
+                            Понятно
+                        </button>
+                    </div>
+                    
+                    <p id="registered-email" style="display: none;"></p>
+                </div>
+            </div>
         </div>
     </main>
 
-    <script src="../js/auth.js?v=5"></script>
+    <script src="../js/auth.js?v=8"></script>
 </body>
 </html>

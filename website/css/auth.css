@@ -932,3 +932,234 @@ input[type="checkbox"]:checked::after {
     transform: translateY(0);
     box-shadow: 0 2px 8px rgba(231, 76, 60, 0.2);
 }
+
+/* ============================================
+   МОДАЛЬНОЕ ОКНО ОЖИДАНИЯ ПОДТВЕРЖДЕНИЯ
+   ============================================ */
+
+.approval-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+    animation: fadeIn 0.3s ease;
+    overflow-y: auto;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.approval-modal-content {
+    background: white;
+    border-radius: 20px;
+    padding: 24px;
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.4s ease;
+    margin: auto;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.approval-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 16px;
+    background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.approval-icon svg {
+    width: 32px;
+    height: 32px;
+    color: #4CAF50;
+}
+
+.approval-modal-content h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 6px;
+}
+
+.approval-subtitle {
+    font-size: 14px;
+    color: #6B7280;
+    margin-bottom: 20px;
+}
+
+.approval-info {
+    background: #F9FAFB;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    text-align: left;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.info-item:first-child {
+    padding-top: 0;
+}
+
+.info-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.info-text {
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.4;
+}
+
+.approval-contact {
+    background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+}
+
+.approval-contact p {
+    font-size: 12px;
+    color: #1565C0;
+    margin-bottom: 10px;
+}
+
+.telegram-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #0088cc;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 13px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.telegram-link:hover {
+    background: #006699;
+    transform: translateY(-1px);
+}
+
+.telegram-link svg {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+}
+
+.approval-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.approval-actions .btn {
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.approval-actions .btn-full {
+    width: 100%;
+}
+
+.approval-actions .btn-secondary {
+    background: #F3F4F6;
+    color: #374151;
+    border: 1px solid #E5E7EB;
+}
+
+.approval-actions .btn-secondary:hover {
+    background: #E5E7EB;
+}
+
+.approval-actions .btn-primary {
+    background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    color: white;
+    border: none;
+}
+
+.approval-actions .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+/* Мобильная адаптация */
+@media (max-width: 640px) {
+    .approval-modal {
+        padding: 12px;
+    }
+    
+    .approval-modal-content {
+        padding: 20px 16px;
+        border-radius: 16px;
+        max-height: calc(100vh - 24px);
+    }
+    
+    .approval-modal-content h2 {
+        font-size: 20px;
+    }
+    
+    .approval-icon {
+        width: 56px;
+        height: 56px;
+        margin-bottom: 12px;
+    }
+    
+    .approval-icon svg {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .approval-info {
+        padding: 12px;
+    }
+    
+    .info-text {
+        font-size: 12px;
+    }
+}

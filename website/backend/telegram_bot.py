@@ -44,6 +44,12 @@ DB_CONFIG = {
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 WEBSITE_URL = os.getenv('WEBSITE_URL', 'http://localhost:8000')
 
+# Супер-админ для подтверждения медцентров
+SUPER_ADMIN_TELEGRAM_ID = os.getenv('SUPER_ADMIN_TELEGRAM_ID', '')
+SUPER_ADMIN_USERNAME = os.getenv('SUPER_ADMIN_TELEGRAM_USERNAME', 'vadimvthv')
+SECRET_KEY = os.getenv('SECRET_KEY', 'default-secret')
+API_URL = os.getenv('APP_URL', 'http://localhost:5001')
+
 # ============================================
 # Работа с базой данных
 # ============================================
@@ -81,6 +87,52 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = user.id
     telegram_username = user.username
     
+    is_super_admin = False
+    admin_message = ""
+    
+    # ============================================
+    # Автоматическая регистрация супер-админа
+    # ============================================
+    if telegram_username and telegram_username.lower() == SUPER_ADMIN_USERNAME.lower():
+        is_super_admin = True
+        # Сохраняем или обновляем telegram_id админа
+        try:
+            existing_admin = query_db(
+                "SELECT id FROM admin_users WHERE telegram_username = %s",
+                (telegram_username.lower(),), one=True
+            )
+            
+            if existing_admin:
+                query_db(
+                    "UPDATE admin_users SET telegram_id = %s WHERE telegram_username = %s",
+                    (telegram_id, telegram_username.lower()), commit=True
+                )
+                logger.info(f"[ADMIN] Супер-админ @{telegram_username} обновил telegram_id: {telegram_id}")
+            else:
+                query_db(
+                    """INSERT INTO admin_users (telegram_id, telegram_username, role) 
+                       VALUES (%s, %s, 'super_admin')
+                       ON CONFLICT (telegram_id) DO UPDATE SET telegram_username = %s""",
+                    (telegram_id, telegram_username.lower(), telegram_username.lower()), commit=True
+                )
+                logger.info(f"[ADMIN] Супер-админ @{telegram_username} (ID: {telegram_id}) зарегистрирован в системе")
+            
+            # Проверяем ожидающие заявки медцентров
+            pending_medcenters = query_db(
+                "SELECT id, name, email FROM medical_centers WHERE approval_status = 'pending' ORDER BY created_at DESC LIMIT 5"
+            )
+            
+            if pending_medcenters:
+                admin_message = f"\n\n🔔 <b>ОЖИДАЮЩИЕ ЗАЯВКИ:</b> {len(pending_medcenters)}\n"
+                for mc in pending_medcenters:
+                    admin_message += f"• #{mc['id']} {mc['name']}\n"
+                admin_message += "\nИспользуйте /pending для управления заявками."
+            else:
+                admin_message = "\n\n✅ Нет ожидающих заявок медцентров."
+                
+        except Exception as e:
+            logger.error(f"[ADMIN] Ошибка регистрации админа: {e}")
+    
     # Проверяем deep link параметр (код из ссылки)
     if context.args and len(context.args) > 0:
         code = context.args[0].strip()
@@ -110,12 +162,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ])
     
     if donor:
+        admin_badge = ""
+        if is_super_admin:
+            admin_badge = "👑 <b>СУПЕР-АДМИН</b>\n\n"
+        
         await update.message.reply_html(
+            f"{admin_badge}"
             f"👋 Привет, <b>{donor['full_name']}</b>!\n\n"
             f"Твой аккаунт уже привязан к Твой Донор.\n"
             f"Группа крови: <b>{donor['blood_type'] or 'не указана'}</b>\n\n"
-            f"Ты будешь получать уведомления о срочных запросах на донацию.\n\n"
-            f"Нажми кнопку ниже, чтобы запустить платформу прямо в Telegram!",
+            f"Ты будешь получать уведомления о срочных запросах на донацию."
+            f"{admin_message}\n\n"
+            f"Нажми кнопку ниже, чтобы запустить платформу!",
             reply_markup=keyboard
         )
     else:
@@ -444,6 +502,102 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"4. Сохраните изменения\n\n"
             f"После этого вы будете получать уведомления о срочных запросах.\n\n"
             f"🌐 {WEBSITE_URL}",
+            parse_mode='HTML'
+        )
+    
+    # ============================================
+    # Обработка подтверждения/отклонения медцентров
+    # ============================================
+    elif query.data.startswith("approve_mc_"):
+        await handle_medcenter_approval(query, approve=True)
+    
+    elif query.data.startswith("reject_mc_"):
+        await handle_medcenter_approval(query, approve=False)
+
+
+async def handle_medcenter_approval(query, approve: bool):
+    """Обработка подтверждения или отклонения медцентра"""
+    import requests
+    
+    user_id = query.from_user.id
+    user_username = query.from_user.username
+    
+    # Проверяем, что это супер-админ по username
+    is_admin = False
+    
+    # Проверяем по username
+    if user_username and user_username.lower() == SUPER_ADMIN_USERNAME.lower():
+        is_admin = True
+    
+    # Или проверяем в базе данных
+    if not is_admin:
+        admin_in_db = query_db(
+            "SELECT id FROM admin_users WHERE telegram_id = %s AND is_active = TRUE",
+            (user_id,), one=True
+        )
+        if admin_in_db:
+            is_admin = True
+    
+    if not is_admin:
+        await query.edit_message_text(
+            "❌ <b>Доступ запрещён</b>\n\n"
+            "Только супер-администратор может подтверждать медцентры.",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Извлекаем ID медцентра
+    try:
+        mc_id = int(query.data.split("_")[-1])
+    except (ValueError, IndexError):
+        await query.edit_message_text("❌ Ошибка: неверный ID медцентра", parse_mode='HTML')
+        return
+    
+    action = "approve" if approve else "reject"
+    action_text = "подтверждён" if approve else "отклонён"
+    emoji = "✅" if approve else "❌"
+    
+    # Вызываем API для подтверждения/отклонения
+    try:
+        api_url = f"{API_URL}/api/admin/medcenter/{mc_id}/{action}"
+        response = requests.post(
+            api_url,
+            json={"admin_secret": SECRET_KEY},
+            timeout=10
+        )
+        
+        if response.ok:
+            result = response.json()
+            mc_name = result.get('medical_center', {}).get('name', f'#{mc_id}')
+            mc_email = result.get('medical_center', {}).get('email', '')
+            
+            # Обновляем сообщение
+            await query.edit_message_text(
+                f"{emoji} <b>Медцентр {action_text}!</b>\n\n"
+                f"<b>Название:</b> {mc_name}\n"
+                f"<b>Email:</b> {mc_email}\n"
+                f"<b>ID:</b> #{mc_id}\n\n"
+                f"{'Медцентр теперь может войти в систему.' if approve else 'Заявка отклонена. Медцентр не сможет войти в систему.'}",
+                parse_mode='HTML'
+            )
+            
+            logger.info(f"[ADMIN] Медцентр #{mc_id} {action_text} пользователем {user_id}")
+            
+            # Если подтверждён - можно отправить уведомление медцентру на email (опционально)
+            
+        else:
+            error_msg = response.json().get('error', 'Неизвестная ошибка')
+            await query.edit_message_text(
+                f"❌ <b>Ошибка</b>\n\n{error_msg}",
+                parse_mode='HTML'
+            )
+            
+    except requests.exceptions.RequestException as e:
+        logger.error(f"[ADMIN] Ошибка API: {e}")
+        await query.edit_message_text(
+            f"❌ <b>Ошибка соединения с сервером</b>\n\n"
+            f"Попробуйте позже или проверьте работу API.\n\n"
+            f"Техническая информация: {str(e)[:100]}",
             parse_mode='HTML'
         )
 
@@ -868,6 +1022,73 @@ def send_blood_request_notification(blood_type: str, urgency: str, medical_cente
     return sent_count
 
 # ============================================
+# ============================================
+# Команда для супер-админа - ожидающие заявки
+# ============================================
+
+async def pending_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /pending - показать ожидающие заявки медцентров (только для админа)"""
+    user = update.effective_user
+    telegram_id = user.id
+    
+    # Проверяем что это админ
+    admin = query_db(
+        "SELECT id FROM admin_users WHERE telegram_id = %s",
+        (telegram_id,), one=True
+    )
+    
+    if not admin:
+        await update.message.reply_text("❌ У вас нет прав для этой команды.")
+        return
+    
+    # Получаем ожидающие заявки
+    pending = query_db(
+        """SELECT id, name, email, address, phone, district_id, created_at 
+           FROM medical_centers 
+           WHERE approval_status = 'pending' 
+           ORDER BY created_at ASC"""
+    )
+    
+    if not pending:
+        await update.message.reply_text("✅ Нет ожидающих заявок медцентров.")
+        return
+    
+    # Отправляем каждую заявку с кнопками
+    await update.message.reply_text(f"📋 <b>Ожидающие заявки: {len(pending)}</b>", parse_mode='HTML')
+    
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    
+    for mc in pending:
+        # Получаем название района
+        district_name = "Не указан"
+        if mc.get('district_id'):
+            district = query_db(
+                "SELECT name FROM districts WHERE id = %s",
+                (mc['district_id'],), one=True
+            )
+            if district:
+                district_name = district['name']
+        
+        text = (
+            f"🏥 <b>{mc['name']}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📧 Email: {mc['email']}\n"
+            f"📍 Адрес: {mc.get('address', 'Не указан')}\n"
+            f"📞 Телефон: {mc.get('phone', 'Не указан')}\n"
+            f"🗺 Район: {district_name}\n"
+            f"📅 Дата заявки: {mc['created_at'].strftime('%d.%m.%Y %H:%M') if mc.get('created_at') else 'Неизвестно'}"
+        )
+        
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("✅ Подтвердить", callback_data=f"approve_mc_{mc['id']}"),
+                InlineKeyboardButton("❌ Отклонить", callback_data=f"reject_mc_{mc['id']}")
+            ]
+        ])
+        
+        await update.message.reply_html(text, reply_markup=keyboard)
+
+# ============================================
 # Запуск бота
 # ============================================
 
@@ -897,6 +1118,7 @@ def main():
     application.add_handler(CommandHandler("myid", myid_command))
     application.add_handler(CommandHandler("unsubscribe", unsubscribe_command))
     application.add_handler(CommandHandler("link", link_by_code))
+    application.add_handler(CommandHandler("pending", pending_command))
     
     # Обработчик кнопок
     application.add_handler(CallbackQueryHandler(button_callback))
