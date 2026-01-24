@@ -1020,3 +1020,290 @@
 2026-01-24 17:41:01,141 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:41:01] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
 2026-01-24 17:41:01,165 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:41:01] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
 2026-01-24 17:41:04,264 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:41:04] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:41:11,430 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:41:11] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:41:11,448 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:41:11] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:41:18,932 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:41:18] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:41:18,966 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:41:18] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:41:23,729 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:41:23] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:41:40,910 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:41:40] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:41:40,942 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:41:40] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:09,408 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:09] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:09,436 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:09] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:12,429 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:12] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:15,409 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:15] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:15,437 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:15] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:16,248 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:16] "OPTIONS /api/messages/conversations?status=active HTTP/1.1" 200 -
+2026-01-24 17:42:16,269 - app - INFO - 📥 Запрос диалогов: user_type=medcenter, user_id=None, medical_center_id=44
+2026-01-24 17:42:16,270 - app - INFO - 🔍 Ищем диалоги для медцентра 44
+2026-01-24 17:42:16,275 - app - INFO - 📊 Найдено диалогов: 0
+2026-01-24 17:42:16,275 - app - INFO - ✅ Возвращаем 0 диалогов медцентру
+2026-01-24 17:42:16,276 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:16] "GET /api/messages/conversations?status=active HTTP/1.1" 200 -
+2026-01-24 17:42:17,128 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:17] "OPTIONS /api/medical-center/statistics?period=month HTTP/1.1" 200 -
+2026-01-24 17:42:17,159 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:17] "GET /api/medical-center/statistics?period=month HTTP/1.1" 200 -
+2026-01-24 17:42:18,346 - app - INFO - 📥 Запрос диалогов: user_type=medcenter, user_id=None, medical_center_id=44
+2026-01-24 17:42:18,346 - app - INFO - 🔍 Ищем диалоги для медцентра 44
+2026-01-24 17:42:18,349 - app - INFO - 📊 Найдено диалогов: 0
+2026-01-24 17:42:18,349 - app - INFO - ✅ Возвращаем 0 диалогов медцентру
+2026-01-24 17:42:18,350 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:18] "GET /api/messages/conversations?status=active HTTP/1.1" 200 -
+2026-01-24 17:42:18,429 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:18] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:21,406 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:21] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:21,431 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:21] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:24,843 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:24] "OPTIONS /api/responses?request_id=34 HTTP/1.1" 200 -
+2026-01-24 17:42:24,869 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:24] "GET /api/responses?request_id=34 HTTP/1.1" 200 -
+2026-01-24 17:42:24,876 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:24] "OPTIONS /api/blood-requests/34 HTTP/1.1" 200 -
+2026-01-24 17:42:24,901 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:24] "PUT /api/blood-requests/34 HTTP/1.1" 200 -
+2026-01-24 17:42:24,907 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:24] "OPTIONS /api/blood-requests HTTP/1.1" 200 -
+2026-01-24 17:42:24,928 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:24] "GET /api/blood-requests HTTP/1.1" 200 -
+2026-01-24 17:42:24,933 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:24] "OPTIONS /api/responses?medical_center_id=44 HTTP/1.1" 200 -
+2026-01-24 17:42:24,952 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:24] "GET /api/responses?medical_center_id=44 HTTP/1.1" 200 -
+2026-01-24 17:42:24,971 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:24] "GET /api/responses?medical_center_id=44 HTTP/1.1" 200 -
+2026-01-24 17:42:26,327 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:26] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:29,416 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:29] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:29,433 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:29] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:32,731 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:32] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:36,446 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:36] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:36,464 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:36] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:37,090 - werkzeug - INFO -  * Detected change in '/Users/VadimVthv/Your_donor/website/backend/app.py', reloading
+==================================================
+🩸 Твой Донор - API Server
+==================================================
+Порт: 5001
+БД: your_donor
+==================================================
+[TRAFFIC LIGHT] 🟢 Закрыт запрос ID 32 для O+ (светофор в норме)
+2026-01-24 17:42:37,145 - werkzeug - INFO -  * Restarting with stat
+2026-01-24 17:42:37,612 - werkzeug - WARNING -  * Debugger is active!
+2026-01-24 17:42:37,619 - werkzeug - INFO -  * Debugger PIN: 121-292-782
+2026-01-24 17:42:39,478 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:39] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:42,455 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:42] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:42,484 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:42] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:45,477 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:45] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:48,454 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:48] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:48,484 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:48] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:51,476 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:51] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:54,455 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:54] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:54,487 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:54] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:42:57,483 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:42:57] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:00,457 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:00] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:00,484 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:00] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:03,470 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:03] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:06,455 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:06] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:06,472 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:06] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:09,469 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:09] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:12,554 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:12] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:12,569 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:12] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:13,871 - werkzeug - INFO -  * Detected change in '/Users/VadimVthv/Your_donor/website/backend/app.py', reloading
+==================================================
+🩸 Твой Донор - API Server
+==================================================
+Порт: 5001
+БД: your_donor
+==================================================
+2026-01-24 17:43:13,914 - werkzeug - INFO -  * Restarting with stat
+2026-01-24 17:43:14,346 - werkzeug - WARNING -  * Debugger is active!
+2026-01-24 17:43:14,353 - werkzeug - INFO -  * Debugger PIN: 121-292-782
+2026-01-24 17:43:16,302 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:16] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:20,508 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:20] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:20,532 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:20] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:26,706 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:26] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:26,726 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:26] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:27,441 - werkzeug - INFO -  * Detected change in '/Users/VadimVthv/Your_donor/website/backend/telegram_bot.py', reloading
+==================================================
+🩸 Твой Донор - API Server
+==================================================
+Порт: 5001
+БД: your_donor
+==================================================
+2026-01-24 17:43:27,540 - werkzeug - INFO -  * Restarting with stat
+2026-01-24 17:43:27,921 - werkzeug - WARNING -  * Debugger is active!
+2026-01-24 17:43:27,927 - werkzeug - INFO -  * Debugger PIN: 121-292-782
+2026-01-24 17:43:35,311 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:35] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:35,360 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:35] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:39,367 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:39] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:56,632 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:56] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:43:56,656 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:43:56] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:17,981 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:17] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:18,003 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:18] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:20,846 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:20] "OPTIONS /api/blood-needs/44 HTTP/1.1" 200 -
+2026-01-24 17:44:20,870 - app - INFO - ✅ update_blood_needs вызван для mc_id=44, session_mc_id=44
+2026-01-24 17:44:20,901 - telegram_bot - INFO - [TRAFFIC LIGHT] Медцентр ID=44, district_id=29
+2026-01-24 17:44:20,923 - telegram_bot - INFO - [TRAFFIC LIGHT] Фильтр по району 29: найдено 0 доноров
+2026-01-24 17:44:20,923 - telegram_bot - INFO - [TRAFFIC LIGHT] Нет доноров для уведомления (группа O+, район 29)
+2026-01-24 17:44:20,924 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:20] "PUT /api/blood-needs/44 HTTP/1.1" 200 -
+2026-01-24 17:44:21,006 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:21] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:22,232 - werkzeug - INFO -  * Detected change in '/Users/VadimVthv/Your_donor/website/backend/app.py', reloading
+==================================================
+🩸 Твой Донор - API Server
+==================================================
+Порт: 5001
+БД: your_donor
+==================================================
+[TRAFFIC LIGHT] 🟠 Статус URGENT → Создан запрос ID 35 для O+
+[TRAFFIC LIGHT] 📤 СРОЧНЫЕ уведомления отправлены донорам (O+)
+2026-01-24 17:44:22,289 - werkzeug - INFO -  * Restarting with stat
+2026-01-24 17:44:22,743 - werkzeug - WARNING -  * Debugger is active!
+2026-01-24 17:44:22,750 - werkzeug - INFO -  * Debugger PIN: 121-292-782
+2026-01-24 17:44:23,982 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:23] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:24,167 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:24] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:26,409 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:26] "OPTIONS /api/blood-needs/44 HTTP/1.1" 200 -
+2026-01-24 17:44:26,422 - app - INFO - ✅ update_blood_needs вызван для mc_id=44, session_mc_id=44
+2026-01-24 17:44:26,427 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:26] "PUT /api/blood-needs/44 HTTP/1.1" 200 -
+2026-01-24 17:44:26,999 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:26] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:27,032 - app - INFO - ✅ update_blood_needs вызван для mc_id=44, session_mc_id=44
+2026-01-24 17:44:27,036 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:27] "PUT /api/blood-needs/44 HTTP/1.1" 200 -
+2026-01-24 17:44:27,853 - app - INFO - ✅ update_blood_needs вызван для mc_id=44, session_mc_id=44
+2026-01-24 17:44:27,869 - telegram_bot - INFO - [TRAFFIC LIGHT] Медцентр ID=44, district_id=29
+2026-01-24 17:44:27,880 - telegram_bot - INFO - [TRAFFIC LIGHT] Фильтр по району 29: найдено 0 доноров
+2026-01-24 17:44:27,880 - telegram_bot - INFO - [TRAFFIC LIGHT] Нет доноров для уведомления (группа O+, район 29)
+2026-01-24 17:44:27,881 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:27] "PUT /api/blood-needs/44 HTTP/1.1" 200 -
+2026-01-24 17:44:29,984 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:29] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:30,004 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:30] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:33,772 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:33] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:37,479 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:37] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:37,512 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:37] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:41,076 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:41] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:49,429 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:49] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:49,459 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:49] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:53,773 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:44:53] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:44:58,962 - werkzeug - INFO -  * Detected change in '/Users/VadimVthv/Your_donor/website/backend/app.py', reloading
+==================================================
+🩸 Твой Донор - API Server
+==================================================
+Порт: 5001
+БД: your_donor
+==================================================
+[TRAFFIC LIGHT] 🟡 Статус NEEDED → Обновлена срочность запроса ID 35
+[TRAFFIC LIGHT] 🟢 Статус NORMAL → Закрыто 1 запрос(ов) для O+
+[TRAFFIC LIGHT]   → Запрос ID 35 закрыт
+[TRAFFIC LIGHT] 🟠 Статус URGENT → Создан запрос ID 36 для O+
+[TRAFFIC LIGHT] 📤 СРОЧНЫЕ уведомления отправлены донорам (O+)
+2026-01-24 17:44:59,006 - werkzeug - INFO -  * Restarting with stat
+2026-01-24 17:44:59,435 - werkzeug - WARNING -  * Debugger is active!
+2026-01-24 17:44:59,442 - werkzeug - INFO -  * Debugger PIN: 121-292-782
+2026-01-24 17:45:07,500 - werkzeug - INFO -  * Detected change in '/Users/VadimVthv/Your_donor/website/backend/app.py', reloading
+==================================================
+🩸 Твой Донор - API Server
+==================================================
+Порт: 5001
+БД: your_donor
+==================================================
+2026-01-24 17:45:07,562 - werkzeug - INFO -  * Restarting with stat
+2026-01-24 17:45:07,953 - werkzeug - WARNING -  * Debugger is active!
+2026-01-24 17:45:07,960 - werkzeug - INFO -  * Debugger PIN: 121-292-782
+2026-01-24 17:45:11,070 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:45:11] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:45:11,111 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:45:11] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:45:17,050 - werkzeug - INFO -  * Detected change in '/Users/VadimVthv/Your_donor/website/backend/app.py', reloading
+==================================================
+🩸 Твой Донор - API Server
+==================================================
+Порт: 5001
+БД: your_donor
+==================================================
+2026-01-24 17:45:17,104 - werkzeug - INFO -  * Restarting with stat
+2026-01-24 17:45:17,485 - werkzeug - WARNING -  * Debugger is active!
+2026-01-24 17:45:17,491 - werkzeug - INFO -  * Debugger PIN: 121-292-782
+2026-01-24 17:45:25,592 - werkzeug - INFO -  * Detected change in '/Users/VadimVthv/Your_donor/website/backend/app.py', reloading
+==================================================
+🩸 Твой Донор - API Server
+==================================================
+Порт: 5001
+БД: your_donor
+==================================================
+2026-01-24 17:45:25,630 - werkzeug - INFO -  * Restarting with stat
+2026-01-24 17:45:25,895 - werkzeug - WARNING -  * Debugger is active!
+2026-01-24 17:45:25,900 - werkzeug - INFO -  * Debugger PIN: 121-292-782
+2026-01-24 17:45:36,801 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:45:36] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:45:36,869 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:45:36] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:46:08,394 - werkzeug - INFO -  * Detected change in '/Users/VadimVthv/Your_donor/website/backend/app.py', reloading
+==================================================
+🩸 Твой Донор - API Server
+==================================================
+Порт: 5001
+БД: your_donor
+==================================================
+2026-01-24 17:46:08,456 - werkzeug - INFO -  * Restarting with stat
+2026-01-24 17:46:08,926 - werkzeug - WARNING -  * Debugger is active!
+2026-01-24 17:46:08,932 - werkzeug - INFO -  * Debugger PIN: 121-292-782
+2026-01-24 17:46:11,337 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:46:11] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:46:11,373 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:46:11] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:46:16,089 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:46:16] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:47:25,460 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:47:25] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:47:25,490 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:47:25] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:47:58,673 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:47:58] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:47:58,704 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:47:58] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:50:17,578 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:50:17] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:50:17,618 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:50:17] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:52:29,432 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:52:29] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 17:52:29,469 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 17:52:29] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:02,448 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:02] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:02,470 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:02] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:04,351 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "OPTIONS /api/messages/conversations?status=active HTTP/1.1" 200 -
+2026-01-24 18:08:04,353 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "OPTIONS /api/messages/conversations?status=active HTTP/1.1" 200 -
+2026-01-24 18:08:04,354 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "OPTIONS /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-24 18:08:04,373 - app - INFO - 📥 Запрос диалогов: user_type=medcenter, user_id=None, medical_center_id=44
+2026-01-24 18:08:04,373 - app - INFO - 📥 Запрос диалогов: user_type=medcenter, user_id=None, medical_center_id=44
+2026-01-24 18:08:04,373 - app - INFO - 🔍 Ищем диалоги для медцентра 44
+2026-01-24 18:08:04,373 - app - INFO - 🔍 Ищем диалоги для медцентра 44
+2026-01-24 18:08:04,377 - app - INFO - 📊 Найдено диалогов: 0
+2026-01-24 18:08:04,377 - app - INFO - 📊 Найдено диалогов: 0
+2026-01-24 18:08:04,377 - app - INFO - ✅ Возвращаем 0 диалогов медцентру
+2026-01-24 18:08:04,377 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "GET /api/medcenter/profile HTTP/1.1" 200 -
+2026-01-24 18:08:04,377 - app - INFO - ✅ Возвращаем 0 диалогов медцентру
+2026-01-24 18:08:04,377 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "GET /api/messages/conversations?status=active HTTP/1.1" 200 -
+2026-01-24 18:08:04,378 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "GET /api/messages/conversations?status=active HTTP/1.1" 200 -
+2026-01-24 18:08:04,387 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "OPTIONS /api/blood-needs/44 HTTP/1.1" 200 -
+2026-01-24 18:08:04,389 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "OPTIONS /api/blood-requests HTTP/1.1" 200 -
+2026-01-24 18:08:04,390 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "OPTIONS /api/responses?medical_center_id=44 HTTP/1.1" 200 -
+2026-01-24 18:08:04,390 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "OPTIONS /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-24 18:08:04,391 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "OPTIONS /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-24 18:08:04,408 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "GET /api/blood-needs/44 HTTP/1.1" 200 -
+2026-01-24 18:08:04,414 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "GET /api/blood-requests HTTP/1.1" 200 -
+2026-01-24 18:08:04,417 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "GET /api/responses?medical_center_id=44 HTTP/1.1" 200 -
+2026-01-24 18:08:04,417 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "GET /api/medcenter/donors HTTP/1.1" 200 -
+2026-01-24 18:08:04,419 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "GET /api/stats/medcenter HTTP/1.1" 200 -
+2026-01-24 18:08:04,425 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:04] "GET /api/responses?medical_center_id=44 HTTP/1.1" 200 -
+2026-01-24 18:08:07,374 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:07] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:08,700 - app - INFO - ✅ update_blood_needs вызван для mc_id=44, session_mc_id=44
+2026-01-24 18:08:08,729 - telegram_bot - INFO - [TRAFFIC LIGHT] Медцентр ID=44, district_id=29
+2026-01-24 18:08:08,749 - telegram_bot - INFO - [TRAFFIC LIGHT] Фильтр по району 29: найдено 0 доноров
+2026-01-24 18:08:08,750 - telegram_bot - INFO - [TRAFFIC LIGHT] Нет доноров для уведомления (группа O-, район 29)
+2026-01-24 18:08:08,750 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:08] "PUT /api/blood-needs/44 HTTP/1.1" 200 -
+2026-01-24 18:08:10,363 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:10] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:10,395 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:10] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:13,377 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:13] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:14,769 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:14] "OPTIONS /api/messages/updates?last_id=12 HTTP/1.1" 200 -
+2026-01-24 18:08:14,787 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:14] "GET /api/messages/updates?last_id=12 HTTP/1.1" 200 -
+2026-01-24 18:08:16,078 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:16] "GET /api/messages/updates?last_id=12 HTTP/1.1" 200 -
+2026-01-24 18:08:16,507 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:16] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:16,540 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:16] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:19,615 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:19] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:22,698 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:22] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:22,718 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:22] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:29,530 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:29] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:29,551 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:29] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:38,768 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:38] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:38,789 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:38] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:49,547 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:49] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:08:49,570 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:08:49] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:09:11,683 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:09:11] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:09:11,718 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:09:11] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:09:43,665 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:09:43] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:09:43,695 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:09:43] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:10:14,639 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:10:14] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:10:14,660 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:10:14] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:11:43,476 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:11:43] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:11:43,509 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:11:43] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:13:12,071 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:13:12] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:13:12,111 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:13:12] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:29:32,036 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:29:32] "OPTIONS /api/messages/updates?last_id=12 HTTP/1.1" 200 -
+2026-01-24 18:29:32,039 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:29:32] "OPTIONS /api/messages/updates?last_id=12 HTTP/1.1" 200 -
+2026-01-24 18:29:32,065 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:29:32] "GET /api/messages/updates?last_id=12 HTTP/1.1" 200 -
+2026-01-24 18:29:32,065 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:29:32] "GET /api/messages/updates?last_id=12 HTTP/1.1" 200 -
+2026-01-24 18:29:32,245 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:29:32] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:29:32,265 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:29:32] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:37:35,057 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:37:35] "OPTIONS /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+2026-01-24 18:37:35,089 - werkzeug - INFO - 127.0.0.1 - - [24/Jan/2026 18:37:35] "GET /api/messages/updates?last_id=0 HTTP/1.1" 200 -
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

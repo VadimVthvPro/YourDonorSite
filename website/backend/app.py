@@ -563,15 +563,25 @@ def change_donor_password():
     if not user:
         return jsonify({'error': 'Пользователь не найден'}), 404
     
+    # КРИТИЧЕСКАЯ ПРОВЕРКА: пароль должен быть установлен
+    if not user.get('password_hash'):
+        return jsonify({'error': 'У вас не установлен пароль. Обратитесь к администратору.'}), 400
+    
     # Проверяем текущий пароль
     import hashlib
     current_password_hash = hashlib.sha256(data['current_password'].encode()).hexdigest()
     
-    if user.get('password_hash') != current_password_hash:
+    # СТРОГАЯ ПРОВЕРКА: хеши должны ТОЧНО совпадать
+    if user['password_hash'] != current_password_hash:
+        app.logger.warning(f"[PASSWORD] ❌ Донор ID={user_id} ввел неверный текущий пароль")
         return jsonify({'error': 'Неверный текущий пароль'}), 401
     
-    # Устанавливаем новый пароль
+    # Проверяем что новый пароль отличается от текущего
     new_password_hash = hashlib.sha256(data['new_password'].encode()).hexdigest()
+    if new_password_hash == current_password_hash:
+        return jsonify({'error': 'Новый пароль должен отличаться от текущего'}), 400
+    
+    # Устанавливаем новый пароль
     query_db("UPDATE users SET password_hash = %s, updated_at = NOW() WHERE id = %s", 
              (new_password_hash, user_id), commit=True)
     
@@ -991,9 +1001,22 @@ def change_medcenter_password():
     if not mc:
         return jsonify({'error': 'Медцентр не найден'}), 404
     
-    # Проверяем текущий пароль
-    if data['current_password'] != mc.get('master_password', MASTER_PASSWORD):
+    # КРИТИЧЕСКАЯ ПРОВЕРКА: пароль должен быть установлен
+    if not mc.get('master_password'):
+        return jsonify({'error': 'У медцентра не установлен пароль. Обратитесь к администратору.'}), 400
+    
+    # Проверяем текущий пароль - СТРОГОЕ СРАВНЕНИЕ
+    current_password_input = data['current_password']
+    stored_password = mc['master_password']
+    
+    # НЕ ИСПОЛЬЗУЕМ ДЕФОЛТНЫЙ MASTER_PASSWORD!
+    if current_password_input != stored_password:
+        app.logger.warning(f"[PASSWORD] ❌ Медцентр ID={mc_id} ввел неверный текущий пароль")
         return jsonify({'error': 'Неверный текущий пароль'}), 401
+    
+    # Проверяем что новый пароль отличается от текущего
+    if data['new_password'] == stored_password:
+        return jsonify({'error': 'Новый пароль должен отличаться от текущего'}), 400
     
     # Устанавливаем новый пароль
     query_db("UPDATE medical_centers SET master_password = %s, updated_at = NOW() WHERE id = %s", 
@@ -1076,8 +1099,8 @@ def update_blood_needs(mc_id):
     blood_type = data.get('blood_type')
     status = data.get('status')
     
-    # Стандартизированные статусы: normal, needed, urgent
-    if not blood_type or status not in ['normal', 'needed', 'urgent']:
+    # Стандартизированные статусы: normal, needed, urgent, critical
+    if not blood_type or status not in ['normal', 'needed', 'urgent', 'critical']:
         return jsonify({'error': 'Неверные данные'}), 400
     
     # Upsert
@@ -1097,55 +1120,17 @@ def update_blood_needs(mc_id):
             (mc_id, blood_type, status), commit=True
         )
     
-    # Логика уведомлений при изменении статуса
+    # ═══════════════════════════════════════════════════════════════
+    # ЛОГИКА СВЕТОФОРА → ЗАПРОСЫ КРОВИ
+    # ═══════════════════════════════════════════════════════════════
+    
     mc = query_db("SELECT name, address FROM medical_centers WHERE id = %s", (mc_id,), one=True)
     
-    if status == 'urgent':
-        # 1. Проверяем, есть ли активный запрос крови
-        active_request = query_db(
-            """SELECT id FROM blood_requests 
-               WHERE medical_center_id = %s AND blood_type = %s AND status = 'active' AND expires_at > NOW()""",
-            (mc_id, blood_type), one=True
-        )
-        
-        request_id = None
-        if not active_request:
-            # 2. Если нет, создаём автоматический запрос
-            request_id = query_db(
-                """INSERT INTO blood_requests 
-                   (medical_center_id, blood_type, urgency, status, description, expires_at, created_at, source)
-                   VALUES (%s, %s, 'urgent', 'active', 'Автоматический запрос из светофора', NOW() + INTERVAL '2 days', NOW(), 'traffic_light')
-                   RETURNING id""",
-                (mc_id, blood_type), commit=True, one=True
-            )['id']
-            print(f"[TRAFFIC LIGHT] 🚦 Создан запрос ID {request_id} для {blood_type} (источник: светофор)")
-        else:
-            request_id = active_request['id']
-            # Обновляем срочность существующего запроса
-            query_db(
-                "UPDATE blood_requests SET urgency = 'urgent' WHERE id = %s",
-                (request_id,), commit=True
-            )
-        
-        # 3. Отправляем срочные уведомления через send_blood_status_notification
-        if mc:
-            try:
-                from telegram_bot import send_blood_status_notification
-                send_blood_status_notification(blood_type, 'urgent', mc['name'], medical_center_id=mc_id)
-            except Exception as e:
-                logger.error(f"Ошибка отправки Telegram уведомления: {e}")
-    
-    elif status == 'needed':
-        # Отправляем уведомления о том, что нужно пополнить
-        if mc:
-            try:
-                from telegram_bot import send_blood_status_notification
-                send_blood_status_notification(blood_type, 'needed', mc['name'], medical_center_id=mc_id)
-            except Exception as e:
-                logger.error(f"Ошибка отправки Telegram уведомления: {e}")
-    
-    elif status == 'normal':
-        # Закрыть активные запросы крови из светофора для этой группы крови
+    # ───────────────────────────────────────────────────────────────
+    # СТАТУС: NORMAL (🟢 Норма)
+    # ───────────────────────────────────────────────────────────────
+    if status == 'normal':
+        # Закрыть ВСЕ активные запросы из светофора для этой группы крови
         closed_requests = query_db(
             """UPDATE blood_requests 
                SET status = 'closed', expires_at = NOW()
@@ -1158,8 +1143,165 @@ def update_blood_needs(mc_id):
         )
         
         if closed_requests:
+            print(f"[TRAFFIC LIGHT] 🟢 Статус NORMAL → Закрыто {len(closed_requests)} запрос(ов) для {blood_type}")
             for req in closed_requests:
-                print(f"[TRAFFIC LIGHT] 🟢 Закрыт запрос ID {req['id']} для {blood_type} (светофор в норме)")
+                print(f"[TRAFFIC LIGHT]   → Запрос ID {req['id']} закрыт")
+        else:
+            print(f"[TRAFFIC LIGHT] 🟢 Статус NORMAL → Нет активных запросов для закрытия ({blood_type})")
+    
+    # ───────────────────────────────────────────────────────────────
+    # СТАТУС: NEEDED (🟡 Нужна кровь)
+    # ───────────────────────────────────────────────────────────────
+    elif status == 'needed':
+        # 1. Проверяем, есть ли активный запрос крови из светофора
+        active_request = query_db(
+            """SELECT id, urgency FROM blood_requests 
+               WHERE medical_center_id = %s 
+                 AND blood_type = %s 
+                 AND source = 'traffic_light'
+                 AND status = 'active' 
+                 AND expires_at > NOW()""",
+            (mc_id, blood_type), one=True
+        )
+        
+        if not active_request:
+            # 2. Создаём новый запрос
+            request_id = query_db(
+                """INSERT INTO blood_requests 
+                   (medical_center_id, blood_type, urgency, status, description, expires_at, created_at, source)
+                   VALUES (%s, %s, 'needed', 'active', 'Автоматический запрос из светофора', NOW() + INTERVAL '7 days', NOW(), 'traffic_light')
+                   RETURNING id""",
+                (mc_id, blood_type), commit=True, one=True
+            )['id']
+            print(f"[TRAFFIC LIGHT] 🟡 Статус NEEDED → Создан запрос ID {request_id} для {blood_type}")
+            
+            # 3. Отправляем уведомления
+            if mc:
+                try:
+                    from telegram_bot import send_blood_status_notification
+                    send_blood_status_notification(blood_type, 'needed', mc['name'], medical_center_id=mc_id)
+                    print(f"[TRAFFIC LIGHT] 📤 Уведомления отправлены донорам ({blood_type})")
+                except Exception as e:
+                    logger.error(f"[TRAFFIC LIGHT] ❌ Ошибка отправки уведомлений: {e}")
+        else:
+            # Запрос уже существует
+            if active_request['urgency'] != 'needed':
+                # Понижаем срочность до 'needed'
+                query_db(
+                    "UPDATE blood_requests SET urgency = 'needed' WHERE id = %s",
+                    (active_request['id'],), commit=True
+                )
+                print(f"[TRAFFIC LIGHT] 🟡 Статус NEEDED → Обновлена срочность запроса ID {active_request['id']}")
+            else:
+                print(f"[TRAFFIC LIGHT] 🟡 Статус NEEDED → Запрос ID {active_request['id']} уже существует")
+    
+    # ───────────────────────────────────────────────────────────────
+    # СТАТУС: URGENT (🟠 Срочно)
+    # ───────────────────────────────────────────────────────────────
+    elif status == 'urgent':
+        # 1. Проверяем, есть ли активный запрос крови из светофора
+        active_request = query_db(
+            """SELECT id, urgency FROM blood_requests 
+               WHERE medical_center_id = %s 
+                 AND blood_type = %s 
+                 AND source = 'traffic_light'
+                 AND status = 'active' 
+                 AND expires_at > NOW()""",
+            (mc_id, blood_type), one=True
+        )
+        
+        if not active_request:
+            # 2. Создаём новый срочный запрос
+            request_id = query_db(
+                """INSERT INTO blood_requests 
+                   (medical_center_id, blood_type, urgency, status, description, expires_at, created_at, source)
+                   VALUES (%s, %s, 'urgent', 'active', 'Автоматический срочный запрос из светофора', NOW() + INTERVAL '3 days', NOW(), 'traffic_light')
+                   RETURNING id""",
+                (mc_id, blood_type), commit=True, one=True
+            )['id']
+            print(f"[TRAFFIC LIGHT] 🟠 Статус URGENT → Создан запрос ID {request_id} для {blood_type}")
+            
+            # 3. Отправляем СРОЧНЫЕ уведомления
+            if mc:
+                try:
+                    from telegram_bot import send_blood_status_notification
+                    send_blood_status_notification(blood_type, 'urgent', mc['name'], medical_center_id=mc_id)
+                    print(f"[TRAFFIC LIGHT] 📤 СРОЧНЫЕ уведомления отправлены донорам ({blood_type})")
+                except Exception as e:
+                    logger.error(f"[TRAFFIC LIGHT] ❌ Ошибка отправки уведомлений: {e}")
+        else:
+            # Запрос существует - повышаем срочность
+            if active_request['urgency'] != 'urgent':
+                query_db(
+                    "UPDATE blood_requests SET urgency = 'urgent', expires_at = NOW() + INTERVAL '3 days' WHERE id = %s",
+                    (active_request['id'],), commit=True
+                )
+                print(f"[TRAFFIC LIGHT] 🟠 Статус URGENT → Повышена срочность запроса ID {active_request['id']}")
+                
+                # Отправляем дополнительные уведомления при повышении срочности
+                if mc:
+                    try:
+                        from telegram_bot import send_blood_status_notification
+                        send_blood_status_notification(blood_type, 'urgent', mc['name'], medical_center_id=mc_id)
+                        print(f"[TRAFFIC LIGHT] 📤 Дополнительные СРОЧНЫЕ уведомления отправлены")
+                    except Exception as e:
+                        logger.error(f"[TRAFFIC LIGHT] ❌ Ошибка отправки уведомлений: {e}")
+            else:
+                print(f"[TRAFFIC LIGHT] 🟠 Статус URGENT → Запрос ID {active_request['id']} уже срочный")
+    
+    # ───────────────────────────────────────────────────────────────
+    # СТАТУС: CRITICAL (🔴 Критично)
+    # ───────────────────────────────────────────────────────────────
+    elif status == 'critical':
+        # 1. Проверяем, есть ли активный запрос крови из светофора
+        active_request = query_db(
+            """SELECT id, urgency FROM blood_requests 
+               WHERE medical_center_id = %s 
+                 AND blood_type = %s 
+                 AND source = 'traffic_light'
+                 AND status = 'active' 
+                 AND expires_at > NOW()""",
+            (mc_id, blood_type), one=True
+        )
+        
+        if not active_request:
+            # 2. Создаём новый КРИТИЧЕСКИЙ запрос
+            request_id = query_db(
+                """INSERT INTO blood_requests 
+                   (medical_center_id, blood_type, urgency, status, description, expires_at, created_at, source)
+                   VALUES (%s, %s, 'critical', 'active', 'КРИТИЧЕСКИЙ автоматический запрос из светофора', NOW() + INTERVAL '1 day', NOW(), 'traffic_light')
+                   RETURNING id""",
+                (mc_id, blood_type), commit=True, one=True
+            )['id']
+            print(f"[TRAFFIC LIGHT] 🔴 Статус CRITICAL → Создан КРИТИЧЕСКИЙ запрос ID {request_id} для {blood_type}")
+            
+            # 3. Отправляем КРИТИЧЕСКИЕ уведомления ВСЕМ
+            if mc:
+                try:
+                    from telegram_bot import send_blood_status_notification
+                    send_blood_status_notification(blood_type, 'critical', mc['name'], medical_center_id=mc_id)
+                    print(f"[TRAFFIC LIGHT] 📤 КРИТИЧЕСКИЕ уведомления отправлены ВСЕМ донорам ({blood_type})")
+                except Exception as e:
+                    logger.error(f"[TRAFFIC LIGHT] ❌ Ошибка отправки уведомлений: {e}")
+        else:
+            # Запрос существует - повышаем до критического
+            if active_request['urgency'] != 'critical':
+                query_db(
+                    "UPDATE blood_requests SET urgency = 'critical', expires_at = NOW() + INTERVAL '1 day', description = 'КРИТИЧЕСКИЙ автоматический запрос из светофора' WHERE id = %s",
+                    (active_request['id'],), commit=True
+                )
+                print(f"[TRAFFIC LIGHT] 🔴 Статус CRITICAL → Повышена срочность запроса ID {active_request['id']} до КРИТИЧЕСКОЙ")
+                
+                # Отправляем дополнительные КРИТИЧЕСКИЕ уведомления
+                if mc:
+                    try:
+                        from telegram_bot import send_blood_status_notification
+                        send_blood_status_notification(blood_type, 'critical', mc['name'], medical_center_id=mc_id)
+                        print(f"[TRAFFIC LIGHT] 📤 Дополнительные КРИТИЧЕСКИЕ уведомления отправлены")
+                    except Exception as e:
+                        logger.error(f"[TRAFFIC LIGHT] ❌ Ошибка отправки уведомлений: {e}")
+            else:
+                print(f"[TRAFFIC LIGHT] 🔴 Статус CRITICAL → Запрос ID {active_request['id']} уже критический")
     
     return jsonify({'message': 'Статус обновлён', 'blood_type': blood_type, 'status': status})
 

@@ -837,3 +837,139 @@
     background-size: 468px 100%;
     animation: shimmer 1.2s ease-in-out infinite;
 }
+
+/* ═════════════════════════════════════════════════════
+   🚦 Бейдж источника запроса (светофор / вручную)
+   ═════════════════════════════════════════════════════ */
+
+.source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.source-badge--traffic-light {
+    background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.25);
+}
+
+.source-badge--traffic-light:hover {
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.35);
+    transform: translateY(-1px);
+}
+
+.source-icon {
+    font-size: 14px;
+    line-height: 1;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+.source-text {
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Подсказка вместо кнопки редактирования */
+.info-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: linear-gradient(135deg, #F5F5F5 0%, #EEEEEE 100%);
+    border: 1px solid #E0E0E0;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #616161;
+    cursor: help;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+}
+
+.info-hint:hover {
+    background: linear-gradient(135deg, #EEEEEE 0%, #E0E0E0 100%);
+    border-color: #BDBDBD;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.hint-icon {
+    font-size: 16px;
+    filter: grayscale(0.3);
+}
+
+.hint-text {
+    font-weight: 500;
+}
+
+/* Адаптация шапки карточки для размещения бейджа */
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 20px;
+    background: linear-gradient(to bottom, #fafafa 0%, #ffffff 100%);
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.card-header .urgency-badge {
+    flex-shrink: 0;
+}
+
+.card-header .source-badge {
+    flex-shrink: 0;
+}
+
+.card-header .card-time {
+    margin-left: auto;
+}
+
+/* Адаптация футера для подсказки */
+.card-footer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    background: #fafafa;
+    border-top: 1px solid #f0f0f0;
+    flex-wrap: wrap;
+}
+
+/* Мобильная адаптация для бейджей */
+@media (max-width: 640px) {
+    .source-badge {
+        font-size: 11px;
+        padding: 4px 10px;
+        gap: 4px;
+    }
+    
+    .source-text {
+        display: none; /* На мобильных только иконка */
+    }
+    
+    .source-icon {
+        font-size: 16px;
+    }
+    
+    .info-hint {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+    
+    .hint-text {
+        display: none; /* На мобильных только иконка */
+    }
+    
+    .hint-icon {
+        font-size: 18px;
+    }
+}
+

@@ -394,6 +394,12 @@ async function setBloodStatus(bloodType, status) {
             renderMiniTrafficLight();
             renderFullTrafficLight();
             
+            // ✨ АВТООБНОВЛЕНИЕ: Перезагружаем список запросов крови если мы в этой секции
+            const activeSection = document.querySelector('.dashboard-section.active');
+            if (activeSection && activeSection.id === 'blood-requests') {
+                await loadBloodRequestsFromAPI();
+            }
+            
             if (status === 'urgent') {
                 showNotification(`Срочный запрос на ${bloodType} отправлен донорам!`, 'success');
             } else {
@@ -989,6 +995,14 @@ function renderBloodRequests(requests) {
                         <span class="urgency-dot"></span>
                         <span class="urgency-text">${urgencyLabels[req.urgency]}</span>
                     </div>
+                    
+                    ${req.source === 'traffic_light' ? `
+                        <div class="source-badge source-badge--traffic-light" title="Создано автоматически при изменении донорского светофора">
+                            <span class="source-icon">🚦</span>
+                            <span class="source-text">Из светофора</span>
+                        </div>
+                    ` : ''}
+                    
                     <time class="card-time">${timeAgo}</time>
                 </header>
                 
@@ -1029,16 +1043,27 @@ function renderBloodRequests(requests) {
                         👥 Доноры
                         ${currentDonors > 0 ? `<span class="btn-badge">${currentDonors}</span>` : ''}
                     </button>
-                    <button class="btn btn-ghost btn-sm" onclick="editRequest(${req.id})">
-                        Редактировать
-                    </button>
+                    
+                    ${req.source !== 'traffic_light' ? `
+                        <button class="btn btn-ghost btn-sm" onclick="editRequest(${req.id})">
+                            Редактировать
+                        </button>
+                    ` : `
+                        <div class="info-hint" title="Этот запрос управляется через донорский светофор">
+                            <span class="hint-icon">🚦</span>
+                            <span class="hint-text">Управление через светофор</span>
+                        </div>
+                    `}
+                    
                         ${req.status === 'active' ? `
                         <button class="btn btn-primary btn-sm" onclick="markRequestFulfilled(${req.id})">
                                 Выполнен
                             </button>
-                        <button class="btn btn-icon-only btn-ghost btn-sm" onclick="cancelRequest(${req.id})" title="Отменить">
-                            ✕
-                        </button>
+                        ${req.source !== 'traffic_light' ? `
+                            <button class="btn btn-icon-only btn-ghost btn-sm" onclick="cancelRequest(${req.id})" title="Отменить">
+                                ✕
+                            </button>
+                        ` : ''}
                     ` : `
                         <span class="request-status-badge ${req.status}">
                             ${req.status === 'fulfilled' ? 'Выполнен' : 'Отменён'}
