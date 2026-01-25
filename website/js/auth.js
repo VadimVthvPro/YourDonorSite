@@ -3,7 +3,8 @@
  * Логика работы форм входа и регистрации
  */
 
-const API_URL = 'http://localhost:5001/api';
+// Используем глобальный API URL из config.js или fallback
+const API_URL = window.API_URL || `${window.location.protocol}//${window.location.hostname}:5001/api`;
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🔐 auth.js ЗАГРУЖЕН');
@@ -47,9 +48,28 @@ function showDefaultForms() {
 
 // Загрузка регионов из API
 async function loadRegionsFromAPI() {
+    const url = `${API_URL}/regions`;
+    console.log('📍 Загрузка регионов из:', url);
+    
     try {
-        const response = await fetch(`${API_URL}/regions`);
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            mode: 'cors',
+            credentials: 'same-origin'
+        });
+        
+        console.log('📍 Статус ответа:', response.status, response.statusText);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const regions = await response.json();
+        console.log('📍 Регионов загружено:', regions.length);
         
         // Заполняем все селекторы регионов
         const regionSelects = document.querySelectorAll('select[name="region_id"], #donor-region, #reg-donor-region, #mc-region, #reg-mc-region');
@@ -67,8 +87,12 @@ async function loadRegionsFromAPI() {
                 select.addEventListener('change', () => loadDistricts(select));
             }
         });
+        
+        console.log('✅ Регионы успешно загружены');
     } catch (error) {
-        console.error('Ошибка загрузки регионов:', error);
+        console.error('❌ Ошибка загрузки регионов:', error);
+        console.error('❌ URL:', url);
+        console.error('❌ Детали:', error.message);
         // Fallback - используем локальные данные
         initRegionSelectors();
     }
@@ -96,9 +120,26 @@ async function loadDistricts(regionSelect) {
         return;
     }
     
+    const url = `${API_URL}/regions/${regionId}/districts`;
+    console.log('📍 Загрузка районов из:', url);
+    
     try {
-        const response = await fetch(`${API_URL}/regions/${regionId}/districts`);
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            mode: 'cors',
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const districts = await response.json();
+        console.log('📍 Районов загружено:', districts.length);
         
         districtSelect.innerHTML = '<option value="">Выберите район</option>';
         districts.forEach(district => {
@@ -109,9 +150,10 @@ async function loadDistricts(regionSelect) {
         });
         districtSelect.disabled = false;
         
-        districtSelect.addEventListener('change', () => loadMedcenters(districtSelect), { once: true });
+        // Удаляем старый обработчик перед добавлением нового
+        districtSelect.onchange = () => loadMedcenters(districtSelect);
     } catch (error) {
-        console.error('Ошибка загрузки районов:', error);
+        console.error('❌ Ошибка загрузки районов:', error);
         districtSelect.innerHTML = '<option value="">Ошибка загрузки</option>';
     }
 }
@@ -132,9 +174,26 @@ async function loadMedcenters(districtSelect) {
         return;
     }
     
+    const url = `${API_URL}/medcenters?district_id=${districtId}`;
+    console.log('📍 Загрузка медцентров из:', url);
+    
     try {
-        const response = await fetch(`${API_URL}/medcenters?district_id=${districtId}`);
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            mode: 'cors',
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const medcenters = await response.json();
+        console.log('📍 Медцентров загружено:', medcenters.length);
         
         medcenterSelect.innerHTML = '<option value="">Выберите медцентр</option>';
         medcenters.forEach(mc => {
@@ -145,7 +204,7 @@ async function loadMedcenters(districtSelect) {
         });
         medcenterSelect.disabled = false;
     } catch (error) {
-        console.error('Ошибка загрузки медцентров:', error);
+        console.error('❌ Ошибка загрузки медцентров:', error);
         medcenterSelect.innerHTML = '<option value="">Ошибка загрузки</option>';
     }
 }

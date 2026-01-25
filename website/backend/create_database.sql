@@ -111,12 +111,18 @@ CREATE TABLE IF NOT EXISTS medical_centers (
     is_blood_center BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     master_password VARCHAR(100) DEFAULT 'doctor2024',
+    approval_status VARCHAR(20) DEFAULT 'approved',
+    created_by_telegram_id BIGINT,
+    approved_by_telegram_id BIGINT,
+    approved_at TIMESTAMP,
+    rejection_reason TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_mc_district ON medical_centers(district_id);
 CREATE INDEX IF NOT EXISTS idx_mc_active ON medical_centers(is_active);
+CREATE INDEX IF NOT EXISTS idx_mc_approval_status ON medical_centers(approval_status);
 
 -- ============================================
 -- Потребность в крови (Донорский светофор)
@@ -152,10 +158,13 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(100),
     telegram_id BIGINT UNIQUE,
     telegram_username VARCHAR(100),
+    password_hash VARCHAR(255),
     
     last_donation_date DATE,
     total_donations INTEGER DEFAULT 0,
+    donated_count INTEGER DEFAULT 0,
     is_honorary_donor BOOLEAN DEFAULT FALSE,
+    last_response_date TIMESTAMP,
     
     notify_urgent BOOLEAN DEFAULT TRUE,
     notify_low BOOLEAN DEFAULT TRUE,
@@ -175,9 +184,9 @@ CREATE INDEX IF NOT EXISTS idx_users_district ON users(district_id);
 CREATE INDEX IF NOT EXISTS idx_users_telegram ON users(telegram_id);
 
 -- ============================================
--- Запросы на донацию
+-- Запросы на донацию (blood_requests)
 -- ============================================
-CREATE TABLE IF NOT EXISTS donation_requests (
+CREATE TABLE IF NOT EXISTS blood_requests (
     id SERIAL PRIMARY KEY,
     medical_center_id INTEGER NOT NULL REFERENCES medical_centers(id) ON DELETE CASCADE,
     blood_type VARCHAR(10) NOT NULL,
@@ -186,10 +195,13 @@ CREATE TABLE IF NOT EXISTS donation_requests (
     description TEXT,
     contact_info VARCHAR(300),
     target_district_id INTEGER REFERENCES districts(id),
+    source VARCHAR(50) DEFAULT 'web',
     
     valid_until TIMESTAMP,
+    expires_at TIMESTAMP,
     status VARCHAR(20) DEFAULT 'active',
     responses_count INTEGER DEFAULT 0,
+    donor_count INTEGER DEFAULT 0,
     
     telegram_sent BOOLEAN DEFAULT FALSE,
     
@@ -197,22 +209,27 @@ CREATE TABLE IF NOT EXISTS donation_requests (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_dr_mc ON donation_requests(medical_center_id);
-CREATE INDEX IF NOT EXISTS idx_dr_status ON donation_requests(status);
-CREATE INDEX IF NOT EXISTS idx_dr_blood_type ON donation_requests(blood_type);
+CREATE INDEX IF NOT EXISTS idx_br_mc ON blood_requests(medical_center_id);
+CREATE INDEX IF NOT EXISTS idx_br_status ON blood_requests(status);
+CREATE INDEX IF NOT EXISTS idx_br_blood_type ON blood_requests(blood_type);
+CREATE INDEX IF NOT EXISTS idx_br_source ON blood_requests(source);
+
+-- Создаём VIEW donation_requests для обратной совместимости
+CREATE OR REPLACE VIEW donation_requests AS SELECT * FROM blood_requests;
 
 -- ============================================
 -- Отклики доноров
 -- ============================================
 CREATE TABLE IF NOT EXISTS donation_responses (
     id SERIAL PRIMARY KEY,
-    request_id INTEGER NOT NULL REFERENCES donation_requests(id) ON DELETE CASCADE,
+    request_id INTEGER NOT NULL REFERENCES blood_requests(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     medical_center_id INTEGER REFERENCES medical_centers(id),
     
     status VARCHAR(20) DEFAULT 'pending',
     planned_date DATE,
     planned_time TIME,
+    hidden BOOLEAN DEFAULT FALSE,
     
     actual_donation_date TIMESTAMP,
     donation_completed BOOLEAN DEFAULT FALSE,
@@ -231,6 +248,23 @@ CREATE INDEX IF NOT EXISTS idx_resp_user ON donation_responses(user_id);
 CREATE INDEX IF NOT EXISTS idx_resp_status ON donation_responses(status);
 
 -- ============================================
+-- Диалоги (Conversations)
+-- ============================================
+CREATE TABLE IF NOT EXISTS conversations (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    medical_center_id INTEGER REFERENCES medical_centers(id) ON DELETE CASCADE,
+    subject VARCHAR(200),
+    status VARCHAR(20) DEFAULT 'active',
+    last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, medical_center_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_conv_mc ON conversations(medical_center_id);
+
+-- ============================================
 -- Сообщения/консультации
 -- ============================================
 CREATE TABLE IF NOT EXISTS messages (
@@ -239,16 +273,99 @@ CREATE TABLE IF NOT EXISTS messages (
     from_medcenter_id INTEGER REFERENCES medical_centers(id) ON DELETE SET NULL,
     to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     to_medcenter_id INTEGER REFERENCES medical_centers(id) ON DELETE SET NULL,
+    conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
     
     subject VARCHAR(200),
     message TEXT NOT NULL,
     is_read BOOLEAN DEFAULT FALSE,
+    is_system BOOLEAN DEFAULT FALSE,
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_msg_to_user ON messages(to_user_id);
 CREATE INDEX IF NOT EXISTS idx_msg_to_mc ON messages(to_medcenter_id);
+CREATE INDEX IF NOT EXISTS idx_msg_conversation ON messages(conversation_id);
+
+-- ============================================
+-- Сообщения в чате (Chat Messages)
+-- ============================================
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id SERIAL PRIMARY KEY,
+    conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    sender_id INTEGER,
+    sender_role VARCHAR(20) NOT NULL,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_conv ON chat_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_chat_sender ON chat_messages(sender_id);
+
+-- ============================================
+-- Шаблоны сообщений
+-- ============================================
+CREATE TABLE IF NOT EXISTS message_templates (
+    id SERIAL PRIMARY KEY,
+    medical_center_id INTEGER REFERENCES medical_centers(id) ON DELETE CASCADE,
+    title VARCHAR(200) NOT NULL,
+    content TEXT NOT NULL,
+    category VARCHAR(50),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_templates_mc ON message_templates(medical_center_id);
+
+-- ============================================
+-- История донаций
+-- ============================================
+CREATE TABLE IF NOT EXISTS donation_history (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    donation_date DATE NOT NULL,
+    blood_center_id INTEGER REFERENCES medical_centers(id),
+    donation_type VARCHAR(50),
+    volume_ml INTEGER,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_donation_history_user ON donation_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_donation_history_date ON donation_history(donation_date);
+
+-- ============================================
+-- Администраторы
+-- ============================================
+CREATE TABLE IF NOT EXISTS admin_users (
+    id SERIAL PRIMARY KEY,
+    telegram_id BIGINT UNIQUE NOT NULL,
+    telegram_username VARCHAR(100),
+    full_name VARCHAR(200),
+    role VARCHAR(50) DEFAULT 'super_admin',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_telegram ON admin_users(telegram_id);
+
+-- ============================================
+-- Коды привязки Telegram
+-- ============================================
+CREATE TABLE IF NOT EXISTS telegram_link_codes (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code VARCHAR(10) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    is_used BOOLEAN DEFAULT FALSE
+);
+
+CREATE INDEX IF NOT EXISTS idx_tg_codes_user ON telegram_link_codes(user_id);
+CREATE INDEX IF NOT EXISTS idx_tg_codes_code ON telegram_link_codes(code);
 
 -- ============================================
 -- Сессии

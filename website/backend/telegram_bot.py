@@ -342,10 +342,10 @@ async def link_by_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Ищем код в БД
     link_data = query_db(
-        """SELECT tlc.user_id, u.full_name, u.blood_type 
+        """SELECT tlc.user_id, u.full_name, u.blood_type
            FROM telegram_link_codes tlc
            JOIN users u ON tlc.user_id = u.id
-           WHERE tlc.code = %s AND tlc.expires_at > NOW() AND tlc.used_at IS NULL""",
+           WHERE tlc.code = %s AND tlc.expires_at > NOW() AND tlc.is_used = FALSE""",
         (code,), one=True
     )
     
@@ -368,7 +368,7 @@ async def link_by_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         query_db(
-            "UPDATE telegram_link_codes SET used_at = NOW() WHERE user_id = %s",
+            "UPDATE telegram_link_codes SET is_used = TRUE WHERE user_id = %s",
             (link_data['user_id'],), commit=True
         )
         
@@ -661,10 +661,10 @@ async def verify_code(update: Update, context: ContextTypes.DEFAULT_TYPE, code: 
     
     # Ищем код в БД
     link_data = query_db(
-        """SELECT tlc.user_id, u.full_name, u.blood_type 
+        """SELECT tlc.user_id, u.full_name, u.blood_type
            FROM telegram_link_codes tlc
            JOIN users u ON tlc.user_id = u.id
-           WHERE tlc.code = %s AND tlc.expires_at > NOW() AND tlc.used_at IS NULL""",
+           WHERE tlc.code = %s AND tlc.expires_at > NOW() AND tlc.is_used = FALSE""",
         (code,), one=True
     )
     
@@ -685,7 +685,7 @@ async def verify_code(update: Update, context: ContextTypes.DEFAULT_TYPE, code: 
         )
         
         query_db(
-            "UPDATE telegram_link_codes SET used_at = NOW() WHERE user_id = %s",
+            "UPDATE telegram_link_codes SET is_used = TRUE WHERE user_id = %s",
             (link_data['user_id'],), commit=True
         )
         

@@ -1,0 +1,49 @@
+# Файлы окружения (содержат пароли)
+.env
+website/backend/.env
+env_example.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Логи
+*.log
+flask.log
+telegram_bot.log
+http_server.log
+
+# Базы данных
+*.db
+*.sqlite
+*.sqlite3
+
+# Backups
+backups/
+*.sql.gz
+*.dump
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Временные файлы
+*.tmp
+*.bak
+*.orig

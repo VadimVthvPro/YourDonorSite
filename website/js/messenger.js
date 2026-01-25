@@ -4,7 +4,10 @@
  */
 
 const MessengerAPI = {
-    baseURL: 'http://localhost:5001/api',
+    // Используем глобальный API URL из config.js
+    get baseURL() {
+        return window.API_URL || `${window.location.protocol}//${window.location.hostname}:5001/api`;
+    },
     
     getToken() {
         return localStorage.getItem('auth_token');
@@ -383,8 +386,10 @@ class Messenger {
     }
     
     renderMessage(msg) {
-        const isOwn = msg.sender_role === this.userRole;
-        const isSystem = msg.sender_role === 'system';
+        // Приводим userRole к формату БД: 'medical_center' → 'medcenter'
+        const normalizedUserRole = this.userRole === 'medical_center' ? 'medcenter' : this.userRole;
+        const isOwn = msg.sender_type === normalizedUserRole;
+        const isSystem = msg.sender_type === 'system';
         
         const messageClass = isSystem ? 'system' : (isOwn ? 'own' : 'other');
         

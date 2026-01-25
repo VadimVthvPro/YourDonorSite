@@ -9,33 +9,33 @@
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=your_donor
-DB_USER=postgres
-DB_PASSWORD=yourdonorishere
+DB_USER=donor_user
+DB_PASSWORD=ВАШ_ПАРОЛЬ_ОТ_БД
 
 # ============================================
 # БЕЗОПАСНОСТЬ
 # ============================================
 # Секретный ключ для сессий Flask (сгенерируйте уникальный)
 # Можно сгенерировать командой: python3 -c "import secrets; print(secrets.token_hex(32))"
-SECRET_KEY=your-secret-key-here-generate-random-string
+SECRET_KEY=ВАШ_СЕКРЕТНЫЙ_КЛЮЧ_64_СИМВОЛА
 
 # Мастер-пароль для первого входа медцентров
-MASTER_PASSWORD=your_master_password_here
+MASTER_PASSWORD=ВАШ_МАСТЕР_ПАРОЛЬ
 
 # ============================================
 # TELEGRAM BOT
 # ============================================
 # Получите токен у @BotFather в Telegram
 # Создайте бота командой /newbot и скопируйте токен
-TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz123456789
+TELEGRAM_BOT_TOKEN=ВАШ_ТОКЕН_ОТ_BOTFATHER
 
 # ============================================
 # СУПЕР АДМИНИСТРАТОР
 # ============================================
 # Telegram username супер-админа (без @) для подтверждения медцентров
 # Этому пользователю будут приходить запросы на подтверждение новых медцентров
-# ВАЖНО: Админ должен один раз написать /start боту @TvoyDonorZdesBot для регистрации!
-SUPER_ADMIN_TELEGRAM_USERNAME=vadimvthv
+# ВАЖНО: Админ должен один раз написать /start боту для регистрации!
+SUPER_ADMIN_TELEGRAM_USERNAME=ваш_telegram_username
 
 # ============================================
 # URLs и ДОМЕНЫ
@@ -44,12 +44,12 @@ SUPER_ADMIN_TELEGRAM_USERNAME=vadimvthv
 # В продакшене: https://tvoydonor.by
 # Для локальной разработки: http://localhost:8080
 # ВАЖНО: Для Telegram WebApp кнопки ОБЯЗАТЕЛЕН HTTPS!
-WEBSITE_URL=https://tvoydonor.by
+WEBSITE_URL=https://ваш_домен.by
 
 # URL API (для внутренних запросов)
 # В продакшене: https://api.tvoydonor.by или https://tvoydonor.by
 # Для локальной разработки: http://localhost:5001
-APP_URL=http://localhost:8080
+APP_URL=https://ваш_домен.by
 
 # ============================================
 # СЕРВЕР

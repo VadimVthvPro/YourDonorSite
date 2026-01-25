@@ -586,13 +586,25 @@
 /* Адаптивность */
 @media (max-width: 640px) {
     .auth-main {
-        padding: var(--spacing-lg);
+        padding: var(--spacing-md);
         align-items: flex-start;
-        padding-top: var(--spacing-xl);
+        padding-top: 100px; /* Достаточно места под хедер */
+    }
+    
+    .user-type-selector {
+        margin-top: 0;
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .auth-container {
+        width: 100%;
+        max-width: 100%;
+        padding: 0;
     }
     
     .auth-form-container {
-        padding: var(--spacing-lg);
+        padding: var(--spacing-md);
+        border-radius: var(--radius-lg);
     }
     
     .form-row {
@@ -609,6 +621,14 @@
     
     .form-buttons {
         flex-direction: column-reverse;
+    }
+    
+    .type-btn {
+        padding: var(--spacing-sm);
+    }
+    
+    .type-label {
+        font-size: var(--text-sm);
     }
 }
 

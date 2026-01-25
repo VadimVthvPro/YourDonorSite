@@ -6,7 +6,12 @@
 console.log('==== app.js ЗАГРУЖЕН ====');
 
 // Глобальный URL для API
-window.API_URL = 'http://localhost:5001/api';
+// Используем API URL из config.js если доступен, иначе fallback
+if (!window.API_URL) {
+    window.API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:5001/api'
+        : `${window.location.protocol}//${window.location.hostname}:5001/api`;
+}
 const API_URL = window.API_URL;
 
 document.addEventListener('DOMContentLoaded', function() {

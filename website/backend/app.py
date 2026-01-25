@@ -34,7 +34,25 @@ except ImportError:
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True)
+
+# Расширенная настройка CORS для работы через Nginx proxy
+CORS(app, 
+     resources={r"/api/*": {"origins": "*"}},
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     expose_headers=["Content-Type", "Authorization"]
+)
+
+# Обработка preflight OPTIONS запросов
+@app.after_request
+def after_request(response):
+    # Добавляем CORS заголовки для всех ответов
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Max-Age', '3600')
+    return response
 
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(32))
 
@@ -2111,6 +2129,7 @@ def update_response(response_id):
     
     # При завершении обновляем статистику донора
     if new_status == 'completed':
+        # Обновляем счётчики в таблице users
         query_db(
             """UPDATE users SET 
                last_donation_date = CURRENT_DATE, 
@@ -2119,6 +2138,15 @@ def update_response(response_id):
                WHERE id = %s""",
             (resp['user_id'],), commit=True
         )
+        
+        # Создаём запись в donation_history для отображения в кабинете донора
+        query_db(
+            """INSERT INTO donation_history 
+               (donor_id, medical_center_id, donation_date, volume_ml, donation_type, created_at)
+               VALUES (%s, %s, CURRENT_DATE, 450, 'blood', NOW())""",
+            (resp['user_id'], resp['medical_center_id']), commit=True
+        )
+        app.logger.info(f"✅ Донация добавлена в историю: donor_id={resp['user_id']}, medical_center_id={resp['medical_center_id']}")
     
     # ПРИ ПОДТВЕРЖДЕНИИ: создать диалог и отправить уведомление
     if new_status == 'confirmed':
@@ -2174,25 +2202,19 @@ def update_response(response_id):
                 donor_blood_type=donor['blood_type']
             )
             
-            # Сохраняем сообщение
+            # Сохраняем сообщение в chat_messages
             app.logger.info(f"Отправка сообщения: conversation_id={conversation['id']}, type=invitation")
             query_db(
-                """INSERT INTO messages 
-                   (conversation_id, sender_role, message_type, content, metadata, created_at)
+                """INSERT INTO chat_messages 
+                   (conversation_id, sender_type, sender_id, message_type, message_text, created_at)
                    VALUES (%s, %s, %s, %s, %s, NOW())""",
                 (
                     conversation['id'],
-                    'medical_center',
+                    'medcenter',
+                    resp['medical_center_id'],
                     'invitation',
-                    message_text,
-                    json.dumps({
-                        'donation_date': str(donation_date),
-                        'donation_time': str(donation_time),
-                        'medical_center_id': medical_center['id'],
-                        'blood_type': donor['blood_type']
-                    })
-                ),
-                commit=True
+                    message_text
+                ), commit=True
             )
             app.logger.info(f"✅ Сообщение отправлено донору {donor['id']}")
             
@@ -2632,12 +2654,17 @@ def generate_telegram_link_code():
     import random
     code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
     
-    # Сохраняем код в БД (срок действия 10 минут)
+    # Удаляем старые неиспользованные коды этого пользователя
+    query_db(
+        """DELETE FROM telegram_link_codes 
+           WHERE user_id = %s AND is_used = FALSE""",
+        (donor_id,), commit=True
+    )
+    
+    # Сохраняем новый код
     query_db(
         """INSERT INTO telegram_link_codes (user_id, code, expires_at, created_at)
-           VALUES (%s, %s, NOW() + INTERVAL '10 minutes', NOW())
-           ON CONFLICT (user_id) DO UPDATE 
-           SET code = EXCLUDED.code, expires_at = EXCLUDED.expires_at, created_at = EXCLUDED.created_at""",
+           VALUES (%s, %s, NOW() + INTERVAL '10 minutes', NOW())""",
         (donor_id, code), commit=True
     )
     
@@ -4232,9 +4259,8 @@ def get_conversation_messages(conversation_id):
     
     if before_id:
         messages = query_db(
-            """SELECT * FROM messages 
+            """SELECT * FROM chat_messages 
                WHERE conversation_id = %s 
-                 AND deleted_at IS NULL 
                  AND id < %s
                ORDER BY created_at DESC 
                LIMIT %s""",
@@ -4242,9 +4268,8 @@ def get_conversation_messages(conversation_id):
         )
     else:
         messages = query_db(
-            """SELECT * FROM messages 
+            """SELECT * FROM chat_messages 
                WHERE conversation_id = %s 
-                 AND deleted_at IS NULL
                ORDER BY created_at DESC 
                LIMIT %s""",
             (conversation_id, limit)
@@ -4278,41 +4303,41 @@ def send_conversation_message(conversation_id):
             (conversation_id, user_id), one=True
         )
         sender_id = user_id
-        sender_role = 'donor'
+        sender_type = 'donor'
     elif user_type == 'medcenter':
         conversation = query_db(
             "SELECT * FROM conversations WHERE id = %s AND medical_center_id = %s",
             (conversation_id, medical_center_id), one=True
         )
-        sender_id = None
-        sender_role = 'medical_center'
+        sender_id = medical_center_id
+        sender_type = 'medcenter'
     else:
         return jsonify({'error': 'Неизвестный тип пользователя'}), 400
     
     if not conversation:
         return jsonify({'error': 'Диалог не найден'}), 404
     
+    # Вставляем в chat_messages, а не в messages
     query_db(
-        """INSERT INTO messages 
-           (conversation_id, sender_id, sender_role, content, message_type, metadata, created_at)
-           VALUES (%s, %s, %s, %s, %s, %s, NOW())""",
-        (conversation_id, sender_id, sender_role, content, message_type, 
-         metadata if metadata else None),
+        """INSERT INTO chat_messages 
+           (conversation_id, sender_id, sender_type, message_text, message_type, created_at)
+           VALUES (%s, %s, %s, %s, %s, NOW())""",
+        (conversation_id, sender_id, sender_type, content, message_type),
         commit=True
     )
     
     message = query_db(
-        """SELECT * FROM messages 
+        """SELECT * FROM chat_messages 
            WHERE conversation_id = %s 
            ORDER BY created_at DESC 
            LIMIT 1""",
         (conversation_id,), one=True
     )
     
-    app.logger.info(f"✅ Сообщение отправлено: {sender_role} -> conversation {conversation_id}")
+    app.logger.info(f"✅ Сообщение отправлено: {sender_type} -> conversation {conversation_id}")
     
     # Отправка в Telegram если сообщение от медцентра донору
-    if sender_role == 'medical_center':
+    if sender_type == 'medcenter':
         # Получаем telegram_id донора
         donor = query_db(
             """SELECT u.telegram_id, u.full_name 

@@ -79,14 +79,11 @@ def format_message(msg):
         'id': msg['id'],
         'conversation_id': msg['conversation_id'],
         'sender_id': msg.get('sender_id'),
-        'sender_role': msg['sender_role'],
-        'content': msg['content'],
+        'sender_type': msg.get('sender_type'),  # Изменено с sender_role
+        'content': msg.get('message_text'),  # Изменено с content
         'type': msg.get('message_type', 'text'),
-        'metadata': msg.get('metadata'),
         'is_read': msg.get('is_read', False),
-        'read_at': msg['read_at'].isoformat() if msg.get('read_at') else None,
-        'created_at': msg['created_at'].isoformat() if msg.get('created_at') else None,
-        'edited_at': msg['edited_at'].isoformat() if msg.get('edited_at') else None
+        'created_at': msg['created_at'].isoformat() if msg.get('created_at') else None
     }
 
 

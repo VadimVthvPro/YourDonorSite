@@ -106,6 +106,8 @@ body {
     background-color: var(--color-white);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    max-width: 100vw;
 }
 
 img {
@@ -136,6 +138,14 @@ button {
     max-width: 1280px;
     margin: 0 auto;
     padding: 0 var(--spacing-lg);
+    box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 0 var(--spacing-md);
+        max-width: 100%;
+    }
 }
 
 /* ============================================
@@ -1343,6 +1353,8 @@ button {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 24px;
+    max-width: 100%;
+    overflow: hidden;
     margin-top: 40px;
 }
 
@@ -1350,11 +1362,13 @@ button {
 .contra-card {
     background: #ffffff;
     border-radius: 12px;
-    overflow: visible;
+    overflow: hidden;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     border: 1px solid rgba(0, 0, 0, 0.08);
+    box-sizing: border-box;
+    max-width: 100%;
 }
 
 .contra-card:hover {
@@ -1580,6 +1594,19 @@ button {
     .contra-grid {
         grid-template-columns: 1fr;
         gap: 16px;
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    .contra-card {
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    /* Убираем hover на мобильных (не нужен на тач-устройствах) */
+    .contra-card:hover {
+        transform: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     }
     
     .contra-card-header {
@@ -1617,6 +1644,54 @@ button {
     .period-badge {
         font-size: 0.75rem;
         padding: 3px 8px;
+    }
+    
+    /* Адаптация таблицы интервалов для мобильных */
+    .intervals-table {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        position: relative;
+    }
+    
+    /* Индикатор прокрутки */
+    .intervals-table::after {
+        content: '← Прокрутите →';
+        position: absolute;
+        bottom: 8px;
+        right: 8px;
+        background: rgba(220, 38, 38, 0.9);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        pointer-events: none;
+        opacity: 0.8;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 0.8; }
+        50% { opacity: 1; }
+    }
+    
+    .intervals-table table {
+        min-width: 600px; /* Минимальная ширина для прокрутки */
+    }
+    
+    .intervals-table th,
+    .intervals-table td {
+        padding: 12px 10px;
+        font-size: 0.8125rem;
+    }
+    
+    .intervals-table th {
+        font-size: 0.75rem;
+    }
+    
+    /* Альтернатива: вертикальная компоновка */
+    .intervals-table-mobile {
+        display: none;
     }
 }
 
