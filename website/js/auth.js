@@ -796,7 +796,8 @@ function initFormValidation() {
                     localStorage.setItem('donor_user', JSON.stringify(result.user));
                     
                     // Всегда показываем модальное окно с кодом для привязки Telegram
-                    showTelegramVerificationModal(result.user.id, result.user.full_name);
+                    // Используем код из backend (НЕ генерируем новый!)
+                    showTelegramVerificationModal(result.user.id, result.user.full_name, result.telegram_code);
                 } else {
                     showNotification(result.error || 'Ошибка регистрации', 'error');
                 }
@@ -991,9 +992,11 @@ function checkUrlParams() {
 /**
  * Показать модальное окно верификации Telegram
  */
-function showTelegramVerificationModal(userId, userName) {
-    // Генерируем 6-значный код
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+function showTelegramVerificationModal(userId, userName, telegramCode) {
+    // Используем код от backend, НЕ генерируем новый!
+    const code = telegramCode || Math.floor(100000 + Math.random() * 900000).toString();
+    
+    console.log(`[TELEGRAM MODAL] Показ модального окна с кодом от backend: ${code}`);
     
     // Создаём модальное окно
     const modal = document.createElement('div');
@@ -1001,11 +1004,23 @@ function showTelegramVerificationModal(userId, userName) {
     modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); overflow-y: auto; padding: 20px;';
     
     modal.innerHTML = `
-        <div class="telegram-verification-modal" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); padding: 40px; border-radius: 24px; max-width: 600px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalFadeIn 0.3s ease-out; margin: auto; max-height: 90vh; overflow-y: auto;">
+        <div class="telegram-verification-modal" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); padding: 40px; border-radius: 24px; max-width: 600px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalFadeIn 0.3s ease-out; margin: auto; max-height: 90vh; overflow-y: auto; position: relative;">
             <div style="font-size: 64px; margin-bottom: 16px; animation: bounce 0.6s ease-out;">🎉</div>
             <h2 style="margin-bottom: 12px; color: #2c3e50; font-size: 28px; font-weight: 700;">Регистрация успешна!</h2>
+            
+            <!-- НОВОЕ: Пояснение что аккаунт создан -->
+            <div style="background: #e8f5e9; padding: 20px; border-radius: 12px; margin: 24px 0; border-left: 4px solid #4caf50;">
+                <p style="margin: 0; font-size: 16px; color: #2e7d32; font-weight: 600;">
+                    ✅ Ваш аккаунт уже создан и активен!
+                </p>
+                <p style="margin: 8px 0 0 0; font-size: 14px; color: #558b2f;">
+                    Теперь вы можете войти в личный кабинет.<br>
+                    Привязка Telegram — <strong>опциональный шаг</strong> для получения уведомлений.
+                </p>
+            </div>
+            
             <p style="margin-bottom: 32px; color: #7f8c8d; font-size: 16px;">
-                Привет, ${userName}! Последний шаг — привяжите Telegram
+                Привет, ${userName}! Хотите получать уведомления о срочных запросах крови?
             </p>
             
             <div style="background: linear-gradient(135deg, #0088cc 0%, #005f99 100%); padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 8px 20px rgba(0, 136, 204, 0.4);">
@@ -1045,12 +1060,12 @@ function showTelegramVerificationModal(userId, userName) {
                     Готово, код применил
                 </button>
                 <button id="telegram-skip-btn" style="padding: 14px; background: transparent; color: #7f8c8d; border: 2px solid #e0e0e0; border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s;">
-                    Привяжу позже в личном кабинете
+                    Пропустить → Войти в личный кабинет
                 </button>
             </div>
             
             <p style="margin-top: 24px; font-size: 13px; color: #95a5a6;">
-                ⏱️ Код действителен <strong>15 минут</strong>
+                ⏱️ Код действителен <strong>10 минут</strong>
             </p>
         </div>
     `;
@@ -1093,8 +1108,8 @@ function showTelegramVerificationModal(userId, userName) {
     
     document.body.appendChild(modal);
     
-    // Сохраняем код на сервере
-    saveVerificationCode(userId, code);
+    // Код уже сохранён на backend при регистрации, не нужно сохранять заново
+    console.log(`[TELEGRAM MODAL] Код от backend уже сохранён в БД: ${code}`);
     
     // Обработчик кнопки "Скопировать код"
     modal.querySelector('#copy-code-btn').addEventListener('click', (e) => {

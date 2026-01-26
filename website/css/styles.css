@@ -1351,24 +1351,27 @@ button {
 
 .contra-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr; /* ОДНА КОЛОНКА НА ВСЕХ ЭКРАНАХ */
     gap: 24px;
     max-width: 100%;
     overflow: hidden;
     margin-top: 40px;
 }
 
-/* Базовая карточка */
+/* Базовая карточка - ГОРИЗОНТАЛЬНАЯ КОМПОНОВКА */
 .contra-card {
     background: #ffffff;
     border-radius: 12px;
-    overflow: hidden;
+    overflow: visible; /* Изменено с hidden */
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     border: 1px solid rgba(0, 0, 0, 0.08);
     box-sizing: border-box;
     max-width: 100%;
+    display: flex; /* ГОРИЗОНТАЛЬНАЯ КОМПОНОВКА */
+    flex-direction: column; /* Вертикально на десктопе, изменится на row в медиазапросе */
+    padding: 20px 24px;
 }
 
 .contra-card:hover {
@@ -1392,13 +1395,14 @@ button {
     height: 6px;
 }
 
-/* Хедер карточки */
+/* Хедер карточки - ГОРИЗОНТАЛЬНО */
 .contra-card-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center; /* Изменено с flex-start */
     gap: 16px;
-    padding: 20px 24px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    padding: 0; /* Убираем padding, он теперь в .contra-card */
+    border-bottom: none; /* Убираем разделитель */
+    flex-shrink: 0;
 }
 
 .contra-icon-wrapper {
@@ -1439,26 +1443,35 @@ button {
     line-height: 1.4;
 }
 
-/* Список */
+/* Список - ГОРИЗОНТАЛЬНОЕ РАСПОЛОЖЕНИЕ */
 .contra-list {
     list-style: none;
-    padding: 16px 24px 20px;
+    padding: 0; /* Убираем padding */
     margin: 0;
+    margin-left: 16px; /* Отступ от хедера */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: center;
+    flex: 1; /* Занимает оставшееся место */
 }
 
 .contra-list li {
     font-size: 0.9375rem;
     color: #334155;
-    padding: 12px 0;
-    padding-left: 20px;
+    padding: 0; /* Убираем вертикальные отступы */
+    padding-left: 16px; /* Отступ для маркера */
     position: relative;
     line-height: 1.5;
     transition: all 0.2s ease;
     border-radius: 6px;
+    border-bottom: none; /* Убираем разделители */
+    display: inline-block;
+    white-space: nowrap;
 }
 
 .contra-list li:hover {
-    padding-left: 24px;
+    padding-left: 18px;
 }
 
 .contra-list li::before {
@@ -1475,9 +1488,7 @@ button {
     transform: scale(1.3);
 }
 
-.contra-list li:not(:last-child) {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-}
+/* Убираем старое правило с border-bottom */
 
 /* Бейджи периодов */
 .period-badge {
@@ -1592,54 +1603,134 @@ button {
 
 @media (max-width: 768px) {
     .contra-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
+        grid-template-columns: 1fr; /* ОДНА КОЛОНКА - плашки на всю ширину */
+        gap: 12px;
         width: 100%;
         max-width: 100%;
     }
     
+    /* ПОЛНОСТЬЮ ГОРИЗОНТАЛЬНЫЕ КАРТОЧКИ - ВСЁ В ОДНУ СТРОКУ */
     .contra-card {
         width: 100%;
         max-width: 100%;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding: 14px 16px; /* Увеличен с 12px 14px */
+        gap: 14px; /* Увеличен с 12px */
+        min-height: auto;
     }
     
-    /* Убираем hover на мобильных (не нужен на тач-устройствах) */
+    /* Хедер - компактный, слева */
+    .contra-card-header {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding: 0;
+        gap: 10px;
+        flex-shrink: 0;
+        width: auto;
+    }
+    
+    /* Иконка */
+    .contra-icon-wrapper {
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+    }
+    
+    .contra-icon {
+        width: 20px;
+        height: 20px;
+    }
+    
+    /* Текст заголовка - вертикально */
+    .contra-header-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0; /* Для text-overflow */
+        max-width: 160px; /* Ограничиваем ширину заголовка */
+    }
+    
+    .contra-title {
+        font-size: 0.95rem; /* Увеличен с 0.85rem */
+        font-weight: 600;
+        margin: 0;
+        white-space: normal; /* Разрешаем перенос */
+        line-height: 1.3;
+    }
+    
+    .contra-subtitle {
+        font-size: 0.75rem; /* Увеличен с 0.7rem */
+        opacity: 0.8;
+        white-space: normal; /* Разрешаем перенос */
+        line-height: 1.3;
+    }
+    
+    /* Список - ГОРИЗОНТАЛЬНО, справа */
+    .contra-list {
+        padding: 0;
+        margin: 0;
+        flex: 1;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px 12px; /* Увеличены отступы */
+        align-items: center;
+    }
+    
+    .contra-list li {
+        font-size: 0.85rem; /* Увеличен с 0.75rem */
+        padding: 0;
+        margin: 0;
+        list-style: none;
+        display: inline-block;
+        white-space: nowrap;
+        line-height: 1.4;
+    }
+    
+    /* Убираем маркеры списка */
+    .contra-list li::before {
+        content: "•";
+        margin-right: 5px; /* Увеличен с 4px */
+        color: currentColor;
+        font-weight: bold;
+    }
+    
+    .period-badge {
+        font-size: 0.7rem; /* Увеличен с 0.65rem */
+        padding: 3px 6px; /* Увеличен с 2px 5px */
+        margin-left: 4px; /* Увеличен с 3px */
+    }
+    
+    /* Убираем hover на мобильных */
     .contra-card:hover {
         transform: none;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     }
+}
+
+/* Для очень маленьких экранов - можно сделать перенос */
+@media (max-width: 480px) {
+    /* Одна колонка на маленьких экранах */
+    .contra-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .contra-card {
+        flex-wrap: wrap;
+    }
     
     .contra-card-header {
-        padding: 16px;
-        gap: 12px;
-    }
-    
-    .contra-icon-wrapper {
-        width: 44px;
-        height: 44px;
-    }
-    
-    .contra-icon {
-        width: 22px;
-        height: 22px;
-    }
-    
-    .contra-title {
-        font-size: 1rem;
-    }
-    
-    .contra-subtitle {
-        font-size: 0.8125rem;
+        width: 100%;
     }
     
     .contra-list {
-        padding: 12px 16px 16px;
+        width: 100%;
+        padding-top: 8px;
     }
-    
-    .contra-list li {
-        font-size: 0.875rem;
-        padding: 10px 0 10px 18px;
-    }
+}
     
     .period-badge {
         font-size: 0.75rem;
@@ -2591,10 +2682,7 @@ button {
         grid-template-columns: 1fr;
     }
     
-    .contra-grid {
-        grid-template-columns: 1fr;
-        gap: var(--spacing-md);
-    }
+    /* УДАЛЕНО ДУБЛИРУЮЩЕЕ ПРАВИЛО .contra-grid - используется базовое */
     
     .contra-card {
         padding: var(--spacing-md);
@@ -2618,10 +2706,7 @@ button {
         font-size: 0.875rem;
     }
     
-    .contra-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--spacing-lg);
-    }
+    /* УДАЛЕНО ДУБЛИРУЮЩЕЕ ПРАВИЛО .contra-grid */
     
     .contra-card {
         padding: var(--spacing-lg);
@@ -2998,4 +3083,261 @@ button {
     border-radius: var(--radius-sm);
     font-family: 'Courier New', monospace;
     font-size: var(--text-sm);
+}
+/* ============================================
+   ДОПОЛНИТЕЛЬНЫЕ МОБИЛЬНЫЕ ИСПРАВЛЕНИЯ
+   Добавить в конец styles.css
+   ============================================ */
+
+/* Общие улучшения для форм на мобильных */
+@media (max-width: 768px) {
+    /* Формы регистрации/входа */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="tel"],
+    select,
+    textarea {
+        font-size: 16px !important; /* Предотвращает автозум на iOS */
+    }
+    
+    .form-control {
+        padding: 12px 14px;
+        min-height: 48px; /* Удобно для тапа */
+    }
+    
+    textarea.form-control {
+        min-height: 100px;
+    }
+    
+    /* Кнопки - увеличенная зона тапа */
+    .btn {
+        min-height: 48px;
+        padding: 12px 20px;
+    }
+    
+    /* Чекбоксы и радио - увеличенные */
+    input[type="checkbox"],
+    input[type="radio"] {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* Навигация на мобильных */
+@media (max-width: 768px) {
+    .header {
+        padding: 12px 0;
+    }
+    
+    .logo {
+        font-size: 1.1rem;
+    }
+    
+    .logo-icon-svg {
+        width: 28px;
+        height: 28px;
+    }
+}
+
+/* Модальные окна на мобильных */
+@media (max-width: 768px) {
+    .modal {
+        padding: 0;
+    }
+    
+    .modal-content {
+        margin: 0;
+        max-width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 16px;
+    }
+}
+
+/* Дашборды на мобильных */
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 16px;
+    }
+    
+    .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .dashboard-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+}
+
+/* Таблицы на мобильных - улучшенный скролл */
+@media (max-width: 768px) {
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -16px;
+        padding: 0 16px;
+    }
+    
+    table {
+        font-size: 0.85rem;
+    }
+    
+    th, td {
+        padding: 10px 8px;
+        white-space: nowrap;
+    }
+}
+
+/* Мессенджер на мобильных - полноэкранный */
+@media (max-width: 768px) {
+    .messenger-wrapper {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1000;
+    }
+    
+    .messenger-container {
+        border-radius: 0;
+        height: 100vh;
+    }
+    
+    .messenger-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: white;
+    }
+    
+    .message-input-wrapper {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding: 12px 16px;
+    }
+}
+
+/* Карточки запросов/откликов на мобильных */
+@media (max-width: 768px) {
+    .request-card,
+    .response-card {
+        padding: 14px;
+    }
+    
+    .request-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .request-actions {
+        width: 100%;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .request-actions .btn {
+        width: 100%;
+    }
+}
+
+/* Фильтры на мобильных */
+@media (max-width: 768px) {
+    .filters-container {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .filter-group select,
+    .filter-group input {
+        width: 100%;
+    }
+}
+
+/* Статистические карточки */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .stat-card {
+        padding: 14px;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+    }
+    
+    .stat-label {
+        font-size: 0.8rem;
+    }
+}
+
+/* Профильные страницы */
+@media (max-width: 768px) {
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .profile-avatar {
+        margin: 0 auto 16px;
+    }
+    
+    .profile-info {
+        width: 100%;
+    }
+    
+    .profile-actions {
+        width: 100%;
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+/* Списки с иконками */
+@media (max-width: 768px) {
+    .icon-list li {
+        padding: 10px 0;
+        font-size: 0.9rem;
+    }
+    
+    .icon-list svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* Footer на мобильных */
+@media (max-width: 768px) {
+    .footer-main {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+    
+    .footer-brand,
+    .footer-links,
+    .footer-contact {
+        text-align: center;
+    }
+    
+    .footer-social {
+        justify-content: center;
+    }
 }
