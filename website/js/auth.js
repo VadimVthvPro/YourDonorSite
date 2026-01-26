@@ -6,51 +6,8 @@
 // Используем глобальный API URL из config.js или fallback
 const API_URL = window.API_URL || `${window.location.protocol}//${window.location.hostname}:5001/api`;
 
-/**
- * 🔥 АВТОМАТИЧЕСКИЙ ВХОД ПРИ ОТКРЫТИИ СТРАНИЦЫ
- * Проверяет сохранённую сессию и перенаправляет на dashboard
- */
-async function autoLoginIfSessionExists() {
-    // Проверяем, что AuthStorage доступен
-    if (typeof AuthStorage === 'undefined') {
-        console.warn('⚠️ AuthStorage не загружен, пропускаем авто-вход');
-        return;
-    }
-    
-    // Проверяем наличие сохранённой сессии
-    if (!AuthStorage.hasSession()) {
-        console.log('📋 Нет сохранённой сессии, показываем формы входа');
-        return;
-    }
-    
-    console.log('🔍 Найдена сохранённая сессия, проверяем валидность...');
-    
-    // Валидируем токен на backend
-    const validation = await AuthStorage.validate();
-    
-    if (validation.valid) {
-        console.log('✅ Сессия валидна! Автоматический редирект на dashboard...');
-        
-        const userType = AuthStorage.getUserType();
-        const dashboardUrl = userType === 'donor' 
-            ? 'donor-dashboard.html' 
-            : 'medcenter-dashboard.html';
-        
-        // Перенаправляем на dashboard
-        window.location.href = dashboardUrl;
-    } else {
-        console.log('❌ Сессия невалидна, показываем формы входа');
-        // Очистка уже произошла в AuthStorage.validate()
-    }
-}
-
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', function() {
     console.log('🔐 auth.js ЗАГРУЖЕН');
-    
-    // 🔥 СНАЧАЛА проверяем сохранённую сессию
-    await autoLoginIfSessionExists();
-    
-    // Если мы здесь, значит сессии нет или она невалидна
     initTypeSwitcher();
     initModeTabs();
     initFormSteps();
@@ -840,12 +797,7 @@ function initFormValidation() {
                     // Используем код из backend (НЕ генерируем новый!)
                     showTelegramVerificationModal(result.user.id, result.user.full_name, result.telegram_code);
                 } else {
-                    // Проверяем тип ошибки для более информативного сообщения
-                    if (result.error && result.error.includes('уже зарегистрирован')) {
-                        showDonorExistsModal(payload.full_name);
-                    } else {
-                        showNotification(result.error || 'Ошибка регистрации', 'error');
-                    }
+                    showNotification(result.error || 'Ошибка регистрации', 'error');
                 }
                 
             } catch (error) {
@@ -1409,61 +1361,6 @@ function highlightFieldError(input, message) {
 /**
  * Показать модальное окно ожидания подтверждения
  */
-/**
- * Показать модальное окно "Донор уже существует"
- */
-function showDonorExistsModal(donorName) {
-    const modal = document.createElement('div');
-    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); padding: 20px;';
-    
-    modal.innerHTML = `
-        <div style="background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%); padding: 40px; border-radius: 24px; max-width: 500px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalFadeIn 0.3s ease-out; position: relative;">
-            <div style="font-size: 64px; margin-bottom: 16px;">⚠️</div>
-            <h2 style="margin-bottom: 12px; color: #c62828; font-size: 26px; font-weight: 700;">Пользователь уже существует</h2>
-            
-            <div style="background: #fff3e0; padding: 20px; border-radius: 12px; margin: 24px 0; border-left: 4px solid #ff6f00; text-align: left;">
-                <p style="margin: 0 0 12px 0; font-size: 15px; color: #424242; line-height: 1.6;">
-                    <strong>${donorName}</strong> с такими данными уже зарегистрирован в системе.
-                </p>
-                <p style="margin: 0; font-size: 14px; color: #616161; line-height: 1.6;">
-                    Если это вы — используйте <strong>"Вход"</strong> с вашими данными.<br>
-                    Если забыли пароль — обратитесь в медцентр или к администратору.
-                </p>
-            </div>
-            
-            <div style="background: #e3f2fd; padding: 16px; border-radius: 12px; margin: 20px 0; text-align: left;">
-                <p style="margin: 0 0 8px 0; font-size: 14px; color: #1565c0; font-weight: 600;">
-                    💡 Возникли сложности?
-                </p>
-                <a href="https://t.me/vadimvthv" target="_blank" style="display: inline-flex; align-items: center; color: #0d47a1; text-decoration: none; font-size: 14px; font-weight: 500;">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="margin-right: 6px;">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.05-.2s-.16-.05-.23-.03c-.1.03-1.62 1.03-4.58 3.03-.43.3-.83.45-1.18.44-.39-.01-1.14-.22-1.7-.4-.68-.23-1.23-.35-1.18-.74.03-.2.36-.41.99-.63 3.87-1.69 6.46-2.8 7.75-3.34 3.7-1.54 4.47-1.81 4.97-1.81.11 0 .36.02.52.14.14.1.18.24.2.38.01.11.03.27.02.42z"/>
-                    </svg>
-                    Написать @vadimvthv
-                </a>
-            </div>
-            
-            <div style="display: flex; gap: 12px; margin-top: 24px;">
-                <button onclick="this.closest('div[style*=\\'position: fixed\\']').remove()" style="flex: 1; padding: 14px 24px; background: #e0e0e0; color: #424242; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-                    Закрыть
-                </button>
-                <button onclick="document.querySelector('.mode-tab[data-mode=\\'login\\']').click(); this.closest('div[style*=\\'position: fixed\\']').remove();" style="flex: 1; padding: 14px 24px; background: linear-gradient(135deg, #e53935 0%, #c62828 100%); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(229, 57, 53, 0.3); transition: all 0.2s;">
-                    Перейти ко входу
-                </button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Закрытие по клику на фон
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.remove();
-        }
-    });
-}
-
 function showApprovalPendingModal(email) {
     const modal = document.getElementById('approval-pending-modal');
     const emailField = document.getElementById('registered-email');
