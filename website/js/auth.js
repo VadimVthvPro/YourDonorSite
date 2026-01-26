@@ -708,9 +708,8 @@ function initFormValidation() {
                     btn.classList.add('success');
                     btn.textContent = '';
                     
-                    localStorage.setItem('auth_token', result.token);
-                    localStorage.setItem('user_type', 'donor');
-                    localStorage.setItem('donor_user', JSON.stringify(result.user));
+                    // 🔥 НОВОЕ: Используем AuthStorage вместо прямой записи
+                    AuthStorage.save(result.token, 'donor', result.user);
                     
                     setTimeout(() => {
                         window.location.href = 'donor-dashboard.html';
@@ -791,9 +790,8 @@ function initFormValidation() {
                 
                 if (response.ok) {
                     // Сохраняем авторизацию
-                    localStorage.setItem('auth_token', result.token);
-                    localStorage.setItem('user_type', 'donor');
-                    localStorage.setItem('donor_user', JSON.stringify(result.user));
+                    // 🔥 НОВОЕ: Используем AuthStorage
+                    AuthStorage.save(result.token, 'donor', result.user);
                     
                     // Всегда показываем модальное окно с кодом для привязки Telegram
                     // Используем код из backend (НЕ генерируем новый!)
@@ -839,9 +837,8 @@ function initFormValidation() {
                 console.log('Ответ сервера:', result);
                 
                 if (response.ok) {
-                    localStorage.setItem('auth_token', result.token);
-                    localStorage.setItem('user_type', 'medcenter');
-                    localStorage.setItem('medcenter_user', JSON.stringify(result.medical_center));
+                    // 🔥 НОВОЕ: Используем AuthStorage
+                    AuthStorage.save(result.token, 'medcenter', result.medical_center);
                     window.location.href = 'medcenter-dashboard.html';
                 } else {
                     // Проверяем статус подтверждения
@@ -931,9 +928,8 @@ function initFormValidation() {
                         showApprovalPendingModal(result.medical_center?.email || data.email);
                     } else {
                         // Если подтверждён сразу (не должно быть, но на всякий случай)
-                        localStorage.setItem('auth_token', result.token);
-                        localStorage.setItem('user_type', 'medcenter');
-                        localStorage.setItem('medcenter_user', JSON.stringify(result.medical_center));
+                        // 🔥 НОВОЕ: Используем AuthStorage
+                        AuthStorage.save(result.token, 'medcenter', result.medical_center);
                         showNotification('Медцентр зарегистрирован!', 'success');
                         setTimeout(() => {
                             window.location.href = 'medcenter-dashboard.html';

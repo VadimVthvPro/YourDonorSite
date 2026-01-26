@@ -8,12 +8,17 @@ console.log('==== donor-dashboard.js ЗАГРУЖЕН ====');
 // Используем API_URL из app.js или определяем свой
 const DONOR_API_URL = window.API_URL || 'http://localhost:5001/api';
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Проверка авторизации
-    if (!checkAuth()) {
+document.addEventListener('DOMContentLoaded', async function() {
+    // 🔥 НОВОЕ: Проактивная проверка авторизации с валидацией токена
+    const isAuth = await checkAuthAndRestore();
+    
+    if (!isAuth) {
+        console.warn('⚠️ Авторизация не пройдена, редирект на login');
         window.location.href = 'auth.html';
         return;
     }
+    
+    console.log('✅ Авторизация подтверждена, загружаем dashboard');
     
     // Синхронные функции инициализации
     initNavigation();

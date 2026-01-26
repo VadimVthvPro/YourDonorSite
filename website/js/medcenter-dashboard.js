@@ -34,16 +34,19 @@ let bloodRequestsCache = [];
 // Кэш для откликов доноров
 let responsesCache = [];
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('=== Инициализация dashboard медцентра ===');
     
-    if (!checkAuth()) {
-        console.warn('Авторизация не пройдена, перенаправление...');
+    // 🔥 НОВОЕ: Проактивная проверка авторизации с валидацией токена
+    const isAuth = await checkAuthAndRestore();
+    
+    if (!isAuth) {
+        console.warn('⚠️ Авторизация не пройдена, перенаправление...');
         window.location.href = 'auth.html?type=medcenter';
         return;
     }
     
-    console.log('✓ Авторизация OK');
+    console.log('✓ Авторизация подтверждена, загружаем dashboard');
     
     // Синхронные функции - критически важные
     try {

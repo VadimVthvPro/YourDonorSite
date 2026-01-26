@@ -430,8 +430,9 @@ class Messenger {
     renderNotificationMessage(msg) {
         const title = msg.type === 'invitation' ? '✅ Приглашение на донацию' : '📢 Уведомление';
         
-        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Определяем, своё ли это сообщение
-        const isOwn = msg.sender_role === this.userRole;
+        // ✅ ИСПРАВЛЕНО: Используем sender_type вместо sender_role
+        const normalizedUserRole = this.userRole === 'medical_center' ? 'medcenter' : this.userRole;
+        const isOwn = msg.sender_type === normalizedUserRole;
         const messageClass = isOwn ? 'own' : 'other';
         
         return `
