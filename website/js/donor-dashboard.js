@@ -47,6 +47,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             
             // Инициализируем мессенджер после загрузки данных
             initMessenger();
+            
+            // 🔄 ЗАПУСКАЕМ POLLING
+            startDataPolling();
         } catch (e) {
             console.error('✗ Ошибка загрузки данных:', e);
         }
@@ -234,9 +237,16 @@ function displayUserData(user) {
 /**
  * Загрузка активных запросов крови из API
  */
-async function loadRequestsFromAPI() {
+// Кэш для отслеживания изменений
+let cachedRequests = [];
+
+async function loadRequestsFromAPI(isPolling = false) {
     try {
-        console.log('Загрузка запросов крови...');
+        if (isPolling) {
+            console.log('🔄 Обновление запросов крови (polling)...');
+        } else {
+            console.log('Загрузка запросов крови...');
+        }
         
         const response = await fetch(`${DONOR_API_URL}/donor/blood-requests`, {
             headers: getAuthHeaders()
@@ -247,18 +257,65 @@ async function loadRequestsFromAPI() {
         }
         
         const requests = await response.json();
-        console.log('Запросы крови загружены:', requests);
+        
+        // 🔥 УМНОЕ ОБНОВЛЕНИЕ: сравниваем с кэшем
+        if (isPolling && cachedRequests.length > 0) {
+            const hasChanges = checkRequestsChanged(cachedRequests, requests);
+            
+            if (!hasChanges) {
+                console.log('✓ Запросы не изменились, пропускаем перерисовку');
+                return;
+            }
+            
+            // Показываем уведомление о новых запросах
+            const newRequestsCount = requests.length - cachedRequests.length;
+            if (newRequestsCount > 0) {
+                showUpdateNotification(`Появилось новых запросов: ${newRequestsCount}`);
+            }
+        }
+        
+        cachedRequests = requests;
+        console.log('Запросы крови загружены:', requests.length);
         
         displayBloodRequests(requests);
         updateRequestsBadges(requests);
         displayRecentUrgentRequests(requests); // Отображение на главной
     } catch (error) {
         console.error('Ошибка загрузки запросов крови:', error);
-        const container = document.getElementById('blood-requests-list');
-        if (container) {
-            container.innerHTML = '<div class="request-empty"><p>Ошибка загрузки запросов</p></div>';
+        if (!isPolling) {
+            const container = document.getElementById('blood-requests-list');
+            if (container) {
+                container.innerHTML = '<div class="request-empty"><p>Ошибка загрузки запросов</p></div>';
+            }
         }
     }
+}
+
+/**
+ * Проверка изменений в запросах
+ */
+function checkRequestsChanged(oldRequests, newRequests) {
+    if (oldRequests.length !== newRequests.length) {
+        return true;
+    }
+    
+    // Сравниваем ID и статусы
+    for (let i = 0; i < oldRequests.length; i++) {
+        const oldR = oldRequests[i];
+        const newR = newRequests.find(r => r.id === oldR.id);
+        
+        if (!newR) return true; // Запрос удалён
+        
+        // Проверяем изменения важных полей
+        if (oldR.response_status !== newR.response_status ||
+            oldR.response_id !== newR.response_id ||
+            oldR.urgency !== newR.urgency ||
+            oldR.current_donors !== newR.current_donors) {
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 /**
@@ -2078,8 +2135,12 @@ function showRequestDetails(requestId) {
 /**
  * Загрузить статистику донаций
  */
-async function loadDonationStatistics() {
+async function loadDonationStatistics(isPolling = false) {
     try {
+        if (isPolling) {
+            console.log('🔄 Обновление статистики (polling)...');
+        }
+        
         const response = await fetch(`${DONOR_API_URL}/donor/statistics`, {
             headers: getAuthHeaders()
         });
@@ -2090,7 +2151,10 @@ async function loadDonationStatistics() {
         }
         
         const stats = await response.json();
-        console.log('Статистика загружена:', stats);
+        
+        if (!isPolling) {
+            console.log('Статистика загружена:', stats);
+        }
         
         // ✅ ИСПРАВЛЕНИЕ: Обновляем главную статистику (sidebar)
         updateMainStatistics(stats);
@@ -2697,4 +2761,113 @@ if (passwordChangeForm) {
         }
     });
 }
+
+// ============================================
+// 🔄 АВТООБНОВЛЕНИЕ ДАННЫХ (POLLING)
+// ============================================
+
+/**
+ * Запуск автообновления данных
+ */
+function startDataPolling() {
+    if (!window.dataPoller) {
+        console.warn('⚠️ DataPoller не загружен, пропускаем polling');
+        return;
+    }
+    
+    console.log('🔄 Запуск автообновления данных для донора');
+    
+    // Запросы крови - каждые 10 секунд
+    window.dataPoller.start('donor-blood-requests', async () => {
+        await loadRequestsFromAPI(true); // true = polling mode
+    }, 10000, false);
+    
+    // Статистика - каждые 30 секунд
+    window.dataPoller.start('donor-statistics', async () => {
+        await loadDonationStatistics(true); // true = polling mode
+    }, 30000, false);
+    
+    console.log('✅ Автообновление запущено');
+}
+
+/**
+ * Показать уведомление об обновлении
+ */
+function showUpdateNotification(message) {
+    // Создаём toast уведомление
+    const toast = document.createElement('div');
+    toast.className = 'update-toast';
+    toast.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+        </svg>
+        <span>${message}</span>
+    `;
+    
+    // Добавляем стили если их нет
+    if (!document.getElementById('update-toast-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'update-toast-styles';
+        styles.textContent = `
+            .update-toast {
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                font-size: 14px;
+                font-weight: 500;
+                z-index: 10000;
+                animation: slideInRight 0.3s ease-out;
+            }
+            
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(400px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes slideOutRight {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(400px);
+                    opacity: 0;
+                }
+            }
+            
+            .update-toast svg {
+                animation: rotate 2s linear infinite;
+            }
+            
+            @keyframes rotate {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    document.body.appendChild(toast);
+    
+    // Убираем через 3 секунды
+    setTimeout(() => {
+        toast.style.animation = 'slideOutRight 0.3s ease-out';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
 

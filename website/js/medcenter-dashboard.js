@@ -99,6 +99,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                 loadDonorsFromAPI().then(() => console.log('✓ Доноры загружены')).catch(e => console.error('✗ Ошибка доноров:', e)),
                 loadStatisticsFromAPI().then(() => console.log('✓ Статистика загружена')).catch(e => console.error('✗ Ошибка статистики:', e))
             ]);
+            
+            // 🔄 ЗАПУСКАЕМ POLLING
+            startDataPolling();
         } catch (e) {
             console.error('✗ Критическая ошибка загрузки:', e);
         }
@@ -420,14 +423,39 @@ async function setBloodStatus(bloodType, status) {
 /**
  * Отклики доноров - из API
  */
-async function loadResponsesFromAPI() {
+// Кэш для отслеживания изменений откликов
+let cachedResponses = [];
+
+async function loadResponsesFromAPI(isPolling = false) {
     const mcId = getMedcenterId();
     
     try {
+        if (isPolling) {
+            console.log('🔄 Обновление откликов (polling)...');
+        }
+        
         const response = await fetch(`${MC_API_URL}/responses?medical_center_id=${mcId}`, {
             headers: getAuthHeaders()
         });
         const responses = await response.json();
+        
+        // 🔥 УМНОЕ ОБНОВЛЕНИЕ: сравниваем с кэшем
+        if (isPolling && cachedResponses.length > 0) {
+            const hasChanges = checkResponsesChanged(cachedResponses, responses);
+            
+            if (!hasChanges) {
+                console.log('✓ Отклики не изменились, пропускаем перерисовку');
+                return;
+            }
+            
+            // Показываем уведомление о новых откликах
+            const newResponsesCount = responses.length - cachedResponses.length;
+            if (newResponsesCount > 0) {
+                showUpdateNotification(`Новых откликов: ${newResponsesCount}`);
+            }
+        }
+        
+        cachedResponses = responses;
         
         // Сохраняем в кэш
         responsesCache = responses;
@@ -438,8 +466,35 @@ async function loadResponsesFromAPI() {
         renderResponses(responses);
     } catch (error) {
         console.error('Ошибка загрузки откликов:', error);
-        renderResponses([]);
+        if (!isPolling) {
+            renderResponses([]);
+        }
     }
+}
+
+/**
+ * Проверка изменений в откликах
+ */
+function checkResponsesChanged(oldResponses, newResponses) {
+    if (oldResponses.length !== newResponses.length) {
+        return true;
+    }
+    
+    // Сравниваем ID и статусы
+    for (let i = 0; i < oldResponses.length; i++) {
+        const oldR = oldResponses[i];
+        const newR = newResponses.find(r => r.id === oldR.id);
+        
+        if (!newR) return true; // Отклик удалён
+        
+        // Проверяем изменения важных полей
+        if (oldR.status !== newR.status ||
+            oldR.donation_completed !== newR.donation_completed) {
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 function populateRequestFilter(responses) {
@@ -2840,3 +2895,117 @@ if (passwordForm) {
         }
     });
 }
+
+// ============================================
+// 🔄 АВТООБНОВЛЕНИЕ ДАННЫХ (POLLING)
+// ============================================
+
+/**
+ * Запуск автообновления данных для медцентра
+ */
+function startDataPolling() {
+    if (!window.dataPoller) {
+        console.warn('⚠️ DataPoller не загружен, пропускаем polling');
+        return;
+    }
+    
+    console.log('🔄 Запуск автообновления данных для медцентра');
+    
+    // Отклики доноров - каждые 5 секунд (ВАЖНО!)
+    window.dataPoller.start('medcenter-responses', async () => {
+        await loadResponsesFromAPI(true); // true = polling mode
+    }, 5000, false);
+    
+    // Запросы крови - каждые 10 секунд
+    window.dataPoller.start('medcenter-blood-requests', async () => {
+        await loadBloodRequestsFromAPI(true); // true = polling mode (добавим поддержку)
+    }, 10000, false);
+    
+    // Статистика - каждые 30 секунд
+    window.dataPoller.start('medcenter-statistics', async () => {
+        await loadStatisticsFromAPI(true); // true = polling mode (добавим поддержку)
+    }, 30000, false);
+    
+    console.log('✅ Автообновление запущено');
+}
+
+/**
+ * Показать уведомление об обновлении
+ */
+function showUpdateNotification(message) {
+    // Создаём toast уведомление
+    const toast = document.createElement('div');
+    toast.className = 'update-toast';
+    toast.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+        </svg>
+        <span>${message}</span>
+    `;
+    
+    // Добавляем стили если их нет
+    if (!document.getElementById('update-toast-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'update-toast-styles';
+        styles.textContent = `
+            .update-toast {
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                font-size: 14px;
+                font-weight: 500;
+                z-index: 10000;
+                animation: slideInRight 0.3s ease-out;
+            }
+            
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(400px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes slideOutRight {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(400px);
+                    opacity: 0;
+                }
+            }
+            
+            .update-toast svg {
+                animation: rotate 2s linear infinite;
+            }
+            
+            @keyframes rotate {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    document.body.appendChild(toast);
+    
+    // Убираем через 3 секунды
+    setTimeout(() => {
+        toast.style.animation = 'slideOutRight 0.3s ease-out';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
