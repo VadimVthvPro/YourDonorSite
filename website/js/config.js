@@ -15,7 +15,7 @@ const CONFIG = {
     },
     
     // Для продакшена - Nginx проксирует /api/ на Flask
-    // БЕЗ порта! Nginx сам перенаправит на 5001
+    // БЕЗ ПОРТА! Nginx сам перенаправит на 5001
     production: {
         API_URL: `${window.location.protocol}//${window.location.hostname}/api`
     }
@@ -23,5 +23,8 @@ const CONFIG = {
 
 // Экспортируем API URL
 window.API_URL = IS_PRODUCTION ? CONFIG.production.API_URL : CONFIG.development.API_URL;
+
+// Версия для cache busting
+window.VERSION = Date.now();
 
 console.log(`🌐 API URL: ${window.API_URL} (${IS_PRODUCTION ? 'production' : 'development'})`);
