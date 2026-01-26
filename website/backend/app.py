@@ -2129,6 +2129,20 @@ def update_response(response_id):
     
     # При завершении обновляем статистику донора
     if new_status == 'completed':
+        # Получаем группу крови донора и запроса для статистики
+        donor = query_db(
+            "SELECT blood_type FROM users WHERE id = %s",
+            (resp['user_id'],), one=True
+        )
+        
+        blood_request = query_db(
+            "SELECT blood_type FROM blood_requests WHERE id = %s",
+            (resp['request_id'],), one=True
+        )
+        
+        donor_blood_type = donor['blood_type'] if donor else None
+        request_blood_type = blood_request['blood_type'] if blood_request else donor_blood_type
+        
         # Обновляем счётчики в таблице users
         query_db(
             """UPDATE users SET 
@@ -2139,14 +2153,16 @@ def update_response(response_id):
             (resp['user_id'],), commit=True
         )
         
-        # Создаём запись в donation_history для отображения в кабинете донора
+        # Создаём запись в donation_history для отображения в кабинете донора и медцентра
         query_db(
             """INSERT INTO donation_history 
-               (donor_id, medical_center_id, donation_date, volume_ml, donation_type, created_at)
-               VALUES (%s, %s, CURRENT_DATE, 450, 'blood', NOW())""",
-            (resp['user_id'], resp['medical_center_id']), commit=True
+               (donor_id, medical_center_id, donation_date, blood_type, volume_ml, 
+                donation_type, status, response_id, created_at)
+               VALUES (%s, %s, CURRENT_DATE, %s, 450, 'blood', 'completed', %s, NOW())""",
+            (resp['user_id'], resp['medical_center_id'], request_blood_type, response_id),
+            commit=True
         )
-        app.logger.info(f"✅ Донация добавлена в историю: donor_id={resp['user_id']}, medical_center_id={resp['medical_center_id']}")
+        app.logger.info(f"✅ Донация добавлена в историю: donor_id={resp['user_id']}, mc={resp['medical_center_id']}, blood_type={request_blood_type}")
     
     # ПРИ ПОДТВЕРЖДЕНИИ: создать диалог и отправить уведомление
     if new_status == 'confirmed':
@@ -2499,11 +2515,22 @@ def mark_message_read(msg_id):
 def get_medcenter_stats():
     mc_id = g.session['medical_center_id']
     
+    # ✅ ИСПРАВЛЕНО: Уникальные доноры из donation_responses (не привязаны к медцентру!)
     donors_count = query_db(
-        "SELECT COUNT(*) as count FROM users WHERE medical_center_id = %s AND is_active = TRUE",
+        """SELECT COUNT(DISTINCT dr.user_id) as count 
+           FROM donation_responses dr
+           JOIN blood_requests br ON dr.request_id = br.id
+           WHERE br.medical_center_id = %s""",
         (mc_id,), one=True
     )
     
+    # ✅ ИСПРАВЛЕНО: ВСЕ запросы (не только active) для меню
+    total_requests = query_db(
+        "SELECT COUNT(*) as count FROM blood_requests WHERE medical_center_id = %s",
+        (mc_id,), one=True
+    )
+    
+    # Active запросы отдельно
     active_requests = query_db(
         "SELECT COUNT(*) as count FROM blood_requests WHERE medical_center_id = %s AND status = 'active'",
         (mc_id,), one=True
@@ -2523,15 +2550,20 @@ def get_medcenter_stats():
         (mc_id, start_of_month), one=True
     )
     
+    # ✅ ИСПРАВЛЕНО: Доноры по группам крови из donation_responses + users
     donors_by_blood = query_db(
-        """SELECT blood_type, COUNT(*) as count FROM users 
-           WHERE medical_center_id = %s AND is_active = TRUE AND blood_type IS NOT NULL
-           GROUP BY blood_type""",
+        """SELECT u.blood_type, COUNT(DISTINCT dr.user_id) as count 
+           FROM donation_responses dr
+           JOIN blood_requests br ON dr.request_id = br.id
+           JOIN users u ON dr.user_id = u.id
+           WHERE br.medical_center_id = %s AND u.blood_type IS NOT NULL
+           GROUP BY u.blood_type""",
         (mc_id,)
     )
     
     return jsonify({
         'total_donors': donors_count['count'],
+        'total_requests': total_requests['count'],  # ✅ Добавлено: все запросы
         'active_requests': active_requests['count'],
         'pending_responses': pending_responses['count'],
         'month_donations': month_donations['count'],

@@ -102,13 +102,13 @@ function showTelegramVerificationModal(userId, userName) {
 ```python
 async def verify_code(update, context, code):
     # Ищем код в БД
-    link_data = query_db(
-        """SELECT tlc.user_id, u.full_name, u.blood_type
-           FROM telegram_link_codes tlc
-           JOIN users u ON tlc.user_id = u.id
-           WHERE tlc.code = %s AND tlc.expires_at > NOW() AND tlc.is_used = FALSE""",
-        (code,), one=True
-    )
+link_data = query_db(
+    """SELECT tlc.user_id, u.full_name, u.blood_type
+       FROM telegram_link_codes tlc
+       JOIN users u ON tlc.user_id = u.id
+       WHERE tlc.code = %s AND tlc.expires_at > NOW() AND tlc.is_used = FALSE""",
+    (code,), one=True
+)
     
     if not link_data:
         # ❌ КОД НЕ НАЙДЕН!

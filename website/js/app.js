@@ -14,8 +14,53 @@ if (!window.API_URL) {
 }
 const API_URL = window.API_URL;
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Проверяем авторизацию и обновляем кнопки
+/**
+ * 🔥 АВТОМАТИЧЕСКИЙ ВХОД ПРИ ОТКРЫТИИ ГЛАВНОЙ СТРАНИЦЫ
+ * Проверяет сохранённую сессию и перенаправляет на dashboard
+ */
+async function autoRedirectIfAuthenticated() {
+    // Проверяем, что AuthStorage доступен
+    if (typeof AuthStorage === 'undefined') {
+        console.warn('⚠️ AuthStorage не загружен, пропускаем авто-вход');
+        return false;
+    }
+    
+    // Проверяем наличие сохранённой сессии
+    if (!AuthStorage.hasSession()) {
+        console.log('📋 Нет сохранённой сессии');
+        return false;
+    }
+    
+    console.log('🔍 Найдена сохранённая сессия, проверяем валидность...');
+    
+    // Валидируем токен на backend
+    const validation = await AuthStorage.validate();
+    
+    if (validation.valid) {
+        console.log('✅ Сессия валидна! Автоматический редирект на dashboard...');
+        
+        const userType = AuthStorage.getUserType();
+        const dashboardUrl = userType === 'donor' 
+            ? 'pages/donor-dashboard.html' 
+            : 'pages/medcenter-dashboard.html';
+        
+        // Перенаправляем на dashboard
+        window.location.href = dashboardUrl;
+        return true; // Редирект выполнен
+    } else {
+        console.log('❌ Сессия невалидна');
+        return false;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+    // 🔥 СНАЧАЛА проверяем сессию и делаем редирект при необходимости
+    const redirected = await autoRedirectIfAuthenticated();
+    
+    // Если редирект выполнен, не инициализируем страницу
+    if (redirected) return;
+    
+    // Проверяем авторизацию и обновляем кнопки (если сессия есть, но редиректа не было)
     checkAuthAndUpdateNav();
     
     // Инициализация всех компонентов

@@ -845,14 +845,30 @@ function renderDashboardStatistics(apiStats) {
     const pendingResponses = document.getElementById('stat-pending');
     const monthDonations = document.getElementById('stat-donations-month');
     
+    // ✅ ДОБАВЛЕНО: Обновление элементов меню (раздел "Статистика")
+    const menuRequests = document.getElementById('menu-stat-requests');
+    const menuDonors = document.getElementById('menu-stat-donors');
+    
     if (totalDonors) {
         totalDonors.textContent = formatNumber(apiStats.total_donors || 0);
         console.log('✓ Доноры обновлены:', apiStats.total_donors);
     }
     if (activeRequests) {
-        activeRequests.textContent = formatNumber(apiStats.active_requests || 0);
-        console.log('✓ Запросы обновлены:', apiStats.active_requests);
+        // ✅ Используем total_requests для меню (все запросы), а не только active
+        activeRequests.textContent = formatNumber(apiStats.total_requests || apiStats.active_requests || 0);
+        console.log('✓ Запросы обновлены:', apiStats.total_requests || apiStats.active_requests);
     }
+    
+    // ✅ Обновляем элементы меню
+    if (menuRequests) {
+        menuRequests.textContent = formatNumber(apiStats.total_requests || 0);
+        console.log('✓ Меню: Запросы обновлены:', apiStats.total_requests);
+    }
+    if (menuDonors) {
+        menuDonors.textContent = formatNumber(apiStats.total_donors || 0);
+        console.log('✓ Меню: Доноры обновлены:', apiStats.total_donors);
+    }
+    
     if (pendingResponses) {
         pendingResponses.textContent = formatNumber(apiStats.pending_responses || 0);
         console.log('✓ Ожидают обновлены:', apiStats.pending_responses);
@@ -1059,7 +1075,7 @@ function renderBloodRequests(requests) {
                     `}
                     
                         ${req.status === 'active' ? `
-                        <button class="btn btn-primary btn-sm" onclick="markRequestFulfilled(${req.id})">
+                        <button class="btn btn-primary btn-sm" onclick="fulfillRequest(${req.id})">
                                 Выполнен
                             </button>
                         ${req.source !== 'traffic_light' ? `
@@ -2201,7 +2217,7 @@ async function rejectResponse(responseId) {
 // СТАТИСТИКА
 // ============================================
 
-let currentStatsperiod = 'month';
+let currentStatsperiod = 'all';  // Показываем всю статистику по умолчанию
 let statsData = null;
 
 async function initStatistics() {
@@ -2281,11 +2297,24 @@ function renderStatistics(stats) {
         return;
     }
     
-    // Основные метрики (с форматированием)
-    document.getElementById('stat-requests').textContent = formatNumber(stats.blood_requests.total || 0);
-    document.getElementById('stat-donors').textContent = formatNumber(stats.responses.unique_donors || 0);
-    document.getElementById('stat-donations').textContent = formatNumber(stats.donations.total || 0);
-    document.getElementById('stat-volume').textContent = formatVolume(stats.donations.total_volume_ml || 0);
+    // ✅ ИСПРАВЛЕНО: Обновляем элементы в разделе "Статистика" (НЕ sidebar!)
+    const menuRequestsEl = document.getElementById('menu-stat-requests');
+    const menuDonorsEl = document.getElementById('menu-stat-donors');
+    const statDonationsEl = document.getElementById('stat-donations');
+    const statVolumeEl = document.getElementById('stat-volume');
+    
+    if (menuRequestsEl) {
+        menuRequestsEl.textContent = formatNumber(stats.blood_requests.total || 0);
+    }
+    if (menuDonorsEl) {
+        menuDonorsEl.textContent = formatNumber(stats.responses.unique_donors || 0);
+    }
+    if (statDonationsEl) {
+        statDonationsEl.textContent = formatNumber(stats.donations.total || 0);
+    }
+    if (statVolumeEl) {
+        statVolumeEl.textContent = formatVolume(stats.donations.total_volume_ml || 0);
+    }
     
     // Изменения
     renderStatChange('stat-requests-change', stats.blood_requests.change_percent || 0);

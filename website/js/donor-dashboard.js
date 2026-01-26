@@ -40,7 +40,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             await Promise.all([
                 loadRequestsFromAPI(),
                 // loadMessagesFromAPI(), // Старый API, теперь используется мессенджер
-                loadDonateCenters()
+                loadDonateCenters(),
+                loadDonationStatistics() // ✅ ДОБАВЛЕНО: загрузка статистики
             ]);
             console.log('✓ Все данные загружены');
             
@@ -2091,10 +2092,77 @@ async function loadDonationStatistics() {
         const stats = await response.json();
         console.log('Статистика загружена:', stats);
         
+        // ✅ ИСПРАВЛЕНИЕ: Обновляем главную статистику (sidebar)
+        updateMainStatistics(stats);
+        
         renderDonationStatistics(stats);
     } catch (error) {
         console.error('Ошибка загрузки статистики:', error);
     }
+}
+
+/**
+ * Обновить главную статистику в sidebar
+ */
+function updateMainStatistics(stats) {
+    // Обновляем sidebar статистику
+    const totalDonations = stats.total_donations || 0;
+    const statDonationsEl = document.getElementById('stat-donations');
+    if (statDonationsEl) {
+        statDonationsEl.textContent = totalDonations;
+    }
+    
+    const volumeLiters = ((stats.total_volume_ml || 0) / 1000).toFixed(1);
+    const totalVolumeEl = document.getElementById('total-volume');
+    if (totalVolumeEl) {
+        totalVolumeEl.textContent = volumeLiters + ' л';
+    }
+    
+    const livesSavedEl = document.getElementById('lives-saved');
+    if (livesSavedEl) {
+        livesSavedEl.textContent = stats.lives_saved_estimate || 0;
+    }
+    
+    // Обновляем последнюю донацию
+    if (stats.last_donation_date) {
+        const lastDonationEl = document.getElementById('info-last-donation');
+        if (lastDonationEl) {
+            lastDonationEl.textContent = formatDateShort(stats.last_donation_date);
+        }
+        
+        if (stats.days_until_next !== null) {
+            const statNextEl = document.getElementById('stat-next');
+            const statStatusEl = document.getElementById('stat-status');
+            
+            if (stats.can_donate) {
+                if (statNextEl) statNextEl.textContent = 'Готов';
+                if (statStatusEl) statStatusEl.textContent = 'Готов';
+            } else {
+                if (statNextEl) statNextEl.textContent = `${stats.days_until_next} дн.`;
+                if (statStatusEl) statStatusEl.textContent = 'Восст.';
+            }
+        }
+    } else {
+        const lastDonationEl = document.getElementById('info-last-donation');
+        if (lastDonationEl) {
+            lastDonationEl.textContent = 'Ещё не сдавали';
+        }
+        
+        const statNextEl = document.getElementById('stat-next');
+        const statStatusEl = document.getElementById('stat-status');
+        if (statNextEl) {
+            statNextEl.textContent = 'Готов';
+        }
+        if (statStatusEl) {
+            statStatusEl.textContent = 'Готов';
+        }
+    }
+    
+    console.log('✅ Главная статистика обновлена:', {
+        donations: totalDonations,
+        volume: volumeLiters,
+        lives: stats.lives_saved_estimate
+    });
 }
 
 /**
@@ -2274,9 +2342,15 @@ function renderAchievements(achievements) {
  */
 function renderDonationsHistory(history) {
     const container = document.getElementById('donations-history');
-    if (!container) return;
+    if (!container) {
+        console.error('❌ Элемент donations-history не найден в DOM!');
+        return;
+    }
     
-    if (!history || history.length === 0) {
+    console.log('📋 Рендерим историю донаций, получено записей:', history ? history.length : 0, history);
+    
+    if (!history || !Array.isArray(history) || history.length === 0) {
+        console.log('⚠️ История донаций пуста или не массив');
         container.innerHTML = `
             <div class="empty-history">
                 <div class="empty-history-icon">🩸</div>
@@ -2295,14 +2369,16 @@ function renderDonationsHistory(history) {
             </div>
             <div class="donation-info">
                 <div class="donation-center">${donation.medical_center_name || 'Медицинский центр'}</div>
-                <div class="donation-details">${donation.volume_ml} мл</div>
+                <div class="donation-details">${donation.volume_ml || 450} мл</div>
             </div>
             <div class="donation-blood-type">
-                🩸 ${donation.blood_type}
+                🩸 ${donation.blood_type || '-'}
             </div>
             <div class="donation-status completed">✅ Успешно</div>
         </div>
     `).join('');
+    
+    console.log('✅ История донаций отрендерена, записей:', history.length);
 }
 
 // ============================================
