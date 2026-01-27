@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             await Promise.all([
                 loadRequestsFromAPI(),
                 // loadMessagesFromAPI(), // Старый API, теперь используется мессенджер
-                loadDonateCenters(),
+                // loadDonateCenters(), // УБРАНО: секция "Хочу сдать кровь" удалена, используйте "Запросы крови"
                 loadDonationStatistics() // ✅ ДОБАВЛЕНО: загрузка статистики
             ]);
             console.log('✓ Все данные загружены');
@@ -938,7 +938,6 @@ function updatePageTitle(sectionId) {
         'dashboard': 'Личный кабинет',
         'requests': 'Запросы крови',
         'donations': 'Мои донации',
-        'donate': 'Хочу сдать кровь',
         'messages': 'Сообщения',
         'info': 'О донорстве',
         'profile': 'Мой профиль'
@@ -1579,250 +1578,23 @@ function initLogout() {
     }
 }
 
-/**
- * Загрузка центров для донации
+/*
+ * УБРАНО: Секция "Хочу сдать кровь" удалена
+ * Функционал перенесён в секцию "Запросы крови"
+ * 
+ * Если нужно восстановить - раскомментируйте функции ниже
  */
+
+/*
 async function loadDonateCenters() {
-    try {
-        console.log('Загрузка центров донации...');
-        
-        // Получаем АКТУАЛЬНЫЕ данные донора из API, а не из localStorage
-        const profileResponse = await fetch(`${DONOR_API_URL}/donor/profile`, {
-            headers: getAuthHeaders()
-        });
-        
-        if (!profileResponse.ok) {
-            throw new Error(`Ошибка загрузки профиля: ${profileResponse.status}`);
-        }
-        
-        const donor = await profileResponse.json();
-        const bloodType = donor.blood_type;
-        const districtId = donor.district_id;
-        
-        console.log('Данные донора:', { bloodType, districtId });
-        
-        if (!bloodType || !districtId) {
-            console.warn('Нет информации о группе крови или районе донора');
-            const container = document.getElementById('donate-centers');
-            if (container) {
-                container.innerHTML = '<p class="no-data">Заполните профиль для просмотра центров донации</p>';
-            }
-            return;
-        }
-        
-        // Загружаем медцентры района с данными о потребности в крови
-        const response = await fetch(`${DONOR_API_URL}/medical-centers?district_id=${districtId}`, {
-            headers: getAuthHeaders()
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const centers = await response.json();
-        console.log('Центры донации загружены:', centers.length, 'шт.');
-        
-        displayDonateCenters(centers, bloodType);
-    } catch (error) {
-        console.error('Ошибка загрузки центров донации:', error);
-        const container = document.getElementById('donate-centers');
-        if (container) {
-            container.innerHTML = '<p class="no-data">Ошибка загрузки центров донации</p>';
-        }
-    }
+    // Функция удалена - используйте "Запросы крови"
 }
+*/
 
-/**
- * Отображение центров для донации
+/*
+ * УБРАНО: Функции displayDonateCenters, openScheduleDonationModal, scheduleDonation
+ * Секция "Хочу сдать кровь" удалена, используйте "Запросы крови"
  */
-function displayDonateCenters(centers, userBloodType) {
-    const container = document.getElementById('donate-centers');
-    
-    if (!container) {
-        console.warn('Контейнер donate-centers не найден');
-        return;
-    }
-    
-    if (!centers || centers.length === 0) {
-        container.innerHTML = `
-            <div class="request-empty">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                </svg>
-                <p>Центры донации не найдены в вашем районе</p>
-            </div>
-        `;
-        return;
-    }
-    
-    container.innerHTML = centers.map(center => {
-        // Проверяем, нужна ли этому центру кровь донора
-        const needsBlood = center.blood_needs && center.blood_needs.some(
-            need => need.blood_type === userBloodType && need.status !== 'normal'
-        );
-        
-        const urgentNeed = center.blood_needs && center.blood_needs.find(
-            need => need.blood_type === userBloodType && need.status === 'critical'
-        );
-        
-        // Светофор крови
-        const bloodStatus = center.blood_needs && center.blood_needs.length > 0 ? 
-            center.blood_needs.map(need => {
-                const statusEmoji = need.status === 'critical' ? '🔴' : need.status === 'low' ? '🟡' : '🟢';
-                return `<span class="blood-status-item" data-status="${need.status}">${statusEmoji} ${need.blood_type}</span>`;
-            }).join('') : '';
-        
-        return `
-            <div class="center-card-square ${needsBlood ? 'needs-blood' : ''} ${urgentNeed ? 'urgent' : ''}" data-id="${center.id}">
-                ${urgentNeed ? '<div class="urgent-badge">🚨 СРОЧНО!</div>' : ''}
-                
-                <div class="center-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                    </svg>
-                </div>
-                
-                <h3 class="center-name" title="${center.name}">${center.name}</h3>
-                
-                <div class="center-contacts">
-                    ${center.address ? `
-                        <div class="contact-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
-                            <span>${center.address}</span>
-                        </div>
-                    ` : ''}
-                    
-                    ${center.phone ? `
-                        <div class="contact-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-                            </svg>
-                            <a href="tel:${center.phone}">${center.phone}</a>
-                        </div>
-                    ` : ''}
-                </div>
-                
-                ${bloodStatus ? `
-                    <div class="blood-traffic-light">
-                        ${bloodStatus}
-                    </div>
-                ` : ''}
-                
-                <button class="btn-schedule-square" data-center-id="${center.id}" data-center-name="${center.name}">
-                    Записаться
-                </button>
-            </div>
-        `;
-    }).join('');
-    
-    // Добавляем обработчики для кнопок записи
-    container.querySelectorAll('.btn-schedule-square, .btn-schedule-donation').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const centerId = btn.dataset.centerId;
-            const centerName = btn.dataset.centerName;
-            openScheduleDonationModal(centerId, centerName);
-        });
-    });
-}
-
-/**
- * Открыть модальное окно для записи на донацию
- */
-function openScheduleDonationModal(centerId, centerName) {
-    // Создаём модальное окно
-    const modal = document.createElement('div');
-    modal.className = 'modal-respond active';
-    modal.innerHTML = `
-        <div class="modal-respond-content">
-            <div class="modal-respond-header">
-                <h3>Записаться на донацию</h3>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-respond-body">
-                <p><strong>Медицинский центр:</strong> ${centerName}</p>
-                <p style="margin-top: 12px; font-size: var(--text-sm); color: var(--color-gray-600);">
-                    Медицинский центр получит информацию о вашей готовности сдать кровь и свяжется с вами для уточнения деталей.
-                </p>
-                
-                <div style="margin-top: 16px;">
-                    <label for="donation-date" style="display: block; margin-bottom: 8px; font-weight: 500;">
-                        Предпочтительная дата (необязательно):
-                    </label>
-                    <input type="date" id="donation-date" 
-                           style="width: 100%; padding: 12px; border: 1px solid var(--color-gray-300); border-radius: var(--radius-md);"
-                           min="${new Date().toISOString().split('T')[0]}">
-                </div>
-                
-                <div style="margin-top: 16px;">
-                    <label for="donation-comment" style="display: block; margin-bottom: 8px; font-weight: 500;">
-                        Комментарий (необязательно):
-                    </label>
-                    <textarea id="donation-comment" placeholder="Дополнительная информация или пожелания" 
-                              style="width: 100%; padding: 12px; border: 1px solid var(--color-gray-300); border-radius: var(--radius-md); min-height: 80px; resize: vertical;"></textarea>
-                </div>
-            </div>
-            <div class="modal-respond-footer">
-                <button class="btn-cancel-response" onclick="this.closest('.modal-respond').remove()">
-                    Отмена
-                </button>
-                <button class="btn-respond" id="confirm-schedule-btn">
-                    Отправить заявку
-                </button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Закрытие по клику вне
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.remove();
-        }
-    });
-    
-    // Закрытие по кнопке
-    modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
-    
-    // Подтверждение
-    modal.querySelector('#confirm-schedule-btn').addEventListener('click', () => {
-        const date = document.getElementById('donation-date').value;
-        const comment = document.getElementById('donation-comment').value;
-        scheduleDonation(centerId, centerName, date, comment);
-        modal.remove();
-    });
-}
-
-/**
- * Отправить заявку на плановую донацию
- */
-async function scheduleDonation(centerId, centerName, plannedDate, comment) {
-    try {
-        const response = await fetch(`${DONOR_API_URL}/donor/schedule-donation`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                medical_center_id: parseInt(centerId),
-                planned_date: plannedDate || null,
-                comment: comment || null
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            showNotification(`✅ Заявка отправлена в "${centerName}". Медицинский центр свяжется с вами для уточнения деталей.`, 'success');
-        } else {
-            showNotification('❌ ' + (result.error || 'Ошибка отправки заявки'), 'error');
-        }
-    } catch (error) {
-        console.error('Ошибка отправки заявки:', error);
-        showNotification('❌ Ошибка соединения', 'error');
-    }
-}
 
 /**
  * Запуск таймера обратного отсчёта для кода
@@ -2612,13 +2384,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // CTA кнопка
+    // CTA кнопка - переход к Запросам крови
     const ctaButton = document.getElementById('donate-cta');
     if (ctaButton) {
         ctaButton.addEventListener('click', () => {
-            // Переход к секции "Хочу сдать кровь"
-            const donateSection = document.querySelector('[data-section="donate"]');
-            if (donateSection) donateSection.click();
+            // Переход к секции "Запросы крови"
+            const requestsSection = document.querySelector('[data-section="requests"]');
+            if (requestsSection) requestsSection.click();
         });
     }
 });

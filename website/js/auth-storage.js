@@ -177,11 +177,13 @@ class AuthStorage {
      */
     static async _doRefresh() {
         const API_URL = window.API_URL || `${window.location.protocol}//${window.location.hostname}/api`;
+        const url = `${API_URL}/auth/refresh`;
         
         try {
-            console.log('🔄 Вызов /api/auth/refresh...');
+            console.log(`🔄 Вызов ${url}...`);
+            console.log('  - credentials: include (отправляем cookies)');
             
-            const response = await fetch(`${API_URL}/auth/refresh`, {
+            const response = await fetch(url, {
                 method: 'POST',
                 credentials: 'include', // ВАЖНО: отправляем cookies
                 headers: {
@@ -189,8 +191,11 @@ class AuthStorage {
                 }
             });
             
+            console.log(`  - Статус ответа: ${response.status}`);
+            
             if (response.ok) {
                 const data = await response.json();
+                console.log('  - Получен новый access_token');
                 
                 // Сохраняем новый access token
                 this._accessToken = data.access_token;
@@ -201,7 +206,7 @@ class AuthStorage {
                     localStorage.setItem(`${data.user_type}_user`, JSON.stringify(data.user));
                 }
                 
-                // Для совместимости
+                // Сохраняем в localStorage для восстановления при следующем визите
                 localStorage.setItem('user_type', data.user_type);
                 localStorage.setItem('auth_token', data.access_token);
                 
@@ -210,17 +215,22 @@ class AuthStorage {
                 
             } else if (response.status === 401) {
                 // Refresh token истёк или невалиден
-                console.warn('⚠️ Refresh token истёк, требуется повторный вход');
+                const errorData = await response.json().catch(() => ({}));
+                console.warn(`⚠️ Refresh token невалиден: ${errorData.error || 'неизвестно'}`);
+                console.warn(`  - Код: ${errorData.code || 'нет'}`);
                 this.clear();
                 return false;
                 
             } else {
+                const errorText = await response.text().catch(() => '');
                 console.error(`❌ Ошибка refresh: HTTP ${response.status}`);
+                console.error(`  - Ответ: ${errorText.substring(0, 200)}`);
                 return false;
             }
             
         } catch (error) {
             console.error('❌ Ошибка сети при refresh:', error.message);
+            console.error('  - Тип:', error.name);
             // При сетевой ошибке не очищаем сессию - работаем оффлайн
             return false;
         }
@@ -276,36 +286,57 @@ class AuthStorage {
      * 🔥 Валидация и восстановление сессии при загрузке страницы
      * 
      * Логика:
-     * 1. Проверяем есть ли user_type (был ли ранее успешный вход)
-     * 2. Пробуем обновить токены через refresh cookie
-     * 3. Если успех - сессия восстановлена
-     * 4. Если нет - очищаем и требуем повторный вход
+     * 1. Проверяем есть ли токен в памяти/localStorage
+     * 2. Если есть валидный токен - используем его
+     * 3. Если нет или истёк - пробуем refresh через cookie
+     * 4. Если refresh не удался - требуем повторный вход
      * 
      * @returns {Promise<object>} Результат валидации
      */
     static async validate() {
+        console.log('🔐 Начало валидации сессии...');
+        
         const userType = this.getUserType();
+        const savedToken = localStorage.getItem('auth_token');
+        
+        console.log(`  - user_type: ${userType || 'нет'}`);
+        console.log(`  - saved token: ${savedToken ? savedToken.substring(0, 20) + '...' : 'нет'}`);
         
         // 1. Проверяем был ли ранее успешный вход
         if (!userType) {
-            console.warn('⚠️ Нет сохранённого user_type');
+            console.warn('⚠️ Нет сохранённого user_type - требуется вход');
             return { valid: false, reason: 'no_session' };
         }
         
-        console.log(`🔍 Восстановление сессии для: ${userType}`);
-        
-        // 2. Пробуем refresh токенов
-        const refreshed = await this.refreshTokens();
-        
-        if (refreshed) {
-            console.log('✅ Сессия восстановлена через refresh');
+        // 2. Проверяем есть ли сохранённый токен и не истёк ли он
+        if (savedToken && !this._isTokenExpired(savedToken)) {
+            console.log('✅ Найден валидный токен в localStorage');
+            this._accessToken = savedToken;
+            this._userType = userType;
+            this._userData = this.getUserData();
             return { 
                 valid: true, 
                 userData: this._userData,
-                userType: this._userType
+                userType: this._userType,
+                source: 'localStorage'
+            };
+        }
+        
+        console.log(`🔄 Токен истёк или отсутствует, пробуем refresh...`);
+        
+        // 3. Пробуем refresh токенов через cookie
+        const refreshed = await this.refreshTokens();
+        
+        if (refreshed) {
+            console.log('✅ Сессия восстановлена через refresh cookie');
+            return { 
+                valid: true, 
+                userData: this._userData,
+                userType: this._userType,
+                source: 'refresh'
             };
         } else {
-            console.warn('❌ Не удалось восстановить сессию');
+            console.warn('❌ Refresh не удался - требуется повторный вход');
             return { valid: false, reason: 'refresh_failed' };
         }
     }

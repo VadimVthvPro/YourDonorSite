@@ -1994,6 +1994,7 @@ def get_responses():
     
     query = """
         SELECT dr.*, 
+               dr.user_id as donor_id,
                u.full_name as donor_name, 
                u.blood_type as donor_blood_type,
                u.phone as donor_phone, 
@@ -2470,9 +2471,10 @@ def get_medcenter_donors():
     if include_district == 'true' and mc and mc.get('district_id'):
         # Показываем всех доноров из района
         query = """
-            SELECT u.id, u.full_name, u.blood_type, u.phone, u.email, u.telegram_username,
+            SELECT u.id, u.full_name, u.birth_year, u.blood_type, 
+                   u.phone, u.email, u.telegram_username, u.telegram_id,
                    u.last_donation_date, u.total_donations, u.is_honorary_donor,
-                   mc.name as medical_center_name
+                   mc.name as medical_center_name, mc.id as medical_center_id
             FROM users u
             LEFT JOIN medical_centers mc ON u.medical_center_id = mc.id
             WHERE u.district_id = %s AND u.is_active = TRUE
@@ -2481,9 +2483,13 @@ def get_medcenter_donors():
     else:
         # Только доноры привязанные к этому медцентру
         query = """
-            SELECT id, full_name, blood_type, phone, email, telegram_username,
-                   last_donation_date, total_donations, is_honorary_donor
-            FROM users WHERE medical_center_id = %s AND is_active = TRUE
+            SELECT u.id, u.full_name, u.birth_year, u.blood_type,
+                   u.phone, u.email, u.telegram_username, u.telegram_id,
+                   u.last_donation_date, u.total_donations, u.is_honorary_donor,
+                   mc.name as medical_center_name
+            FROM users u
+            LEFT JOIN medical_centers mc ON u.medical_center_id = mc.id
+            WHERE u.medical_center_id = %s AND u.is_active = TRUE
         """
         params = [mc_id]
     
@@ -2495,6 +2501,46 @@ def get_medcenter_donors():
     
     donors = query_db(query, tuple(params))
     return jsonify(donors if donors else [])
+
+
+@app.route('/api/donor/<int:donor_id>', methods=['GET'])
+@require_auth('medcenter')
+def get_donor_info(donor_id):
+    """Получить полную информацию о доноре для медцентра"""
+    mc_id = g.session['medical_center_id']
+    
+    # Получаем район медцентра для проверки доступа
+    mc = query_db(
+        "SELECT district_id FROM medical_centers WHERE id = %s",
+        (mc_id,), one=True
+    )
+    
+    # Получаем информацию о доноре
+    donor = query_db(
+        """SELECT u.id, u.full_name, u.birth_year, u.blood_type,
+                  u.phone, u.email, u.telegram_username, u.telegram_id,
+                  u.last_donation_date, u.total_donations, u.is_honorary_donor,
+                  u.district_id, u.medical_center_id,
+                  mc.name as medical_center_name
+           FROM users u
+           LEFT JOIN medical_centers mc ON u.medical_center_id = mc.id
+           WHERE u.id = %s AND u.is_active = TRUE""",
+        (donor_id,), one=True
+    )
+    
+    if not donor:
+        return jsonify({'error': 'Донор не найден'}), 404
+    
+    # Проверяем доступ - донор должен быть из того же района или привязан к этому медцентру
+    if mc and mc.get('district_id'):
+        if donor.get('district_id') != mc['district_id'] and donor.get('medical_center_id') != mc_id:
+            return jsonify({'error': 'Нет доступа к данным этого донора'}), 403
+    else:
+        if donor.get('medical_center_id') != mc_id:
+            return jsonify({'error': 'Нет доступа к данным этого донора'}), 403
+    
+    return jsonify(donor)
+
 
 # ============================================
 # API: Сообщения/консультации

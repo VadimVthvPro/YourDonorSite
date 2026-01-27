@@ -21,6 +21,34 @@ function formatNumber(num) {
  * Форматирование объёма (мл → литры с триадами)
  * Пример: 450000 → "450 л"
  */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function formatVolume(ml) {
     if (!ml || ml === 0) return '0 л';
     const liters = (ml / 1000).toFixed(1);
@@ -573,9 +601,9 @@ function renderResponses(responses) {
         } else {
             listContainer.innerHTML = filtered.map(r => `
                 <div class="response-card ${r.status}" data-id="${r.id}">
-                    <div class="response-avatar">${getInitials(r.donor_name || 'НД')}</div>
+                    <div class="response-avatar" onclick="openDonorInfoFromResponse(${r.donor_id})" style="cursor:pointer" title="Подробнее о доноре">${getInitials(r.donor_name || 'НД')}</div>
                     <div class="response-info">
-                        <div class="response-name">${r.donor_name || 'Донор'}</div>
+                        <div class="response-name" onclick="openDonorInfoFromResponse(${r.donor_id})" style="cursor:pointer">${r.donor_name || 'Донор'}</div>
                         <div class="response-meta">
                             <span>${r.donor_phone || r.donor_email || '-'}</span>
                             <span>${formatDate(r.created_at)}</span>
@@ -583,6 +611,13 @@ function renderResponses(responses) {
                     </div>
                     <span class="response-blood">${r.donor_blood_type || '-'}</span>
                     <div class="response-actions">
+                        <!-- Кнопка инфо о доноре -->
+                        <button class="btn btn-ghost btn-sm donor-info-response-btn" data-donor-id="${r.donor_id}" title="Информация о доноре">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 16v-4M12 8h.01"/>
+                            </svg>
+                        </button>
                         ${r.status === 'pending' ? `
                             <button class="btn btn-outline btn-sm" data-action="reject" data-id="${r.id}">Отклонить</button>
                             <button class="btn btn-primary btn-sm" data-action="approve" data-id="${r.id}">Подтвердить</button>
@@ -665,6 +700,17 @@ function renderResponses(responses) {
                     await updateResponseStatus(id, newStatus);
                 });
             });
+            
+            // Обработчик для кнопки "Инфо о доноре" в откликах
+            listContainer.querySelectorAll('.donor-info-response-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const donorId = parseInt(btn.dataset.donorId);
+                    if (donorId) {
+                        openDonorInfoFromResponse(donorId);
+                    }
+                });
+            });
         }
     }
 }
@@ -734,9 +780,15 @@ async function loadDonorsFromAPI() {
     }
 }
 
+// Глобальный кэш доноров для быстрого доступа
+let donorsCache = [];
+
 function renderDonors(donors) {
     const container = document.getElementById('donors-list');
     if (!container) return;
+    
+    // Сохраняем в кэш
+    donorsCache = donors || [];
     
     if (!donors || donors.length === 0) {
         container.innerHTML = '<p class="no-data">Нет зарегистрированных доноров</p>';
@@ -753,52 +805,74 @@ function renderDonors(donors) {
     }
     
     container.innerHTML = `
-        <table class="donors-table">
-            <thead>
-                <tr>
-                    <th>Донор</th>
-                    <th>Группа</th>
-                    <th>Последняя донация</th>
-                    <th>Статус</th>
-                    <th>Контакт</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                ${donors.map(d => {
-                    const status = getDonorStatus(d.last_donation_date);
-                    return `
+        <div class="donors-table-wrapper">
+            <table class="donors-table">
+                <thead>
                     <tr>
-                        <td>
-                            <div class="donor-row-name">
-                                <div class="donor-avatar-mini">${getInitials(d.full_name || 'НД')}</div>
-                                <span>${d.full_name || 'Донор'}</span>
-                            </div>
-                        </td>
-                        <td><span class="response-blood">${d.blood_type || '-'}</span></td>
-                        <td>${d.last_donation_date ? formatDate(d.last_donation_date) : 'Нет данных'}</td>
-                        <td>
-                            <span class="donor-status-badge ${status}">
-                                ${status === 'available' ? 'Доступен' : 'Восстановление'}
-                            </span>
-                        </td>
-                        <td>
-                            ${d.phone || d.email || d.telegram_username || '-'}
-                        </td>
-                        <td>
-                            <button class="btn btn-outline btn-sm contact-donor" data-id="${d.id}" data-name="${d.full_name}">Написать</button>
-                        </td>
+                        <th>Донор</th>
+                        <th>Группа</th>
+                        <th class="hide-mobile">Последняя донация</th>
+                        <th class="hide-mobile">Статус</th>
+                        <th>Действия</th>
                     </tr>
-                    `;
-                }).join('')}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    ${donors.map(d => {
+                        const status = getDonorStatus(d.last_donation_date);
+                        return `
+                        <tr class="donor-row" data-donor-id="${d.id}">
+                            <td>
+                                <div class="donor-row-name" onclick="openDonorInfoModal(${d.id})">
+                                    <div class="donor-avatar-mini">${getInitials(d.full_name || 'НД')}</div>
+                                    <div class="donor-name-info">
+                                        <span class="donor-name-text">${d.full_name || 'Донор'}</span>
+                                        <span class="donor-contact-hint">${d.phone || d.telegram_username || ''}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="response-blood">${d.blood_type || '-'}</span></td>
+                            <td class="hide-mobile">${d.last_donation_date ? formatDate(d.last_donation_date) : '—'}</td>
+                            <td class="hide-mobile">
+                                <span class="donor-status-badge ${status}">
+                                    ${status === 'available' ? 'Доступен' : 'Восстановление'}
+                                </span>
+                            </td>
+                            <td class="donor-actions">
+                                <button class="btn btn-primary btn-sm start-chat-btn" data-donor-id="${d.id}" title="Открыть чат">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                                    </svg>
+                                    <span class="btn-text">Написать</span>
+                                </button>
+                                <button class="btn btn-outline btn-sm donor-info-btn" data-donor-id="${d.id}" title="Подробнее">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M12 16v-4M12 8h.01"/>
+                                    </svg>
+                                    <span class="btn-text">Инфо</span>
+                                </button>
+                            </td>
+                        </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
     `;
     
-    // Обработчики для связи с донором
-    container.querySelectorAll('.contact-donor').forEach(btn => {
-        btn.addEventListener('click', () => {
-            openContactModal(btn.dataset.id, btn.dataset.name);
+    // Обработчики для кнопки "Написать" - открывает мессенджер
+    container.querySelectorAll('.start-chat-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            startChatWithDonor(parseInt(btn.dataset.donorId));
+        });
+    });
+    
+    // Обработчики для кнопки "Инфо"
+    container.querySelectorAll('.donor-info-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openDonorInfoModal(parseInt(btn.dataset.donorId));
         });
     });
     
@@ -806,51 +880,261 @@ function renderDonors(donors) {
     document.getElementById('donor-search')?.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase();
         container.querySelectorAll('tbody tr').forEach(row => {
-            const name = row.querySelector('.donor-row-name span').textContent.toLowerCase();
+            const name = row.querySelector('.donor-name-text')?.textContent.toLowerCase() || '';
             row.style.display = name.includes(query) ? '' : 'none';
         });
     });
+    
+    // Фильтр по группе крови
+    document.getElementById('donor-blood-filter')?.addEventListener('change', filterDonorsTable);
+    document.getElementById('donor-status-filter')?.addEventListener('change', filterDonorsTable);
 }
 
-// Модальное окно для связи с донором
-function openContactModal(donorId, donorName) {
-    const modal = document.getElementById('donor-modal');
-    const content = document.getElementById('donor-modal-content');
+// Фильтрация таблицы доноров
+function filterDonorsTable() {
+    const bloodFilter = document.getElementById('donor-blood-filter')?.value || 'all';
+    const statusFilter = document.getElementById('donor-status-filter')?.value || 'all';
+    const container = document.getElementById('donors-list');
+    if (!container) return;
     
-    if (!modal || !content) {
-        showNotification('Функция сообщений в разработке', 'info');
+    container.querySelectorAll('tbody tr').forEach(row => {
+        const blood = row.querySelector('.response-blood')?.textContent || '';
+        const statusBadge = row.querySelector('.donor-status-badge');
+        const status = statusBadge?.classList.contains('available') ? 'available' : 'recovery';
+        
+        const bloodMatch = bloodFilter === 'all' || blood === bloodFilter;
+        const statusMatch = statusFilter === 'all' || status === statusFilter;
+        
+        row.style.display = (bloodMatch && statusMatch) ? '' : 'none';
+    });
+}
+
+// ============================================
+// НОВАЯ ФУНКЦИЯ: Открыть чат с донором через мессенджер
+// ============================================
+
+async function startChatWithDonor(donorId) {
+    try {
+        showNotification('Открываем чат...', 'info');
+        
+        // 1. Создаём или находим существующий диалог
+        const response = await fetch(`${MC_API_URL}/messages/conversations`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ recipient_id: donorId })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Не удалось создать диалог');
+        }
+        
+        const data = await response.json();
+        const conversationId = data.conversation_id;
+        
+        // 2. Переключаемся на секцию сообщений
+        const messagesNav = document.querySelector('[data-section="messages"]');
+        if (messagesNav) {
+            messagesNav.click();
+        }
+        
+        // 3. Открываем диалог в мессенджере (с небольшой задержкой для загрузки)
+        setTimeout(() => {
+            if (window.messenger && typeof window.messenger.openConversation === 'function') {
+                window.messenger.openConversation(conversationId);
+            } else {
+                console.warn('Мессенджер не инициализирован, перезагружаем...');
+                location.reload();
+            }
+        }, 300);
+        
+    } catch (error) {
+        console.error('Ошибка открытия чата:', error);
+        showNotification('❌ ' + error.message, 'error');
+    }
+}
+
+// ============================================
+// НОВАЯ ФУНКЦИЯ: Модальное окно с информацией о доноре
+// ============================================
+
+function openDonorInfoModal(donorId) {
+    // Ищем донора в кэше
+    const donor = donorsCache.find(d => d.id === donorId);
+    
+    if (!donor) {
+        showNotification('Донор не найден', 'error');
         return;
     }
     
-    content.innerHTML = `
-        <h3>Написать донору: ${donorName}</h3>
-        <form id="contact-donor-form">
-            <div class="form-group">
-                <label>Тема</label>
-                <input type="text" id="msg-subject" placeholder="Тема сообщения">
+    // Определяем статус
+    let status = 'Готов к донации';
+    let statusClass = 'available';
+    let daysInfo = '';
+    if (donor.last_donation_date) {
+        const last = new Date(donor.last_donation_date);
+        const now = new Date();
+        const daysDiff = Math.floor((now - last) / (1000 * 60 * 60 * 24));
+        if (daysDiff < 60) {
+            status = 'Восстановление';
+            statusClass = 'recovery';
+            daysInfo = ` (${60 - daysDiff} дн.)`;
+        }
+    }
+    
+    // Удаляем старое модальное окно если есть
+    let oldModal = document.getElementById('donor-info-modal');
+    if (oldModal) {
+        oldModal.remove();
+    }
+    
+    // Создаём новое модальное окно
+    const modal = document.createElement('div');
+    modal.id = 'donor-info-modal';
+    modal.className = 'donor-modal-overlay';
+    document.body.appendChild(modal);
+    
+    modal.innerHTML = `
+        <div class="donor-modal-box">
+            <button class="donor-modal-close" onclick="closeDonorInfoModal()">×</button>
+            
+            <!-- Шапка -->
+            <div class="donor-modal-header">
+                <div class="donor-modal-avatar">${getInitials(donor.full_name || 'НД')}</div>
+                <h2 class="donor-modal-name">${donor.full_name || 'Донор'}</h2>
+                <div class="donor-modal-blood">${donor.blood_type || '?'}</div>
+                <span class="donor-modal-status ${statusClass}">${status}${daysInfo}</span>
             </div>
-            <div class="form-group">
-                <label>Сообщение</label>
-                <textarea id="msg-content" rows="4" placeholder="Ваше сообщение..." required></textarea>
+            
+            <!-- Контент -->
+            <div class="donor-modal-body">
+                <div class="donor-modal-section">
+                    <div class="donor-modal-section-title">📋 Донорская история</div>
+                    <div class="donor-modal-row">
+                        <span>Всего донаций</span>
+                        <strong>${donor.total_donations || 0}</strong>
+                    </div>
+                    <div class="donor-modal-row">
+                        <span>Почётный донор</span>
+                        <strong>${donor.is_honorary_donor ? '✅ Да' : '—'}</strong>
+                    </div>
+                    <div class="donor-modal-row">
+                        <span>Последняя донация</span>
+                        <strong>${donor.last_donation_date ? formatDate(donor.last_donation_date) : '—'}</strong>
+                    </div>
+                    <div class="donor-modal-row">
+                        <span>Год рождения</span>
+                        <strong>${donor.birth_year || '—'}</strong>
+                    </div>
+                </div>
+                
+                <div class="donor-modal-section">
+                    <div class="donor-modal-section-title">📞 Контакты</div>
+                    <div class="donor-modal-row">
+                        <span>Телефон</span>
+                        <strong>${donor.phone ? `<a href="tel:${donor.phone}">${donor.phone}</a>` : '—'}</strong>
+                    </div>
+                    <div class="donor-modal-row">
+                        <span>Email</span>
+                        <strong>${donor.email ? `<a href="mailto:${donor.email}">${donor.email}</a>` : '—'}</strong>
+                    </div>
+                    <div class="donor-modal-row">
+                        <span>Telegram</span>
+                        <strong>${donor.telegram_username ? `<a href="https://t.me/${donor.telegram_username}" target="_blank">@${donor.telegram_username}</a>` : '—'}</strong>
+                    </div>
+                    <div class="donor-modal-row">
+                        <span>Медцентр</span>
+                        <strong>${donor.medical_center_name || '—'}</strong>
+                    </div>
+                </div>
             </div>
-            <div class="form-buttons">
-                <button type="button" class="btn btn-outline" onclick="closeModal(document.getElementById('donor-modal'))">Отмена</button>
-                <button type="submit" class="btn btn-primary">Отправить</button>
+            
+            <!-- Кнопки -->
+            <div class="donor-modal-footer">
+                <button class="donor-modal-btn primary" onclick="startChatWithDonor(${donor.id}); closeDonorInfoModal();">
+                    💬 Написать
+                </button>
+                <button class="donor-modal-btn secondary" onclick="closeDonorInfoModal()">Закрыть</button>
             </div>
-        </form>
+        </div>
     `;
     
-    document.getElementById('contact-donor-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await sendMessageToDonor(donorId);
+    // Закрытие по клику на overlay
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeDonorInfoModal();
+        }
     });
     
-    modal.classList.add('active');
+    // Закрытие по Escape
+    document.addEventListener('keydown', function escHandler(e) {
+        if (e.key === 'Escape') {
+            closeDonorInfoModal();
+            document.removeEventListener('keydown', escHandler);
+        }
+    });
+}
+
+function closeDonorInfoModal() {
+    const modal = document.getElementById('donor-info-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// ============================================
+// Получить информацию о доноре по ID (для откликов)
+// ============================================
+
+async function openDonorInfoFromResponse(donorId) {
+    if (!donorId) {
+        showNotification('ID донора не указан', 'error');
+        return;
+    }
+    
+    // Сначала проверяем в кэше
+    let donor = donorsCache.find(d => d.id === donorId);
+    
+    if (donor) {
+        openDonorInfoModal(donorId);
+        return;
+    }
+    
+    // Если нет в кэше - загружаем с сервера
+    try {
+        showNotification('Загрузка информации...', 'info');
+        
+        const response = await fetch(`${MC_API_URL}/donor/${donorId}`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error('Не удалось загрузить данные донора');
+        }
+        
+        donor = await response.json();
+        
+        // Добавляем в кэш
+        donorsCache.push(donor);
+        
+        // Открываем модальное окно
+        openDonorInfoModal(donorId);
+        
+    } catch (error) {
+        console.error('Ошибка загрузки донора:', error);
+        showNotification('❌ ' + error.message, 'error');
+    }
+}
+
+// Старое модальное окно (оставляем для совместимости)
+function openContactModal(donorId, donorName) {
+    // Теперь просто открываем чат
+    startChatWithDonor(donorId);
 }
 
 async function sendMessageToDonor(donorId) {
-    const subject = document.getElementById('msg-subject').value;
-    const message = document.getElementById('msg-content').value;
+    const subject = document.getElementById('msg-subject')?.value || '';
+    const message = document.getElementById('msg-content')?.value || '';
     
     try {
         const response = await fetch(`${MC_API_URL}/messages`, {
@@ -3009,4 +3293,5 @@ function showUpdateNotification(message) {
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
+
 
