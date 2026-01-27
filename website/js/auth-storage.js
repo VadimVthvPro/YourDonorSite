@@ -1,38 +1,56 @@
 /**
  * ============================================
- * Твой Донор - Auth Storage Adapter
+ * Твой Донор - Auth Storage Adapter v2.0
  * ============================================
  * 
- * Универсальный адаптер для управления сессией пользователя.
- * Обеспечивает:
- * - Сохранение и загрузку токенов
- * - Валидацию токена на backend
- * - Поддержку offline mode
- * - Единый API для всех компонентов
+ * JWT + Refresh Token система авторизации
+ * Автоматическое запоминание всех пользователей
  * 
- * @version 1.0.0
- * @date 2026-01-26
+ * Изменения v2.0:
+ * - Access token в памяти (не localStorage)
+ * - Refresh token в HttpOnly Cookie (сервер устанавливает)
+ * - Автоматический refresh при истечении access token
+ * - Token rotation для безопасности
+ * 
+ * @version 2.0.0
+ * @date 2026-01-27
  */
 
-console.log('🔐 auth-storage.js ЗАГРУЖЕН');
+console.log('🔐 auth-storage.js v2.0 ЗАГРУЖЕН');
 
 /**
  * Storage Adapter для работы с авторизацией
  */
 class AuthStorage {
+    // Access token хранится в памяти (не в localStorage!)
+    static _accessToken = null;
+    static _userType = null;
+    static _userData = null;
+    static _refreshPromise = null; // Для предотвращения параллельных refresh запросов
+    
     /**
-     * Сохранить токен и данные пользователя после успешного логина
+     * Сохранить данные после успешного логина
      * 
-     * @param {string} token - Auth token из backend
+     * @param {string} accessToken - Access token (JWT) из backend
      * @param {string} userType - Тип пользователя ('donor' | 'medcenter')
      * @param {object} userData - Данные пользователя из backend
      * @returns {boolean} true если сохранение успешно
      */
-    static save(token, userType, userData) {
+    static save(accessToken, userType, userData) {
         try {
-            localStorage.setItem('auth_token', token);
+            // Access token в памяти
+            this._accessToken = accessToken;
+            this._userType = userType;
+            this._userData = userData;
+            
+            // Сохраняем user_type и userData в localStorage для восстановления UI
+            // (но НЕ токен!)
             localStorage.setItem('user_type', userType);
             localStorage.setItem(`${userType}_user`, JSON.stringify(userData));
+            
+            // Для совместимости со старым кодом
+            localStorage.setItem('auth_token', accessToken);
+            
             console.log(`✅ Сессия сохранена: ${userType}`);
             return true;
         } catch (error) {
@@ -42,12 +60,36 @@ class AuthStorage {
     }
     
     /**
-     * Получить auth токен
+     * Получить access token
+     * Если токен истёк - автоматически обновляет через refresh
      * 
-     * @returns {string|null} Токен или null
+     * @returns {Promise<string|null>} Токен или null
      */
-    static getToken() {
-        return localStorage.getItem('auth_token');
+    static async getToken() {
+        // Сначала проверяем память
+        if (this._accessToken) {
+            // Проверяем не истёк ли JWT
+            if (this._isTokenExpired(this._accessToken)) {
+                console.log('⏰ Access token истёк, обновляем...');
+                const refreshed = await this.refreshTokens();
+                return refreshed ? this._accessToken : null;
+            }
+            return this._accessToken;
+        }
+        
+        // Если нет в памяти - пробуем обновить через refresh cookie
+        // (refresh token автоматически отправляется браузером)
+        console.log('🔄 Нет access token, пробуем refresh...');
+        const refreshed = await this.refreshTokens();
+        return refreshed ? this._accessToken : null;
+    }
+    
+    /**
+     * Синхронное получение токена (для совместимости)
+     * ВНИМАНИЕ: может вернуть истёкший токен!
+     */
+    static getTokenSync() {
+        return this._accessToken || localStorage.getItem('auth_token');
     }
     
     /**
@@ -56,15 +98,17 @@ class AuthStorage {
      * @returns {string|null} 'donor' | 'medcenter' | null
      */
     static getUserType() {
-        return localStorage.getItem('user_type');
+        return this._userType || localStorage.getItem('user_type');
     }
     
     /**
-     * Получить данные пользователя из localStorage
+     * Получить данные пользователя
      * 
      * @returns {object|null} Объект с данными или null
      */
     static getUserData() {
+        if (this._userData) return this._userData;
+        
         const userType = this.getUserType();
         if (!userType) return null;
         
@@ -80,206 +124,361 @@ class AuthStorage {
     }
     
     /**
-     * Обновить данные пользователя в localStorage
-     * Используется после получения свежих данных с backend
+     * Обновить данные пользователя
      * 
      * @param {object} userData - Новые данные пользователя
      */
     static updateUserData(userData) {
-        const userType = this.getUserType();
-        if (!userType) {
-            console.warn('⚠️ Нельзя обновить данные: нет user_type');
-            return;
-        }
+        this._userData = userData;
         
-        const key = `${userType}_user`;
-        localStorage.setItem(key, JSON.stringify(userData));
-        console.log(`✅ Данные пользователя обновлены: ${userType}`);
+        const userType = this.getUserType();
+        if (userType) {
+            localStorage.setItem(`${userType}_user`, JSON.stringify(userData));
+            console.log(`✅ Данные пользователя обновлены: ${userType}`);
+        }
     }
     
     /**
-     * Проверить наличие сохранённой сессии
-     * Проверяет только наличие, НЕ валидность
+     * Проверить наличие сохранённой сессии (быстрая проверка)
      * 
-     * @returns {boolean} true если есть токен и user_type
+     * @returns {boolean} true если есть данные для попытки восстановления
      */
     static hasSession() {
-        return !!(this.getToken() && this.getUserType());
+        // Проверяем наличие user_type - это означает, что был успешный вход
+        return !!this.getUserType();
     }
     
     /**
-     * Полная очистка сессии
-     * Удаляет все данные авторизации из localStorage
+     * 🔥 ГЛАВНАЯ ФИЧА: Обновление токенов через refresh endpoint
+     * 
+     * Вызывает /api/auth/refresh с refresh token из HttpOnly cookie
+     * Браузер автоматически отправляет cookie
+     * 
+     * @returns {Promise<boolean>} true если refresh успешен
      */
-    static clear() {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user_type');
-        localStorage.removeItem('donor_user');
-        localStorage.removeItem('medcenter_user');
-        console.log('🗑️ Сессия полностью очищена');
-    }
-    
-    /**
-     * 🔥 ГЛАВНАЯ ФИЧА: Валидация токена на backend
-     * 
-     * Проверяет, что:
-     * - Токен существует
-     * - Токен действителен на backend
-     * - Токен не истёк (expires_at)
-     * - Сессия активна (is_active)
-     * 
-     * Если токен валиден → обновляет данные пользователя из backend
-     * Если невалиден → возвращает { valid: false }
-     * Если сервер недоступен → возвращает { valid: true, offline: true }
-     * 
-     * @returns {Promise<object>} Результат валидации
-     *   - { valid: true, userData: {...} } — токен валиден
-     *   - { valid: true, offline: true } — сервер недоступен, используем кэш
-     *   - { valid: false, reason: 'no_token' | 'token_expired' } — токен невалиден
-     */
-    static async validate() {
-        const token = this.getToken();
-        const userType = this.getUserType();
-        
-        // 1. Проверяем наличие токена
-        if (!token || !userType) {
-            console.warn('⚠️ Нет сохранённого токена или user_type');
-            return { valid: false, reason: 'no_token' };
+    static async refreshTokens() {
+        // Предотвращаем параллельные refresh запросы
+        if (this._refreshPromise) {
+            console.log('⏳ Ожидание завершения текущего refresh...');
+            return this._refreshPromise;
         }
         
-        console.log(`🔍 Валидация токена для: ${userType}`);
+        this._refreshPromise = this._doRefresh();
         
         try {
-            // 2. Определяем endpoint для проверки
-            const API_URL = window.API_URL || `${window.location.protocol}//${window.location.hostname}:5001/api`;
-            const endpoint = userType === 'donor' 
-                ? `${API_URL}/donor/profile`
-                : `${API_URL}/medcenter/profile`;
+            return await this._refreshPromise;
+        } finally {
+            this._refreshPromise = null;
+        }
+    }
+    
+    /**
+     * Внутренняя функция refresh
+     */
+    static async _doRefresh() {
+        const API_URL = window.API_URL || `${window.location.protocol}//${window.location.hostname}/api`;
+        
+        try {
+            console.log('🔄 Вызов /api/auth/refresh...');
             
-            // 3. Запрашиваем профиль (это проверит токен через @require_auth)
-            const response = await fetch(endpoint, {
-                method: 'GET',
+            const response = await fetch(`${API_URL}/auth/refresh`, {
+                method: 'POST',
+                credentials: 'include', // ВАЖНО: отправляем cookies
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             });
             
-            // 4. Анализируем ответ
             if (response.ok) {
-                // ✅ Токен валиден!
-                const userData = await response.json();
+                const data = await response.json();
                 
-                // Обновляем данные пользователя в localStorage
-                this.updateUserData(userData);
+                // Сохраняем новый access token
+                this._accessToken = data.access_token;
+                this._userType = data.user_type;
                 
-                console.log('✅ Токен валиден, данные обновлены');
-                return { valid: true, userData };
-                
-            } else if (response.status === 401 || response.status === 403) {
-                // ❌ Токен истёк или невалиден
-                console.warn(`⚠️ Токен невалиден (HTTP ${response.status})`);
-                
-                try {
-                    const error = await response.json();
-                    console.warn('Причина:', error.error || 'Неизвестно');
-                } catch (e) {
-                    // Игнорируем ошибки парсинга
+                if (data.user) {
+                    this._userData = data.user;
+                    localStorage.setItem(`${data.user_type}_user`, JSON.stringify(data.user));
                 }
                 
-                return { valid: false, reason: 'token_expired' };
+                // Для совместимости
+                localStorage.setItem('user_type', data.user_type);
+                localStorage.setItem('auth_token', data.access_token);
+                
+                console.log('✅ Токены обновлены успешно');
+                return true;
+                
+            } else if (response.status === 401) {
+                // Refresh token истёк или невалиден
+                console.warn('⚠️ Refresh token истёк, требуется повторный вход');
+                this.clear();
+                return false;
                 
             } else {
-                // ⚠️ Другая ошибка сервера (5xx, и т.д.)
-                console.warn(`⚠️ Ошибка сервера (HTTP ${response.status}), работаем оффлайн`);
-                
-                // Оставляем пользователя залогиненным (offline mode)
-                return { valid: true, offline: true };
+                console.error(`❌ Ошибка refresh: HTTP ${response.status}`);
+                return false;
             }
             
         } catch (error) {
-            // 🌐 Сетевая ошибка (нет интернета, сервер недоступен)
-            console.error('❌ Ошибка валидации токена:', error.message);
+            console.error('❌ Ошибка сети при refresh:', error.message);
+            // При сетевой ошибке не очищаем сессию - работаем оффлайн
+            return false;
+        }
+    }
+    
+    /**
+     * Проверка не истёк ли JWT токен
+     * 
+     * @param {string} token - JWT токен
+     * @returns {boolean} true если истёк
+     */
+    static _isTokenExpired(token) {
+        try {
+            // JWT состоит из 3 частей, разделённых точками
+            const parts = token.split('.');
+            if (parts.length !== 3) return true;
             
-            // Оставляем пользователя залогиненным (offline mode)
-            // Будет работать с кэшированными данными
-            return { valid: true, offline: true };
+            // Декодируем payload (вторая часть)
+            const payload = JSON.parse(atob(parts[1]));
+            
+            // exp - время истечения в секундах
+            if (!payload.exp) return false;
+            
+            // Проверяем с запасом 30 секунд
+            const now = Math.floor(Date.now() / 1000);
+            return payload.exp < (now + 30);
+            
+        } catch (error) {
+            console.warn('⚠️ Ошибка проверки JWT:', error.message);
+            return true; // Если не можем проверить - считаем истёкшим
+        }
+    }
+    
+    /**
+     * Полная очистка сессии
+     */
+    static clear() {
+        // Очищаем память
+        this._accessToken = null;
+        this._userType = null;
+        this._userData = null;
+        
+        // Очищаем localStorage
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_type');
+        localStorage.removeItem('donor_user');
+        localStorage.removeItem('medcenter_user');
+        
+        console.log('🗑️ Сессия полностью очищена');
+    }
+    
+    /**
+     * 🔥 Валидация и восстановление сессии при загрузке страницы
+     * 
+     * Логика:
+     * 1. Проверяем есть ли user_type (был ли ранее успешный вход)
+     * 2. Пробуем обновить токены через refresh cookie
+     * 3. Если успех - сессия восстановлена
+     * 4. Если нет - очищаем и требуем повторный вход
+     * 
+     * @returns {Promise<object>} Результат валидации
+     */
+    static async validate() {
+        const userType = this.getUserType();
+        
+        // 1. Проверяем был ли ранее успешный вход
+        if (!userType) {
+            console.warn('⚠️ Нет сохранённого user_type');
+            return { valid: false, reason: 'no_session' };
+        }
+        
+        console.log(`🔍 Восстановление сессии для: ${userType}`);
+        
+        // 2. Пробуем refresh токенов
+        const refreshed = await this.refreshTokens();
+        
+        if (refreshed) {
+            console.log('✅ Сессия восстановлена через refresh');
+            return { 
+                valid: true, 
+                userData: this._userData,
+                userType: this._userType
+            };
+        } else {
+            console.warn('❌ Не удалось восстановить сессию');
+            return { valid: false, reason: 'refresh_failed' };
         }
     }
 }
 
+
 /**
  * Улучшенная функция проверки авторизации
  * Вызывается при загрузке dashboard
- * 
- * Выполняет:
- * 1. Проверку наличия сохранённой сессии
- * 2. Валидацию токена на backend
- * 3. Очистку при невалидном токене
- * 4. Поддержку offline mode
  * 
  * @returns {Promise<boolean>} true если пользователь авторизован
  */
 async function checkAuthAndRestore() {
     console.log('🔐 Проверка авторизации...');
     
-    // 1. Быстрая проверка: есть ли вообще сохранённая сессия?
-    if (!AuthStorage.hasSession()) {
-        console.warn('⚠️ Нет сохранённой сессии в localStorage');
-        return false;
-    }
-    
-    console.log(`📦 Найдена сессия: ${AuthStorage.getUserType()}`);
-    
-    // 2. Валидируем токен на backend
+    // Проверяем наличие сессии и пробуем восстановить
     const validation = await AuthStorage.validate();
     
     if (validation.valid) {
-        // ✅ Токен валиден
-        console.log('✅ Токен валиден, сессия восстановлена');
+        console.log('✅ Пользователь авторизован');
         
-        if (validation.offline) {
-            // Показываем пользователю что работаем оффлайн
-            console.warn('⚠️ Режим оффлайн: сервер недоступен, используем кэш');
-            
-            // Если есть функция showNotification (из dashboards)
-            if (typeof showNotification === 'function') {
-                showNotification('Работаем в оффлайн режиме', 'info');
-            }
+        // Если есть функция showNotification (из dashboards)
+        if (validation.offline && typeof showNotification === 'function') {
+            showNotification('Работаем в оффлайн режиме', 'info');
         }
         
         return true;
-        
     } else {
-        // ❌ Токен невалиден или истёк
-        console.warn('❌ Токен невалиден, очищаем сессию');
-        
-        // Очищаем всё из localStorage
+        console.warn('❌ Требуется повторный вход');
         AuthStorage.clear();
-        
         return false;
     }
 }
 
+
 /**
  * Функция logout
- * Очищает сессию и перенаправляет на страницу авторизации
+ * Очищает сессию на сервере и клиенте, затем перенаправляет
  * 
  * @param {string} redirectUrl - URL для редиректа (по умолчанию 'auth.html')
  */
-function logout(redirectUrl = 'auth.html') {
+async function logout(redirectUrl = 'auth.html') {
     console.log('👋 Выход из аккаунта...');
     
-    // Очищаем всё
+    const API_URL = window.API_URL || `${window.location.protocol}//${window.location.hostname}/api`;
+    
+    try {
+        // Вызываем logout на сервере для инвалидации refresh token
+        await fetch(`${API_URL}/auth/logout`, {
+            method: 'POST',
+            credentials: 'include', // Отправляем cookies
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+    } catch (error) {
+        console.warn('⚠️ Ошибка logout на сервере:', error.message);
+        // Продолжаем очистку на клиенте
+    }
+    
+    // Очищаем клиентские данные
     AuthStorage.clear();
     
     // Редирект
     window.location.href = redirectUrl;
 }
 
-// Экспортируем в глобальную область для использования в других скриптах
+
+/**
+ * Функция для выхода со всех устройств
+ */
+async function logoutAll(redirectUrl = 'auth.html') {
+    console.log('👋 Выход со всех устройств...');
+    
+    const API_URL = window.API_URL || `${window.location.protocol}//${window.location.hostname}/api`;
+    const token = AuthStorage.getTokenSync();
+    
+    try {
+        await fetch(`${API_URL}/auth/logout-all`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+            }
+        });
+    } catch (error) {
+        console.warn('⚠️ Ошибка logout-all:', error.message);
+    }
+    
+    AuthStorage.clear();
+    window.location.href = redirectUrl;
+}
+
+
+/**
+ * Создание fetch wrapper с автоматическим refresh
+ * Используется вместо обычного fetch для API запросов
+ * 
+ * @param {string} url - URL запроса
+ * @param {object} options - Опции fetch
+ * @returns {Promise<Response>}
+ */
+async function authFetch(url, options = {}) {
+    // Получаем актуальный токен (с автоматическим refresh если нужно)
+    const token = await AuthStorage.getToken();
+    
+    // Добавляем заголовки
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // Выполняем запрос с credentials для cookies
+    const response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include'
+    });
+    
+    // Если получили 401 - пробуем refresh и повторяем
+    if (response.status === 401) {
+        console.log('🔄 Получен 401, пробуем refresh...');
+        
+        const refreshed = await AuthStorage.refreshTokens();
+        
+        if (refreshed) {
+            // Повторяем запрос с новым токеном
+            const newToken = AuthStorage.getTokenSync();
+            headers['Authorization'] = `Bearer ${newToken}`;
+            
+            return fetch(url, {
+                ...options,
+                headers,
+                credentials: 'include'
+            });
+        } else {
+            // Refresh не удался - редирект на login
+            console.warn('❌ Refresh не удался, редирект на login');
+            AuthStorage.clear();
+            window.location.href = 'auth.html';
+        }
+    }
+    
+    return response;
+}
+
+
+/**
+ * Хелпер для получения заголовков авторизации
+ * Используется в существующем коде
+ * 
+ * @returns {object} Заголовки с Authorization
+ */
+function getAuthHeaders() {
+    const token = AuthStorage.getTokenSync();
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+    };
+}
+
+
+// Экспортируем в глобальную область
 window.AuthStorage = AuthStorage;
 window.checkAuthAndRestore = checkAuthAndRestore;
 window.logout = logout;
+window.logoutAll = logoutAll;
+window.authFetch = authFetch;
+window.getAuthHeaders = getAuthHeaders;
 
-console.log('✅ auth-storage.js инициализирован');
+console.log('✅ auth-storage.js v2.0 инициализирован');

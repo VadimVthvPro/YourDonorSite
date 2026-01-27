@@ -1617,6 +1617,7 @@ function initForms() {
             }
             
             const formData = {
+                name: document.getElementById('setting-name')?.value || '',
                 address: document.getElementById('setting-address')?.value || '',
                 phone: document.getElementById('setting-phone')?.value || '',
                 email: document.getElementById('setting-email')?.value || ''

@@ -691,6 +691,7 @@ function initFormValidation() {
                 const response = await fetch(`${API_URL}/donor/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include', // ВАЖНО: для получения refresh cookie
                     body: JSON.stringify({
                         full_name: data.full_name,
                         birth_year: parseInt(data.birth_year),
@@ -783,6 +784,7 @@ function initFormValidation() {
                 const response = await fetch(`${API_URL}/donor/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include', // ВАЖНО: для получения refresh cookie
                     body: JSON.stringify(payload)
                 });
                 
@@ -827,6 +829,7 @@ function initFormValidation() {
                 const response = await fetch(`${API_URL}/medcenter/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include', // ВАЖНО: для получения refresh cookie
                     body: JSON.stringify({
                         medical_center_id: parseInt(data.medical_center_id),
                         password: data.password

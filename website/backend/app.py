@@ -11,7 +11,7 @@ import json
 from datetime import datetime, timedelta, date
 from functools import wraps
 
-from flask import Flask, request, jsonify, g, send_file
+from flask import Flask, request, jsonify, g, send_file, make_response
 from flask_cors import CORS
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -33,25 +33,51 @@ except ImportError:
 
 load_dotenv()
 
+# Импорт нового сервиса авторизации
+from auth_service import (
+    generate_access_token, generate_refresh_token, hash_token,
+    verify_access_token, verify_refresh_token,
+    create_session, rotate_refresh_token, invalidate_session, invalidate_all_sessions,
+    get_active_sessions, set_refresh_cookie, clear_refresh_cookie,
+    get_refresh_token_from_request, get_client_info, require_auth_jwt,
+    ACCESS_TOKEN_EXPIRES, REFRESH_TOKEN_EXPIRES
+)
+
 app = Flask(__name__)
 
 # Расширенная настройка CORS для работы через Nginx proxy
+# ВАЖНО: для работы с cookies нужен конкретный origin, не "*"
+ALLOWED_ORIGINS = [
+    "https://tvoydonor.by",
+    "http://tvoydonor.by",
+    "http://localhost:8080",
+    "http://localhost:3000",
+    "http://127.0.0.1:8080"
+]
+
 CORS(app, 
-     resources={r"/api/*": {"origins": "*"}},
-     supports_credentials=True,
+     resources={r"/api/*": {"origins": ALLOWED_ORIGINS}},
+     supports_credentials=True,  # Разрешаем credentials (cookies)
      allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     expose_headers=["Content-Type", "Authorization"]
+     expose_headers=["Content-Type", "Authorization", "Set-Cookie"]
 )
 
 # Обработка preflight OPTIONS запросов
 @app.after_request
 def after_request(response):
-    # Добавляем CORS заголовки для всех ответов
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Max-Age', '3600')
+    # Для работы с credentials нужен конкретный origin
+    origin = request.headers.get('Origin')
+    if origin in ALLOWED_ORIGINS:
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+    else:
+        # Fallback для других источников (без credentials)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+    
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,X-Requested-With'
+    response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
+    response.headers['Access-Control-Max-Age'] = '3600'
     return response
 
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(32))
@@ -212,10 +238,15 @@ def create_donation_approval_message(donor_name, donation_date, donation_time, m
     return message
 
 # ============================================
-# Авторизация
+# Авторизация (поддержка JWT + legacy tokens)
 # ============================================
 
 def require_auth(user_type=None):
+    """
+    Декоратор авторизации с поддержкой:
+    1. JWT access tokens (новая система)
+    2. Legacy session_token (обратная совместимость)
+    """
     def decorator(f):
         @wraps(f)
         def decorated(*args, **kwargs):
@@ -224,15 +255,31 @@ def require_auth(user_type=None):
                 app.logger.warning(f"❌ Нет токена для {f.__name__}, путь: {request.path}")
                 return jsonify({'error': 'Требуется авторизация'}), 401
             
-            session = query_db(
-                """SELECT * FROM user_sessions 
-                   WHERE session_token = %s AND is_active = TRUE AND expires_at > NOW()""",
-                (token,), one=True
-            )
+            session = None
+            
+            # Сначала пробуем JWT токен (новая система)
+            payload = verify_access_token(token)
+            if payload:
+                # JWT валиден - создаём виртуальную сессию
+                session = {
+                    'user_type': payload.get('type'),
+                    'user_id': int(payload['sub']) if payload.get('type') == 'donor' else None,
+                    'medical_center_id': int(payload['sub']) if payload.get('type') == 'medcenter' else None
+                }
+            else:
+                # Fallback: ищем legacy session_token в БД
+                session = query_db(
+                    """SELECT * FROM user_sessions 
+                       WHERE session_token = %s AND is_active = TRUE AND expires_at > NOW()""",
+                    (token,), one=True
+                )
             
             if not session:
-                app.logger.warning(f"❌ Сессия не найдена или истекла для {f.__name__}, token={token[:10]}..., путь: {request.path}")
-                return jsonify({'error': 'Сессия истекла. Войдите заново.'}), 401
+                app.logger.warning(f"❌ Сессия не найдена или истекла для {f.__name__}, token={token[:10] if len(token) > 10 else token}..., путь: {request.path}")
+                return jsonify({
+                    'error': 'Сессия истекла. Войдите заново.',
+                    'code': 'TOKEN_EXPIRED'
+                }), 401
             
             if user_type and session['user_type'] != user_type:
                 app.logger.warning(f"❌ 403 FORBIDDEN: {f.__name__} требует '{user_type}', но user_type='{session['user_type']}', user_id={session.get('user_id')}, путь: {request.path}")
@@ -471,23 +518,35 @@ def register_donor():
     
     print(f"[DONOR REGISTER] Создан код привязки Telegram: {code} для user_id={user['id']}")
     
-    # Создаём временную сессию (без полного доступа до верификации Telegram)
-    token = generate_token()
-    query_db(
-        """INSERT INTO user_sessions (user_id, session_token, user_type, expires_at)
-           VALUES (%s, %s, 'donor', NOW() + INTERVAL '7 days')""",
-        (user['id'], token), commit=True
+    # ============================================
+    # НОВАЯ СИСТЕМА: JWT + Refresh Token
+    # ============================================
+    client_info = get_client_info()
+    
+    access_token, refresh_token, session_id = create_session(
+        query_db,
+        user_id=user['id'],
+        user_type='donor',
+        device_info=client_info['device_info'],
+        ip_address=client_info['ip_address'],
+        platform=client_info['platform']
     )
     
-    return jsonify({
+    # Формируем ответ с HttpOnly cookie
+    response = make_response(jsonify({
         'message': 'Регистрация успешна! Привяжите Telegram бота @TvoyDonorZdesBot',
-        'token': token,
+        'token': access_token,  # Access token для клиента
         'user': user,
         'telegram_verification_required': True,
         'telegram_code': code,
         'telegram_bot_username': 'TvoyDonorZdesBot',
         'telegram_bot_url': 'https://t.me/TvoyDonorZdesBot'
-    }), 201
+    }), 201)
+    
+    # Устанавливаем refresh token в HttpOnly cookie (30 дней)
+    set_refresh_cookie(response, refresh_token)
+    
+    return response
 
 @app.route('/api/donor/login', methods=['POST'])
 def login_donor():
@@ -512,31 +571,48 @@ def login_donor():
         return jsonify({'error': 'Донор не найден. Сначала зарегистрируйтесь.'}), 404
     
     # Проверка пароля
+    import hashlib
     if user.get('password_hash'):
-        import hashlib
         password_hash = hashlib.sha256(data['password'].encode()).hexdigest()
         if user['password_hash'] != password_hash:
             return jsonify({'error': 'Неверный пароль'}), 401
     else:
         # Если пароль не установлен, сохраняем его
-        import hashlib
         password_hash = hashlib.sha256(data['password'].encode()).hexdigest()
         query_db("UPDATE users SET password_hash = %s WHERE id = %s", (password_hash, user['id']), commit=True)
     
-    token = generate_token()
-    query_db(
-        """INSERT INTO user_sessions (user_id, session_token, user_type, expires_at)
-           VALUES (%s, %s, 'donor', NOW() + INTERVAL '7 days')""",
-        (user['id'], token), commit=True
+    # ============================================
+    # НОВАЯ СИСТЕМА: JWT + Refresh Token
+    # ============================================
+    client_info = get_client_info()
+    
+    access_token, refresh_token, session_id = create_session(
+        query_db,
+        user_id=user['id'],
+        user_type='donor',
+        device_info=client_info['device_info'],
+        ip_address=client_info['ip_address'],
+        platform=client_info['platform']
     )
     
+    # Обновляем last_login
     query_db("UPDATE users SET last_login = NOW() WHERE id = %s", (user['id'],), commit=True)
     
-    return jsonify({
+    # Формируем ответ с HttpOnly cookie
+    response = make_response(jsonify({
         'message': 'Вход выполнен',
-        'token': token,
-        'user': {'id': user['id'], 'full_name': user['full_name'], 'blood_type': user['blood_type']}
-    })
+        'token': access_token,  # Access token для клиента
+        'user': {
+            'id': user['id'], 
+            'full_name': user['full_name'], 
+            'blood_type': user['blood_type']
+        }
+    }))
+    
+    # Устанавливаем refresh token в HttpOnly cookie (30 дней)
+    set_refresh_cookie(response, refresh_token)
+    
+    return response
 
 @app.route('/api/donor/profile', methods=['GET'])
 @require_auth('donor')
@@ -1062,18 +1138,31 @@ def login_medcenter():
     if data['password'] != mc.get('master_password', MASTER_PASSWORD) and data['password'] != MASTER_PASSWORD:
         return jsonify({'error': 'Неверный пароль'}), 401
     
-    token = generate_token()
-    query_db(
-        """INSERT INTO user_sessions (medical_center_id, session_token, user_type, expires_at)
-           VALUES (%s, %s, 'medcenter', NOW() + INTERVAL '24 hours')""",
-        (mc['id'], token), commit=True
+    # ============================================
+    # НОВАЯ СИСТЕМА: JWT + Refresh Token
+    # ============================================
+    client_info = get_client_info()
+    
+    access_token, refresh_token, session_id = create_session(
+        query_db,
+        medical_center_id=mc['id'],
+        user_type='medcenter',
+        device_info=client_info['device_info'],
+        ip_address=client_info['ip_address'],
+        platform=client_info['platform']
     )
     
-    return jsonify({
+    # Формируем ответ с HttpOnly cookie
+    response = make_response(jsonify({
         'message': 'Вход выполнен',
-        'token': token,
+        'token': access_token,  # Access token для клиента
         'medical_center': {'id': mc['id'], 'name': mc['name']}
-    })
+    }))
+    
+    # Устанавливаем refresh token в HttpOnly cookie (30 дней)
+    set_refresh_cookie(response, refresh_token)
+    
+    return response
 
 
 @app.route('/api/medcenter/check-approval', methods=['POST'])
@@ -4669,6 +4758,177 @@ def create_message_template():
         'content': template['content'],
         'message': 'Шаблон создан'
     }), 201
+
+
+# ============================================
+# НОВАЯ СИСТЕМА АВТОРИЗАЦИИ (JWT + Refresh Token)
+# ============================================
+
+@app.route('/api/auth/refresh', methods=['POST'])
+def auth_refresh():
+    """
+    Обновление access token через refresh token из cookie
+    
+    Ответ:
+        - 200: { access_token, user }
+        - 401: Refresh token невалиден или истёк
+    """
+    refresh_token = get_refresh_token_from_request()
+    
+    if not refresh_token:
+        return jsonify({
+            'error': 'Требуется авторизация',
+            'code': 'NO_REFRESH_TOKEN'
+        }), 401
+    
+    # Проверяем и ротируем токен
+    new_access, new_refresh = rotate_refresh_token(query_db, refresh_token)
+    
+    if not new_access:
+        response = make_response(jsonify({
+            'error': 'Сессия истекла. Войдите заново.',
+            'code': 'REFRESH_TOKEN_EXPIRED'
+        }), 401)
+        clear_refresh_cookie(response)
+        return response
+    
+    # Получаем данные пользователя
+    token_hash = hash_token(new_refresh)
+    session = query_db(
+        "SELECT * FROM user_sessions WHERE refresh_token_hash = %s",
+        (token_hash,), one=True
+    )
+    
+    user_data = None
+    if session:
+        if session['user_type'] == 'donor' and session['user_id']:
+            user = query_db(
+                "SELECT id, full_name, blood_type FROM users WHERE id = %s",
+                (session['user_id'],), one=True
+            )
+            if user:
+                user_data = {
+                    'id': user['id'],
+                    'full_name': user['full_name'],
+                    'blood_type': user['blood_type'],
+                    'type': 'donor'
+                }
+        elif session['user_type'] == 'medcenter' and session['medical_center_id']:
+            mc = query_db(
+                "SELECT id, name FROM medical_centers WHERE id = %s",
+                (session['medical_center_id'],), one=True
+            )
+            if mc:
+                user_data = {
+                    'id': mc['id'],
+                    'name': mc['name'],
+                    'type': 'medcenter'
+                }
+    
+    # Формируем ответ с новым refresh cookie
+    response = make_response(jsonify({
+        'access_token': new_access,
+        'user': user_data,
+        'user_type': session['user_type'] if session else None
+    }))
+    
+    set_refresh_cookie(response, new_refresh)
+    
+    return response
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def auth_logout():
+    """
+    Выход из системы
+    Инвалидирует текущую сессию и очищает cookie
+    """
+    refresh_token = get_refresh_token_from_request()
+    
+    if refresh_token:
+        invalidate_session(query_db, refresh_token)
+    
+    response = make_response(jsonify({'message': 'Выход выполнен'}))
+    clear_refresh_cookie(response)
+    
+    return response
+
+
+@app.route('/api/auth/logout-all', methods=['POST'])
+@require_auth()
+def auth_logout_all():
+    """
+    Выход со всех устройств
+    Инвалидирует все сессии пользователя
+    """
+    session = g.session
+    
+    if session['user_type'] == 'donor':
+        invalidate_all_sessions(query_db, user_id=session['user_id'])
+    else:
+        invalidate_all_sessions(query_db, medical_center_id=session['medical_center_id'])
+    
+    response = make_response(jsonify({'message': 'Выход со всех устройств выполнен'}))
+    clear_refresh_cookie(response)
+    
+    return response
+
+
+@app.route('/api/auth/sessions', methods=['GET'])
+@require_auth()
+def auth_sessions():
+    """
+    Получить список активных сессий пользователя
+    """
+    session = g.session
+    
+    if session['user_type'] == 'donor':
+        sessions = get_active_sessions(query_db, user_id=session['user_id'])
+    else:
+        sessions = get_active_sessions(query_db, medical_center_id=session['medical_center_id'])
+    
+    return jsonify({
+        'sessions': [{
+            'id': s['id'],
+            'device': s['device_info'][:50] if s['device_info'] else 'Неизвестно',
+            'ip': s['ip_address'],
+            'platform': s['platform'],
+            'created_at': s['created_at'].isoformat() if s['created_at'] else None,
+            'last_used': s['last_used_at'].isoformat() if s['last_used_at'] else None
+        } for s in sessions]
+    })
+
+
+@app.route('/api/auth/check', methods=['GET'])
+def auth_check():
+    """
+    Проверка статуса авторизации
+    Используется для быстрой проверки без полного refresh
+    """
+    # Сначала проверяем Bearer токен (access token)
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        token = auth_header.replace('Bearer ', '')
+        payload = verify_access_token(token)
+        if payload:
+            return jsonify({
+                'authenticated': True,
+                'user_type': payload.get('type'),
+                'user_id': payload.get('sub')
+            })
+    
+    # Если нет access token, проверяем refresh cookie
+    refresh_token = get_refresh_token_from_request()
+    if refresh_token:
+        session = verify_refresh_token(refresh_token, query_db)
+        if session:
+            return jsonify({
+                'authenticated': True,
+                'user_type': session['user_type'],
+                'needs_refresh': True  # Сигнал клиенту вызвать /auth/refresh
+            })
+    
+    return jsonify({'authenticated': False})
 
 
 # ============================================
