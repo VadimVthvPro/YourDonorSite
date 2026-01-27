@@ -176,6 +176,32 @@ class Messenger {
                 this.showPartnerInfo();
             });
         }
+        
+        // Кнопка "Назад в меню" - выход из мессенджера на мобильных
+        const messengerBackBtn = document.getElementById('messenger-back-btn');
+        if (messengerBackBtn) {
+            messengerBackBtn.addEventListener('click', () => {
+                this.exitMessenger();
+            });
+        }
+    }
+    
+    // Выход из мессенджера обратно в главное меню
+    exitMessenger() {
+        // Находим первый пункт меню (dashboard/главная)
+        const dashboardLink = document.querySelector('[data-section="dashboard"]') || 
+                              document.querySelector('[data-section="requests"]') ||
+                              document.querySelector('.nav-item');
+        
+        if (dashboardLink) {
+            dashboardLink.click();
+        }
+        
+        // Убираем фиксированное позиционирование мессенджера
+        const messengerContainer = document.querySelector('.messenger-container');
+        if (messengerContainer) {
+            messengerContainer.style.position = '';
+        }
     }
     
     // ============================================
@@ -410,7 +436,18 @@ class Messenger {
             return sum + (conv.unread_count || 0);
         }, 0);
         
-        // Обновляем badge в меню
+        console.log('📬 Messenger: обновление badge, непрочитанных:', totalUnread);
+        
+        // Используем глобальную функцию если есть
+        if (typeof updateMessagesBadgeUI === 'function') {
+            updateMessagesBadgeUI(totalUnread);
+        } else {
+            // Fallback - обновляем напрямую
+            this._updateBadgeDirectly(totalUnread);
+        }
+    }
+    
+    _updateBadgeDirectly(totalUnread) {
         const badge = document.getElementById('messages-badge');
         if (badge) {
             badge.textContent = totalUnread;
@@ -885,11 +922,12 @@ class Messenger {
     
     updateTotalUnreadCount() {
         const totalUnread = this.conversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
-        const badge = document.getElementById('messages-badge');
+        console.log('📬 Messenger: updateTotalUnreadCount, непрочитанных:', totalUnread);
         
-        if (badge) {
-            badge.textContent = totalUnread;
-            badge.style.display = totalUnread > 0 ? 'inline-block' : 'none';
+        if (typeof updateMessagesBadgeUI === 'function') {
+            updateMessagesBadgeUI(totalUnread);
+        } else {
+            this._updateBadgeDirectly(totalUnread);
         }
         
         // Обновляем заголовок документа

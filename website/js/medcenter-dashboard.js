@@ -3005,30 +3005,8 @@ async function loadUnreadMessagesCount() {
             
             console.log(`📬 МЦ: Диалогов: ${conversations.length}, непрочитанных: ${totalUnread}`);
             
-            const badge = document.getElementById('messages-badge');
-            console.log('📬 МЦ: Badge элемент найден:', !!badge);
-            
-            if (badge) {
-                badge.textContent = totalUnread;
-                badge.setAttribute('data-count', totalUnread);
-                
-                if (totalUnread > 0) {
-                    badge.classList.remove('empty');
-                    badge.style.background = '#E53935';
-                    badge.style.color = 'white';
-                    badge.style.opacity = '1';
-                } else {
-                    badge.classList.add('empty');
-                    badge.style.background = 'rgba(255, 255, 255, 0.3)';
-                    badge.style.color = 'rgba(255, 255, 255, 0.8)';
-                    badge.style.opacity = '1';
-                }
-                
-                badge.style.display = 'inline-flex';
-                console.log(`📬 МЦ: Badge обновлён: ${totalUnread}`);
-            } else {
-                console.error('📬 МЦ: ОШИБКА: Элемент messages-badge НЕ НАЙДЕН!');
-            }
+            // Используем глобальную функцию
+            window.updateMessagesBadgeUI(totalUnread);
         } else {
             console.warn('📬 МЦ: Ошибка API:', response.status);
         }
@@ -3037,16 +3015,30 @@ async function loadUnreadMessagesCount() {
     }
 }
 
+/**
+ * 📬 ГЛОБАЛЬНАЯ функция обновления badge сообщений
+ */
+window.updateMessagesBadgeUI = function(count) {
+    const badge = document.getElementById('messages-badge');
+    console.log('📬 МЦ updateMessagesBadgeUI: badge найден:', !!badge, ', count:', count);
+    
+    if (badge) {
+        badge.textContent = count;
+        badge.style.display = count > 0 ? 'inline-flex' : 'none';
+        console.log(`📬 МЦ Badge обновлён: ${count}`);
+    }
+};
+
 // Гарантированный вызов после полной загрузки страницы
 window.addEventListener('load', () => {
     console.log('📬 МЦ: Window load - вызываем loadUnreadMessagesCount');
     setTimeout(() => loadUnreadMessagesCount(), 1000);
 });
 
-// Периодическое обновление счётчика каждые 30 секунд
+// Периодическое обновление счётчика каждые 10 секунд
 setInterval(() => {
     loadUnreadMessagesCount();
-}, 30000);
+}, 10000);
 
 /**
  * Открыть модальное окно для подтверждения донации с вводом даты/времени

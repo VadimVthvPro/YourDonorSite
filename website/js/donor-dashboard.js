@@ -863,35 +863,19 @@ async function loadUnreadMessagesCount() {
 }
 
 /**
- * 📬 Обновление UI счётчика непрочитанных
+ * 📬 Обновление счётчика сообщений (как updateRequestsBadges)
+ * ГЛОБАЛЬНАЯ функция для вызова из messenger.js
  */
-function updateMessagesBadgeUI(count) {
+window.updateMessagesBadgeUI = function(count) {
     const badge = document.getElementById('messages-badge');
-    console.log('📬 Обновление badge, элемент найден:', !!badge, ', count:', count);
+    console.log('📬 updateMessagesBadgeUI: badge найден:', !!badge, ', count:', count);
     
     if (badge) {
         badge.textContent = count;
-        badge.setAttribute('data-count', count);
-        
-        if (count > 0) {
-            badge.classList.remove('empty');
-            badge.style.background = '#E53935';
-            badge.style.color = 'white';
-            badge.style.opacity = '1';
-        } else {
-            badge.classList.add('empty');
-            badge.style.background = 'rgba(255, 255, 255, 0.3)';
-            badge.style.color = 'rgba(255, 255, 255, 0.8)';
-            badge.style.opacity = '1';
-        }
-        
-        // Гарантируем видимость
-        badge.style.display = 'inline-flex';
-        console.log(`📬 Badge обновлён: ${count}`);
-    } else {
-        console.error('📬 ОШИБКА: Элемент messages-badge НЕ НАЙДЕН!');
+        badge.style.display = count > 0 ? 'inline-flex' : 'none';
+        console.log(`📬 Badge обновлён: ${count}, display: ${badge.style.display}`);
     }
-}
+};
 
 // Гарантированный вызов после полной загрузки страницы
 window.addEventListener('load', () => {
@@ -899,10 +883,10 @@ window.addEventListener('load', () => {
     setTimeout(() => loadUnreadMessagesCount(), 1000);
 });
 
-// Периодическое обновление счётчика каждые 30 секунд
+// Периодическое обновление счётчика каждые 10 секунд
 setInterval(() => {
     loadUnreadMessagesCount();
-}, 30000);
+}, 10000);
 
 function updateMessagesBadge(messages) {
     const unreadCount = messages.filter(m => !m.is_read).length;
