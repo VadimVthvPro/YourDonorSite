@@ -19,6 +19,13 @@
 console.log('🔐 auth-storage.js v2.0 ЗАГРУЖЕН');
 
 /**
+ * Проверка, запущено ли в Telegram Mini App
+ */
+function _isTelegramMiniApp() {
+    return !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData);
+}
+
+/**
  * Storage Adapter для работы с авторизацией
  */
 class AuthStorage {
@@ -34,9 +41,10 @@ class AuthStorage {
      * @param {string} accessToken - Access token (JWT) из backend
      * @param {string} userType - Тип пользователя ('donor' | 'medcenter')
      * @param {object} userData - Данные пользователя из backend
+     * @param {string} refreshToken - Refresh token (опционально, для Telegram)
      * @returns {boolean} true если сохранение успешно
      */
-    static save(accessToken, userType, userData) {
+    static save(accessToken, userType, userData, refreshToken = null) {
         try {
             // Access token в памяти
             this._accessToken = accessToken;
@@ -50,6 +58,13 @@ class AuthStorage {
             
             // Для совместимости со старым кодом
             localStorage.setItem('auth_token', accessToken);
+            
+            // 🔥 Для Telegram Mini App: сохраняем в CloudStorage
+            if (_isTelegramMiniApp() && window.TelegramAuth && refreshToken) {
+                console.log('📱 Сохранение в Telegram CloudStorage...');
+                window.TelegramAuth.saveSession(accessToken, refreshToken, userType, userData)
+                    .catch(err => console.warn('⚠️ Ошибка сохранения в CloudStorage:', err));
+            }
             
             console.log(`✅ Сессия сохранена: ${userType}`);
             return true;
@@ -286,15 +301,69 @@ class AuthStorage {
      * 🔥 Валидация и восстановление сессии при загрузке страницы
      * 
      * Логика:
-     * 1. Проверяем есть ли токен в памяти/localStorage
-     * 2. Если есть валидный токен - используем его
-     * 3. Если нет или истёк - пробуем refresh через cookie
-     * 4. Если refresh не удался - требуем повторный вход
+     * 1. Для Telegram Mini App: проверяем CloudStorage
+     * 2. Проверяем есть ли токен в памяти/localStorage
+     * 3. Если есть валидный токен - используем его
+     * 4. Если нет или истёк - пробуем refresh через cookie
+     * 5. Если refresh не удался - требуем повторный вход
      * 
      * @returns {Promise<object>} Результат валидации
      */
     static async validate() {
         console.log('🔐 Начало валидации сессии...');
+        
+        // 🔥 Для Telegram Mini App: сначала пробуем CloudStorage
+        if (_isTelegramMiniApp() && window.TelegramAuth) {
+            console.log('📱 Telegram Mini App: проверяем CloudStorage...');
+            
+            const telegramSession = await window.TelegramAuth.restoreSession();
+            if (telegramSession && telegramSession.accessToken) {
+                console.log('✅ Сессия восстановлена из Telegram CloudStorage!');
+                
+                this._accessToken = telegramSession.accessToken;
+                this._userType = telegramSession.userType;
+                this._userData = telegramSession.userData;
+                
+                // Проверяем не истёк ли токен
+                if (!this._isTokenExpired(telegramSession.accessToken)) {
+                    return {
+                        valid: true,
+                        userData: this._userData,
+                        userType: this._userType,
+                        source: 'telegram_cloud'
+                    };
+                }
+                
+                // Токен истёк - пробуем refresh через CloudStorage
+                console.log('🔄 Токен истёк, обновляем через CloudStorage...');
+                const newToken = await window.TelegramAuth.refreshAccessToken();
+                if (newToken) {
+                    this._accessToken = newToken;
+                    return {
+                        valid: true,
+                        userData: this._userData,
+                        userType: this._userType,
+                        source: 'telegram_cloud_refresh'
+                    };
+                }
+            }
+            
+            // Пробуем автовход через initData
+            console.log('🔄 Попытка автовхода через Telegram initData...');
+            const autoLogin = await window.TelegramAuth.loginWithInitData();
+            if (autoLogin) {
+                this._accessToken = autoLogin.access_token;
+                this._userType = autoLogin.user_type;
+                this._userData = autoLogin.user;
+                
+                return {
+                    valid: true,
+                    userData: this._userData,
+                    userType: this._userType,
+                    source: 'telegram_init_data'
+                };
+            }
+        }
         
         const userType = this.getUserType();
         const savedToken = localStorage.getItem('auth_token');
@@ -395,6 +464,12 @@ async function logout(redirectUrl = 'auth.html') {
     } catch (error) {
         console.warn('⚠️ Ошибка logout на сервере:', error.message);
         // Продолжаем очистку на клиенте
+    }
+    
+    // 🔥 Очищаем Telegram CloudStorage
+    if (_isTelegramMiniApp() && window.TelegramAuth) {
+        console.log('📱 Очистка Telegram CloudStorage...');
+        await window.TelegramAuth.clearSession().catch(() => {});
     }
     
     // Очищаем клиентские данные

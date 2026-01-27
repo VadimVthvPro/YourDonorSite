@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Твой Донор - Telegram</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 400px;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+        }
+        
+        .logo svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: var(--tg-theme-text-color, #E53935);
+        }
+        
+        .status {
+            font-size: 16px;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 12px;
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+        }
+        
+        .status.loading {
+            color: var(--tg-theme-hint-color, #999);
+        }
+        
+        .status.success {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+        
+        .status.error {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--tg-theme-secondary-bg-color, #f0f0f0);
+            border-top-color: #E53935;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .debug {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            font-size: 12px;
+            text-align: left;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #E53935;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        
+        .btn:hover {
+            background: #C62828;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="bloodGradient" x1="20" y1="4" x2="20" y2="36">
+                        <stop stop-color="#E53935"/>
+                        <stop offset="1" stop-color="#B71C1C"/>
+                    </linearGradient>
+                </defs>
+                <path d="M20 4C20 4 8 16 8 24C8 30.627 13.373 36 20 36C26.627 36 32 30.627 32 24C32 16 20 4 20 4Z" fill="url(#bloodGradient)"/>
+                <path d="M16 22H24M20 18V26" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </div>
+        
+        <h1>Твой Донор</h1>
+        
+        <div id="status" class="status loading">
+            <div class="spinner"></div>
+            Авторизация...
+        </div>
+        
+        <div id="debug" class="debug" style="display: none;"></div>
+    </div>
+
+    <script>
+        const DEBUG = false; // Отладка выключена
+        const API_URL = 'https://tvoydonor.by/api';
+        
+        function log(msg) {
+            console.log(msg);
+            if (DEBUG) {
+                const debugEl = document.getElementById('debug');
+                debugEl.style.display = 'block';
+                debugEl.innerHTML += msg + '<br>';
+            }
+        }
+        
+        function setStatus(text, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = 'status ' + type;
+            statusEl.innerHTML = text;
+        }
+        
+        async function init() {
+            log('🚀 Инициализация...');
+            
+            // Проверяем Telegram WebApp
+            if (!window.Telegram || !window.Telegram.WebApp) {
+                log('❌ Telegram.WebApp не найден');
+                setStatus('❌ Откройте через Telegram', 'error');
+                return;
+            }
+            
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            
+            log('✅ Telegram WebApp готов');
+            log('📱 Версия: ' + tg.version);
+            log('📱 Платформа: ' + tg.platform);
+            log('📱 initData длина: ' + (tg.initData?.length || 0));
+            
+            // Получаем данные пользователя
+            const user = tg.initDataUnsafe?.user;
+            
+            if (!user || !user.id) {
+                log('❌ Нет данных пользователя');
+                log('initDataUnsafe: ' + JSON.stringify(tg.initDataUnsafe));
+                setStatus('❌ Не удалось получить данные из Telegram', 'error');
+                return;
+            }
+            
+            log('👤 Telegram ID: ' + user.id);
+            log('👤 Username: ' + (user.username || 'нет'));
+            log('👤 Имя: ' + (user.first_name || ''));
+            
+            // Отправляем запрос на авторизацию
+            setStatus('<div class="spinner"></div>Вход в аккаунт...', 'loading');
+            
+            try {
+                log('📤 Отправка запроса на ' + API_URL + '/auth/telegram');
+                
+                const response = await fetch(API_URL + '/auth/telegram', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        init_data: tg.initData,
+                        telegram_id: user.id,
+                        username: user.username
+                    })
+                });
+                
+                log('📥 Ответ: ' + response.status);
+                
+                const data = await response.json();
+                log('📦 Данные: ' + JSON.stringify(data).substring(0, 200));
+                
+                if (response.ok && data.access_token) {
+                    log('✅ Авторизация успешна!');
+                    
+                    // Сохраняем токен
+                    localStorage.setItem('auth_token', data.access_token);
+                    localStorage.setItem('user_type', data.user_type);
+                    localStorage.setItem(data.user_type + '_user', JSON.stringify(data.user));
+                    
+                    setStatus('✅ Добро пожаловать, ' + (data.user.full_name || data.user.name || 'пользователь') + '!', 'success');
+                    
+                    // Редирект на dashboard
+                    setTimeout(() => {
+                        const dashboardUrl = data.user_type === 'donor' 
+                            ? 'pages/donor-dashboard.html' 
+                            : 'pages/medcenter-dashboard.html';
+                        log('🔄 Редирект на ' + dashboardUrl);
+                        window.location.href = dashboardUrl;
+                    }, 1500);
+                    
+                } else {
+                    log('❌ Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+                    
+                    if (response.status === 404) {
+                        setStatus(
+                            '❌ Аккаунт не найден<br><br>' +
+                            'Telegram ID: ' + user.id + '<br><br>' +
+                            'Сначала зарегистрируйтесь на сайте и привяжите Telegram в настройках профиля.<br><br>' +
+                            '<button class="btn" onclick="window.location.href=\'pages/auth.html\'">Войти / Регистрация</button>',
+                            'error'
+                        );
+                    } else {
+                        setStatus('❌ ' + (data.error || 'Ошибка авторизации'), 'error');
+                    }
+                }
+                
+            } catch (error) {
+                log('❌ Сетевая ошибка: ' + error.message);
+                setStatus('❌ Ошибка соединения с сервером<br>' + error.message, 'error');
+            }
+        }
+        
+        // Запускаем при загрузке
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

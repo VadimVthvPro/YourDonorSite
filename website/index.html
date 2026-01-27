@@ -715,6 +715,59 @@
     <script src="js/config.js"></script>
     <script src="js/app.js?v=3"></script>
     
+    <!-- 📱 Telegram Mini App: МОМЕНТАЛЬНАЯ авторизация -->
+    <script>
+    (function() {
+        // Быстрая проверка Telegram Mini App - ДО загрузки страницы
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            
+            const user = tg.initDataUnsafe?.user;
+            if (user && user.id) {
+                console.log('📱 Telegram Mini App: telegram_id=' + user.id);
+                
+                // Показываем загрузку
+                document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:var(--tg-theme-bg-color,#fff);"><div style="text-align:center;"><div style="width:50px;height:50px;border:3px solid #f0f0f0;border-top-color:#E53935;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 15px;"></div><div style="color:var(--tg-theme-text-color,#333);">Вход...</div></div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
+                
+                // Авторизация
+                fetch('/api/auth/telegram', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        telegram_id: user.id,
+                        username: user.username || '',
+                        init_data: tg.initData
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.access_token) {
+                        localStorage.setItem('auth_token', data.access_token);
+                        localStorage.setItem('user_type', data.user_type);
+                        localStorage.setItem(data.user_type + '_user', JSON.stringify(data.user));
+                        
+                        // Моментальный редирект
+                        window.location.replace(data.user_type === 'donor' 
+                            ? 'pages/donor-dashboard.html' 
+                            : 'pages/medcenter-dashboard.html');
+                    } else {
+                        // Аккаунт не привязан
+                        window.location.replace('pages/auth.html?tg=1&tid=' + user.id);
+                    }
+                })
+                .catch(e => {
+                    console.error('Ошибка:', e);
+                    window.location.replace('pages/auth.html?error=1');
+                });
+                
+                return; // Останавливаем дальнейшую загрузку страницы
+            }
+        }
+    })();
+    </script>
+    
     <!-- Schema.org JSON-LD -->
     <script type="application/ld+json">
     {

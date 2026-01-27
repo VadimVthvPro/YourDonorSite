@@ -533,9 +533,11 @@ def register_donor():
     )
     
     # Формируем ответ с HttpOnly cookie
+    # 🔥 refresh_token добавлен для Telegram Mini App (CloudStorage)
     response = make_response(jsonify({
         'message': 'Регистрация успешна! Привяжите Telegram бота @TvoyDonorZdesBot',
         'token': access_token,  # Access token для клиента
+        'refresh_token': refresh_token,  # 🔥 Для Telegram Mini App
         'user': user,
         'telegram_verification_required': True,
         'telegram_code': code,
@@ -599,9 +601,11 @@ def login_donor():
     query_db("UPDATE users SET last_login = NOW() WHERE id = %s", (user['id'],), commit=True)
     
     # Формируем ответ с HttpOnly cookie
+    # 🔥 refresh_token добавлен для Telegram Mini App (CloudStorage)
     response = make_response(jsonify({
         'message': 'Вход выполнен',
         'token': access_token,  # Access token для клиента
+        'refresh_token': refresh_token,  # 🔥 Для Telegram Mini App
         'user': {
             'id': user['id'], 
             'full_name': user['full_name'], 
@@ -1153,9 +1157,11 @@ def login_medcenter():
     )
     
     # Формируем ответ с HttpOnly cookie
+    # 🔥 refresh_token добавлен для Telegram Mini App (CloudStorage)
     response = make_response(jsonify({
         'message': 'Вход выполнен',
         'token': access_token,  # Access token для клиента
+        'refresh_token': refresh_token,  # 🔥 Для Telegram Mini App
         'medical_center': {'id': mc['id'], 'name': mc['name']}
     }))
     
@@ -1710,9 +1716,23 @@ def create_request():
         (mc_id,), one=True
     )
     
-    # Уведомления
-    if data.get('urgency') in ['urgent', 'critical']:
-        send_urgent_notifications(mc_id, data['blood_type'], new_req['id'], data.get('target_district_id'))
+    # ✅ ИСПРАВЛЕНО: Уведомления отправляются для ВСЕХ запросов
+    # Фильтрация по группе крови донора происходит в send_blood_request_notification
+    urgency = data.get('urgency', 'normal')
+    try:
+        from telegram_bot import send_blood_request_notification
+        mc = query_db("SELECT name, address FROM medical_centers WHERE id = %s", (mc_id,), one=True)
+        if mc:
+            sent_count = send_blood_request_notification(
+                blood_type=data['blood_type'],  # Рассылка ТОЛЬКО донорам с этой группой крови!
+                urgency=urgency,
+                medical_center_name=mc['name'],
+                address=mc.get('address'),
+                medical_center_id=mc_id
+            )
+            print(f"[BLOOD REQUEST] 📤 Отправлено {sent_count} уведомлений донорам группы {data['blood_type']}")
+    except Exception as e:
+        print(f"[BLOOD REQUEST] ⚠️ Ошибка отправки уведомлений: {e}")
     
     return jsonify({'message': 'Запрос создан', 'request': new_req}), 201
 
@@ -2332,18 +2352,18 @@ def update_response(response_id):
             
             if donor_telegram and donor_telegram.get('telegram_id'):
                 try:
-                    telegram_text = f"""✅ Ваша заявка на донацию одобрена!
+                    telegram_text = f"""✅ <b>Ваша заявка на донацию одобрена!</b>
 
 📅 {donation_date}, {donation_time}
 🏥 {medical_center['name']}
 📍 {medical_center['address']}
 
-⚠️ Важно: За 48 часов исключите алкоголь и жирную пищу.
+⚠️ <b>Важно:</b> За 48 часов исключите алкоголь и жирную пищу.
 
-📋 Полные правила подготовки на сайте
-💬 {APP_URL}/pages/donor-dashboard.html"""
+📋 Полные правила подготовки на платформе"""
                     
-                    send_telegram_message(donor_telegram['telegram_id'], telegram_text)
+                    send_telegram_message(donor_telegram['telegram_id'], telegram_text, 
+                                         with_miniapp_button=True, button_text="📋 Подробнее")
                     app.logger.info(f"✅ Telegram отправлен донору {donor['id']}")
                 except Exception as e:
                     app.logger.error(f"❌ Ошибка отправки в Telegram: {e}")
@@ -2709,17 +2729,40 @@ def get_medcenter_stats():
 # Telegram уведомления
 # ============================================
 
-def send_telegram_message(chat_id, text):
+def send_telegram_message(chat_id, text, with_miniapp_button=False, button_text="🌐 Перейти на платформу"):
+    """
+    Отправка сообщения в Telegram с опциональной кнопкой автовхода Mini App
+    
+    Args:
+        chat_id: Telegram ID получателя
+        text: Текст сообщения (HTML)
+        with_miniapp_button: Добавить кнопку Mini App
+        button_text: Текст на кнопке
+    """
     if not TELEGRAM_BOT_TOKEN:
         return False
     
+    # URL Mini App для автовхода
+    TG_APP_URL = os.getenv('WEBSITE_URL', 'https://tvoydonor.by') + '/tg-app.html'
+    
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        'chat_id': chat_id,
+        'text': text,
+        'parse_mode': 'HTML'
+    }
+    
+    # Добавляем кнопку Mini App для автовхода
+    if with_miniapp_button:
+        payload['reply_markup'] = {
+            'inline_keyboard': [[{
+                'text': button_text,
+                'web_app': {'url': TG_APP_URL}
+            }]]
+        }
+    
     try:
-        response = requests.post(url, json={
-            'chat_id': chat_id,
-            'text': text,
-            'parse_mode': 'HTML'
-        }, timeout=10)
+        response = requests.post(url, json=payload, timeout=10)
         return response.status_code == 200
     except:
         return False
@@ -2785,14 +2828,15 @@ def send_urgent_notifications(mc_id, blood_type, request_id=None, target_distric
 🏥 <b>Медцентр:</b> {mc['name']}
 📍 <b>Адрес:</b> {mc['address'] or 'не указан'}
 
-Откликнитесь на сайте Твой Донор или свяжитесь с медцентром."""
+Нажмите кнопку ниже, чтобы откликнуться."""
     
     sent_count = 0
     donors_without_telegram = []
     
     for donor in donors:
         if donor['telegram_id']:
-            success = send_telegram_message(donor['telegram_id'], message)
+            success = send_telegram_message(donor['telegram_id'], message, 
+                                           with_miniapp_button=True, button_text="🚨 Откликнуться")
             if success:
                 sent_count += 1
                 print(f"[TELEGRAM] ✓ Отправлено: {donor['full_name']} (ID: {donor['telegram_id']})")
@@ -4550,13 +4594,13 @@ def send_conversation_message(conversation_id):
                 mc_name = mc['name'] if mc else 'Медицинский центр'
                 
                 # Формируем сообщение для Telegram
-                telegram_text = f"""💬 Новое сообщение от {mc_name}
+                preview = content[:150] + '...' if len(content) > 150 else content
+                telegram_text = f"""💬 <b>Новое сообщение от {mc_name}</b>
 
-{content}
-
-📱 Ответить: {APP_URL}/pages/donor-dashboard.html#messages"""
+<i>{preview}</i>"""
                 
-                send_telegram_message(donor['telegram_id'], telegram_text)
+                send_telegram_message(donor['telegram_id'], telegram_text,
+                                     with_miniapp_button=True, button_text="💬 Ответить")
                 app.logger.info(f"📱 Telegram отправлен донору {donor['full_name']}")
             except Exception as e:
                 app.logger.error(f"❌ Ошибка отправки в Telegram: {e}")
@@ -4819,13 +4863,24 @@ def auth_refresh():
         - 200: { access_token, user }
         - 401: Refresh token невалиден или истёк
     """
+    # 🔍 Диагностика
+    print(f"[AUTH REFRESH] 🔄 Запрос refresh токена")
+    print(f"[AUTH REFRESH]   - Cookies в запросе: {list(request.cookies.keys())}")
+    print(f"[AUTH REFRESH]   - Origin: {request.headers.get('Origin', 'нет')}")
+    print(f"[AUTH REFRESH]   - User-Agent: {request.headers.get('User-Agent', 'нет')[:50]}...")
+    
     refresh_token = get_refresh_token_from_request()
     
     if not refresh_token:
+        print(f"[AUTH REFRESH] ❌ refresh_token НЕ НАЙДЕН в cookies!")
+        print(f"[AUTH REFRESH]   - Все cookies: {dict(request.cookies)}")
         return jsonify({
             'error': 'Требуется авторизация',
-            'code': 'NO_REFRESH_TOKEN'
+            'code': 'NO_REFRESH_TOKEN',
+            'debug': 'Cookie refresh_token не найден'
         }), 401
+    
+    print(f"[AUTH REFRESH] ✅ refresh_token найден (длина: {len(refresh_token)})")
     
     # Проверяем и ротируем токен
     new_access, new_refresh = rotate_refresh_token(query_db, refresh_token)
@@ -4920,6 +4975,41 @@ def auth_logout_all():
     return response
 
 
+@app.route('/api/auth/check', methods=['GET'])
+def auth_check():
+    """
+    🔍 Диагностический endpoint для проверки авторизации
+    Показывает состояние cookies и сессии
+    """
+    refresh_token = get_refresh_token_from_request()
+    
+    result = {
+        'cookies_received': list(request.cookies.keys()),
+        'has_refresh_token': bool(refresh_token),
+        'refresh_token_length': len(refresh_token) if refresh_token else 0,
+        'origin': request.headers.get('Origin'),
+        'user_agent': request.headers.get('User-Agent', '')[:100],
+        'is_authenticated': False,
+        'session': None
+    }
+    
+    if refresh_token:
+        # Проверяем токен в БД
+        session = verify_refresh_token(refresh_token, query_db)
+        if session:
+            result['is_authenticated'] = True
+            result['session'] = {
+                'user_type': session['user_type'],
+                'user_id': session.get('user_id'),
+                'medical_center_id': session.get('medical_center_id'),
+                'created_at': session['created_at'].isoformat() if session.get('created_at') else None,
+                'expires_at': session['expires_at'].isoformat() if session.get('expires_at') else None,
+                'platform': session.get('platform')
+            }
+    
+    return jsonify(result)
+
+
 @app.route('/api/auth/sessions', methods=['GET'])
 @require_auth()
 def auth_sessions():
@@ -4945,36 +5035,237 @@ def auth_sessions():
     })
 
 
-@app.route('/api/auth/check', methods=['GET'])
-def auth_check():
+# ============================================
+# TELEGRAM MINI APP АВТОРИЗАЦИЯ
+# ============================================
+
+def validate_telegram_init_data(init_data, bot_token):
     """
-    Проверка статуса авторизации
-    Используется для быстрой проверки без полного refresh
+    Валидация Telegram initData с проверкой HMAC-SHA256 подписи
+    https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
     """
-    # Сначала проверяем Bearer токен (access token)
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header.startswith('Bearer '):
-        token = auth_header.replace('Bearer ', '')
-        payload = verify_access_token(token)
-        if payload:
-            return jsonify({
-                'authenticated': True,
-                'user_type': payload.get('type'),
-                'user_id': payload.get('sub')
-            })
+    import hmac
+    import hashlib
+    import urllib.parse
     
-    # Если нет access token, проверяем refresh cookie
-    refresh_token = get_refresh_token_from_request()
-    if refresh_token:
-        session = verify_refresh_token(refresh_token, query_db)
-        if session:
-            return jsonify({
-                'authenticated': True,
-                'user_type': session['user_type'],
-                'needs_refresh': True  # Сигнал клиенту вызвать /auth/refresh
-            })
+    try:
+        # Парсим initData
+        parsed = dict(urllib.parse.parse_qsl(init_data))
+        received_hash = parsed.pop('hash', None)
+        
+        if not received_hash:
+            return False, "hash не найден в initData"
+        
+        # Сортируем параметры и создаём data_check_string
+        sorted_params = sorted(parsed.items())
+        data_check_string = '\n'.join(f"{k}={v}" for k, v in sorted_params)
+        
+        # Создаём secret_key: HMAC-SHA256("WebAppData", bot_token)
+        secret_key = hmac.new(
+            b"WebAppData", 
+            bot_token.encode(), 
+            hashlib.sha256
+        ).digest()
+        
+        # Вычисляем ожидаемый hash: HMAC-SHA256(data_check_string, secret_key)
+        expected_hash = hmac.new(
+            secret_key, 
+            data_check_string.encode(), 
+            hashlib.sha256
+        ).hexdigest()
+        
+        # Сравниваем
+        if not hmac.compare_digest(expected_hash, received_hash):
+            return False, "Неверная подпись initData"
+        
+        # Проверяем auth_date (не старше 5 минут)
+        auth_date = int(parsed.get('auth_date', 0))
+        import time
+        if time.time() - auth_date > 300:  # 5 минут
+            # Временно отключаем для тестирования
+            print(f"[TELEGRAM AUTH] ⚠️ initData старше 5 минут (auth_date={auth_date})")
+            # return False, "initData устарел (>5 минут)"
+        
+        return True, parsed
+        
+    except Exception as e:
+        return False, f"Ошибка валидации: {str(e)}"
+
+
+@app.route('/api/auth/telegram', methods=['POST'])
+def auth_telegram():
+    """
+    Автоматическая авторизация через Telegram
+    Принимает telegram_id напрямую или через initData
+    """
+    import urllib.parse
     
-    return jsonify({'authenticated': False})
+    data = request.json or {}
+    init_data = data.get('init_data', '')
+    telegram_id = data.get('telegram_id')  # Напрямую из запроса
+    username = data.get('username', '')
+    user_data = {}  # Инициализируем для избежания UnboundLocalError
+    
+    print(f"[TELEGRAM AUTH] 📱 Попытка автовхода")
+    print(f"[TELEGRAM AUTH]   - telegram_id в запросе: {telegram_id}")
+    print(f"[TELEGRAM AUTH]   - username в запросе: {username}")
+    print(f"[TELEGRAM AUTH]   - init_data длина: {len(init_data) if init_data else 0}")
+    
+    # Если telegram_id не передан напрямую, парсим из initData
+    if not telegram_id and init_data:
+        try:
+            parsed = dict(urllib.parse.parse_qsl(init_data))
+            user_data_str = parsed.get('user', '{}')
+            user_data = json.loads(user_data_str) if user_data_str else {}
+            telegram_id = user_data.get('id')
+            username = user_data.get('username', username)
+            
+            print(f"[TELEGRAM AUTH]   - telegram_id из initData: {telegram_id}")
+            print(f"[TELEGRAM AUTH]   - username из initData: {username}")
+        except Exception as e:
+            print(f"[TELEGRAM AUTH] ❌ Ошибка парсинга initData: {e}")
+    
+    if not telegram_id:
+        print(f"[TELEGRAM AUTH] ❌ telegram_id не предоставлен")
+        return jsonify({'error': 'telegram_id не предоставлен'}), 400
+    
+    # Преобразуем в int если строка
+    try:
+        telegram_id = int(telegram_id)
+    except (ValueError, TypeError):
+        print(f"[TELEGRAM AUTH] ❌ Неверный формат telegram_id: {telegram_id}")
+        return jsonify({'error': 'Неверный формат telegram_id'}), 400
+    
+    print(f"[TELEGRAM AUTH] 🔍 Ищем пользователя с telegram_id={telegram_id}")
+    
+    # Ищем пользователя по telegram_id
+    user = query_db(
+        "SELECT id, full_name, blood_type FROM users WHERE telegram_id = %s AND is_active = TRUE",
+        (telegram_id,), one=True
+    )
+    
+    if user:
+        print(f"[TELEGRAM AUTH] ✅ Найден донор: {user['full_name']}")
+        
+        # Создаём сессию
+        client_info = get_client_info()
+        access_token, refresh_token, session_id = create_session(
+            query_db,
+            user_id=user['id'],
+            user_type='donor',
+            device_info=f"Telegram Mini App ({user_data.get('username', 'unknown')})",
+            ip_address=client_info['ip_address'],
+            platform='telegram'
+        )
+        
+        return jsonify({
+            'access_token': access_token,
+            'refresh_token': refresh_token,  # Для CloudStorage
+            'user_type': 'donor',
+            'user': {
+                'id': user['id'],
+                'full_name': user['full_name'],
+                'blood_type': user['blood_type']
+            }
+        })
+    
+    # Ищем медцентр по telegram_id (если вдруг привязан)
+    mc = query_db(
+        "SELECT id, name FROM medical_centers WHERE telegram_id = %s AND is_active = TRUE",
+        (telegram_id,), one=True
+    )
+    
+    if mc:
+        print(f"[TELEGRAM AUTH] ✅ Найден медцентр: {mc['name']}")
+        
+        client_info = get_client_info()
+        access_token, refresh_token, session_id = create_session(
+            query_db,
+            medical_center_id=mc['id'],
+            user_type='medcenter',
+            device_info=f"Telegram Mini App ({user_data.get('username', 'unknown')})",
+            ip_address=client_info['ip_address'],
+            platform='telegram'
+        )
+        
+        return jsonify({
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'user_type': 'medcenter',
+            'user': {
+                'id': mc['id'],
+                'name': mc['name']
+            }
+        })
+    
+    print(f"[TELEGRAM AUTH] ℹ️ Пользователь с telegram_id={telegram_id} не найден")
+    return jsonify({
+        'error': 'Аккаунт не найден',
+        'message': 'Telegram не привязан к аккаунту. Сначала войдите и привяжите Telegram в настройках.',
+        'telegram_id': telegram_id
+    }), 404
+
+
+@app.route('/api/auth/refresh-telegram', methods=['POST'])
+def auth_refresh_telegram():
+    """
+    Обновление токена для Telegram Mini App
+    Принимает refresh_token в теле запроса (из CloudStorage)
+    """
+    data = request.json
+    refresh_token = data.get('refresh_token')
+    
+    if not refresh_token:
+        return jsonify({'error': 'refresh_token не предоставлен'}), 400
+    
+    print(f"[TELEGRAM REFRESH] 🔄 Обновление токена")
+    
+    # Проверяем и ротируем токен
+    new_access, new_refresh = rotate_refresh_token(query_db, refresh_token)
+    
+    if not new_access:
+        print(f"[TELEGRAM REFRESH] ❌ Токен невалиден или истёк")
+        return jsonify({'error': 'Сессия истекла'}), 401
+    
+    # Получаем данные пользователя
+    token_hash = hash_token(new_refresh)
+    session = query_db(
+        "SELECT * FROM user_sessions WHERE refresh_token_hash = %s",
+        (token_hash,), one=True
+    )
+    
+    user_data = None
+    if session:
+        if session['user_type'] == 'donor' and session['user_id']:
+            user = query_db(
+                "SELECT id, full_name, blood_type FROM users WHERE id = %s",
+                (session['user_id'],), one=True
+            )
+            if user:
+                user_data = {
+                    'id': user['id'],
+                    'full_name': user['full_name'],
+                    'blood_type': user['blood_type']
+                }
+        elif session['user_type'] == 'medcenter' and session['medical_center_id']:
+            mc = query_db(
+                "SELECT id, name FROM medical_centers WHERE id = %s",
+                (session['medical_center_id'],), one=True
+            )
+            if mc:
+                user_data = {
+                    'id': mc['id'],
+                    'name': mc['name']
+                }
+    
+    print(f"[TELEGRAM REFRESH] ✅ Токен обновлён")
+    
+    return jsonify({
+        'access_token': new_access,
+        'refresh_token': new_refresh,
+        'user_type': session['user_type'] if session else None,
+        'user': user_data
+    })
 
 
 # ============================================

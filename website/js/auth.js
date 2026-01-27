@@ -709,8 +709,8 @@ function initFormValidation() {
                     btn.classList.add('success');
                     btn.textContent = '';
                     
-                    // 🔥 НОВОЕ: Используем AuthStorage вместо прямой записи
-                    AuthStorage.save(result.token, 'donor', result.user);
+                    // 🔥 Сохраняем с refresh_token для Telegram Mini App
+                    AuthStorage.save(result.token, 'donor', result.user, result.refresh_token);
                     
                     setTimeout(() => {
                         window.location.href = 'donor-dashboard.html';
@@ -792,8 +792,8 @@ function initFormValidation() {
                 
                 if (response.ok) {
                     // Сохраняем авторизацию
-                    // 🔥 НОВОЕ: Используем AuthStorage
-                    AuthStorage.save(result.token, 'donor', result.user);
+                    // 🔥 Сохраняем с refresh_token для Telegram Mini App
+                    AuthStorage.save(result.token, 'donor', result.user, result.refresh_token);
                     
                     // Всегда показываем модальное окно с кодом для привязки Telegram
                     // Используем код из backend (НЕ генерируем новый!)
@@ -840,8 +840,8 @@ function initFormValidation() {
                 console.log('Ответ сервера:', result);
                 
                 if (response.ok) {
-                    // 🔥 НОВОЕ: Используем AuthStorage
-                    AuthStorage.save(result.token, 'medcenter', result.medical_center);
+                    // 🔥 Сохраняем с refresh_token для Telegram Mini App
+                    AuthStorage.save(result.token, 'medcenter', result.medical_center, result.refresh_token);
                     window.location.href = 'medcenter-dashboard.html';
                 } else {
                     // Проверяем статус подтверждения
@@ -931,8 +931,8 @@ function initFormValidation() {
                         showApprovalPendingModal(result.medical_center?.email || data.email);
                     } else {
                         // Если подтверждён сразу (не должно быть, но на всякий случай)
-                        // 🔥 НОВОЕ: Используем AuthStorage
-                        AuthStorage.save(result.token, 'medcenter', result.medical_center);
+                        // 🔥 Сохраняем с refresh_token для Telegram Mini App
+                        AuthStorage.save(result.token, 'medcenter', result.medical_center, result.refresh_token);
                         showNotification('Медцентр зарегистрирован!', 'success');
                         setTimeout(() => {
                             window.location.href = 'medcenter-dashboard.html';

@@ -44,6 +44,9 @@ DB_CONFIG = {
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 WEBSITE_URL = os.getenv('WEBSITE_URL', 'http://localhost:8000')
 
+# URL для Telegram Mini App (отдельная страница с авторизацией)
+TG_APP_URL = WEBSITE_URL + '/tg-app.html'
+
 # Супер-админ для подтверждения медцентров
 SUPER_ADMIN_TELEGRAM_ID = os.getenv('SUPER_ADMIN_TELEGRAM_ID', '')
 SUPER_ADMIN_USERNAME = os.getenv('SUPER_ADMIN_TELEGRAM_USERNAME', 'vadimvthv')
@@ -153,7 +156,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton(
             "🌐 Запустить платформу",
-            web_app=WebAppInfo(url=WEBSITE_URL)
+            web_app=WebAppInfo(url=TG_APP_URL)
         )],
         [InlineKeyboardButton(
             "❓ Помощь",
@@ -420,7 +423,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(
                 "🌐 Запустить платформу",
-                web_app=WebAppInfo(url=WEBSITE_URL)
+                web_app=WebAppInfo(url=TG_APP_URL)
             )],
             [InlineKeyboardButton(
                 "◀️ Назад",
@@ -447,7 +450,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(
                 "🌐 Запустить платформу",
-                web_app=WebAppInfo(url=WEBSITE_URL)
+                web_app=WebAppInfo(url=TG_APP_URL)
             )],
             [InlineKeyboardButton(
                 "❓ Помощь",
@@ -728,8 +731,16 @@ async def send_notification_async(telegram_id: int, message: str, app: Applicati
         logger.error(f"Ошибка отправки уведомления {telegram_id}: {e}")
         return False
 
-def send_notification(telegram_id: int, message: str):
-    """Синхронная отправка уведомления (для использования из Flask)"""
+def send_notification(telegram_id: int, message: str, with_miniapp_button: bool = False, button_text: str = "🌐 Открыть"):
+    """
+    Синхронная отправка уведомления (для использования из Flask)
+    
+    Args:
+        telegram_id: ID пользователя в Telegram
+        message: Текст сообщения (HTML)
+        with_miniapp_button: Добавить кнопку Mini App для автовхода
+        button_text: Текст на кнопке
+    """
     import requests
     
     if not TELEGRAM_BOT_TOKEN:
@@ -742,6 +753,15 @@ def send_notification(telegram_id: int, message: str):
         'text': message,
         'parse_mode': 'HTML'
     }
+    
+    # Добавляем кнопку Mini App для автовхода
+    if with_miniapp_button:
+        data['reply_markup'] = {
+            'inline_keyboard': [[{
+                'text': button_text,
+                'web_app': {'url': TG_APP_URL}
+            }]]
+        }
     
     try:
         response = requests.post(url, json=data, timeout=10)
@@ -815,14 +835,13 @@ def send_urgent_blood_request(blood_type: str, medical_center_name: str, address
     
     message += (
         f"\n⏰ <b>Это срочный запрос!</b>\n\n"
-        f"Если вы можете помочь, перейдите на сайт для подробностей.\n\n"
-        f"🌐 {WEBSITE_URL}"
+        f"Если вы можете помочь, нажмите кнопку ниже."
     )
     
-    # Отправляем уведомления
+    # Отправляем уведомления С КНОПКОЙ АВТОВХОДА
     sent_count = 0
     for donor in donors:
-        if send_notification(donor['telegram_id'], message):
+        if send_notification(donor['telegram_id'], message, with_miniapp_button=True, button_text="🚨 Помочь сейчас"):
             sent_count += 1
     
     logger.info(f"[NOTIFICATION] ✅ Отправлено {sent_count}/{len(donors)} уведомлений для группы {blood_type}, район {district_id}")
@@ -890,14 +909,13 @@ def send_blood_status_notification(blood_type: str, status: str, medical_center_
         f"{emoji} <b>{title}</b>\n\n"
         f"🩸 <b>Группа крови:</b> {blood_type}\n"
         f"🏥 <b>Медцентр:</b> {medical_center_name}\n\n"
-        f"{desc}\n\n"
-        f"🌐 <a href='{WEBSITE_URL}'>Перейти на платформу</a>"
+        f"{desc}"
     )
     
-    # Отправляем уведомления
+    # Отправляем уведомления С КНОПКОЙ АВТОВХОДА
     sent_count = 0
     for donor in donors:
-        if send_notification(donor['telegram_id'], message):
+        if send_notification(donor['telegram_id'], message, with_miniapp_button=True, button_text="🩸 Записаться"):
             sent_count += 1
     
     logger.info(f"Отправлено {sent_count}/{len(donors)} уведомлений о статусе {status} для группы {blood_type}")
@@ -922,11 +940,11 @@ def send_message_notification(user_id: int, medcenter_name: str, subject: str, m
         f"📩 <b>Новое сообщение от медцентра</b>\n\n"
         f"🏥 <b>От:</b> {medcenter_name}\n"
         f"📝 <b>Тема:</b> {subject}\n\n"
-        f"<i>{message_text[:200]}</i>{'...' if len(message_text) > 200 else ''}\n\n"
-        f"🌐 <a href='{WEBSITE_URL}/pages/donor-dashboard.html'>Прочитать полностью</a>"
+        f"<i>{message_text[:200]}</i>{'...' if len(message_text) > 200 else ''}"
     )
     
-    success = send_notification(donor['telegram_id'], message)
+    # Отправляем С КНОПКОЙ АВТОВХОДА
+    success = send_notification(donor['telegram_id'], message, with_miniapp_button=True, button_text="📩 Прочитать")
     if success:
         logger.info(f"Уведомление о сообщении отправлено пользователю {user_id}")
     return success
@@ -1007,15 +1025,12 @@ def send_blood_request_notification(blood_type: str, urgency: str, medical_cente
     if address:
         message += f"📍 <b>Адрес:</b> {address}\n"
     
-    message += (
-        f"\n{desc}\n\n"
-        f"🌐 <a href='{WEBSITE_URL}/pages/donor-dashboard.html'>Откликнуться на запрос</a>"
-    )
+    message += f"\n{desc}"
     
-    # Отправляем уведомления
+    # Отправляем уведомления С КНОПКОЙ АВТОВХОДА
     sent_count = 0
     for donor in donors:
-        if send_notification(donor['telegram_id'], message):
+        if send_notification(donor['telegram_id'], message, with_miniapp_button=True, button_text="🩸 Откликнуться"):
             sent_count += 1
     
     logger.info(f"[BLOOD REQUEST] ✅ Отправлено {sent_count}/{len(donors)} уведомлений ({urgency}) для группы {blood_type}, район '{district_name}'")

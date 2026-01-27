@@ -33,10 +33,19 @@ REFRESH_TOKEN_EXPIRES = timedelta(days=30)     # 30 дней для всех
 COOKIE_NAME = 'refresh_token'
 COOKIE_PATH = '/'
 COOKIE_HTTPONLY = True
+
+# ВАЖНО для cross-origin (Telegram Mini App):
+# - Secure=True обязательно при SameSite=None
+# - SameSite=None нужен для cross-origin запросов
 # Для production (HTTPS) - True, для development (HTTP) - False
-COOKIE_SECURE = os.getenv('FLASK_ENV', 'production') != 'development'
-# Lax позволяет отправлять cookie при навигации, Strict - только при same-site запросах
-COOKIE_SAMESITE = 'Lax'  # 'Lax' работает лучше с OAuth и редиректами
+IS_PRODUCTION = os.getenv('FLASK_ENV', 'production') != 'development'
+COOKIE_SECURE = IS_PRODUCTION  # Secure только для HTTPS
+
+# SameSite настройки:
+# - 'None' + Secure: для cross-origin (Telegram Mini App)
+# - 'Lax': для same-site навигации
+# - 'Strict': максимальная безопасность, но ломает cross-site
+COOKIE_SAMESITE = 'None' if IS_PRODUCTION else 'Lax'  # None для cross-origin в production
 
 
 # ============================================
@@ -305,9 +314,32 @@ def clear_refresh_cookie(response):
 
 def get_refresh_token_from_request():
     """
-    Извлечение refresh token из cookie
+    Извлечение refresh token из cookie ИЛИ header
+    
+    Порядок приоритета:
+    1. Header X-Refresh-Token (для Telegram Mini App)
+    2. Cookie refresh_token (для веба)
     """
-    return request.cookies.get(COOKIE_NAME)
+    # 🔥 Сначала проверяем Header (для Telegram)
+    header_token = request.headers.get('X-Refresh-Token')
+    if header_token:
+        print(f"[AUTH] 📱 refresh_token из Header X-Refresh-Token")
+        return header_token
+    
+    # Затем Cookie (для веба)
+    cookie_token = request.cookies.get(COOKIE_NAME)
+    if cookie_token:
+        print(f"[AUTH] 🌐 refresh_token из Cookie")
+        return cookie_token
+    
+    # Также проверяем тело запроса (для Telegram refresh)
+    if request.is_json:
+        body_token = request.json.get('refresh_token')
+        if body_token:
+            print(f"[AUTH] 📦 refresh_token из тела запроса")
+            return body_token
+    
+    return None
 
 
 # ============================================
