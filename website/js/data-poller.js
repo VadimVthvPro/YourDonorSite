@@ -145,6 +145,6 @@ class DataPoller {
 }
 
 // Глобальный экземпляр
-window.dataPoller = new window.dataPoller || new DataPoller();
+window.dataPoller = window.dataPoller || new DataPoller();
 
 console.log('✅ DataPoller инициализирован');

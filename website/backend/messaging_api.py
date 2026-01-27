@@ -39,6 +39,13 @@ def get_or_create_conversation(donor_id, medical_center_id, query_db_func):
 
 def format_conversation(conv, partner_info, unread_count, query_db_func):
     """Форматировать диалог для отправки клиенту"""
+    # 🔧 FIX: Используем last_msg_time если есть, иначе last_message_at
+    last_time = conv.get('last_msg_time') or conv.get('last_message_at')
+    last_time_str = last_time.isoformat() if last_time else None
+    
+    # 🔧 FIX: Берём превью из подзапроса или из колонки таблицы
+    preview = conv.get('last_message_preview') or ''
+    
     return {
         'id': conv['id'],
         'partner': {
@@ -50,8 +57,11 @@ def format_conversation(conv, partner_info, unread_count, query_db_func):
             'avatar': get_avatar_initials(partner_info.get('full_name') or partner_info.get('name'))
         },
         'last_message': {
-            'preview': conv.get('last_message_preview', ''),
-            'time': conv['last_message_at'].isoformat() if conv.get('last_message_at') else None
+            'id': conv.get('last_msg_id'),
+            'preview': preview,
+            'content': preview,  # 🔧 FIX: Дублируем для совместимости с фронтом
+            'time': last_time_str,
+            'created_at': last_time_str  # 🔧 FIX: Дублируем для совместимости
         },
         'unread_count': unread_count,
         'status': conv.get('status', 'active'),

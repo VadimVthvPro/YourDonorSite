@@ -4047,11 +4047,22 @@ def get_conversations():
                       mc.id as partner_id,
                       mc.name as partner_name,
                       mc.address,
-                      mc.phone
+                      mc.phone,
+                      (SELECT LEFT(cm.message_text, 100) FROM chat_messages cm 
+                       WHERE cm.conversation_id = c.id AND cm.deleted_at IS NULL 
+                       ORDER BY cm.created_at DESC LIMIT 1) as last_message_preview,
+                      (SELECT cm.created_at FROM chat_messages cm 
+                       WHERE cm.conversation_id = c.id AND cm.deleted_at IS NULL 
+                       ORDER BY cm.created_at DESC LIMIT 1) as last_msg_time,
+                      (SELECT cm.id FROM chat_messages cm 
+                       WHERE cm.conversation_id = c.id AND cm.deleted_at IS NULL 
+                       ORDER BY cm.created_at DESC LIMIT 1) as last_msg_id
                FROM conversations c
                JOIN medical_centers mc ON c.medical_center_id = mc.id
                WHERE c.donor_id = %s AND c.status = %s
-               ORDER BY c.last_message_at DESC NULLS LAST
+               ORDER BY (SELECT cm.created_at FROM chat_messages cm 
+                         WHERE cm.conversation_id = c.id AND cm.deleted_at IS NULL 
+                         ORDER BY cm.created_at DESC LIMIT 1) DESC NULLS LAST
                LIMIT %s OFFSET %s""",
             (user_id, status, limit, offset)
         )
@@ -4077,11 +4088,22 @@ def get_conversations():
                       u.id as partner_id,
                       u.full_name as partner_name,
                       u.blood_type,
-                      u.total_donations
+                      u.total_donations,
+                      (SELECT LEFT(cm.message_text, 100) FROM chat_messages cm 
+                       WHERE cm.conversation_id = c.id AND cm.deleted_at IS NULL 
+                       ORDER BY cm.created_at DESC LIMIT 1) as last_message_preview,
+                      (SELECT cm.created_at FROM chat_messages cm 
+                       WHERE cm.conversation_id = c.id AND cm.deleted_at IS NULL 
+                       ORDER BY cm.created_at DESC LIMIT 1) as last_msg_time,
+                      (SELECT cm.id FROM chat_messages cm 
+                       WHERE cm.conversation_id = c.id AND cm.deleted_at IS NULL 
+                       ORDER BY cm.created_at DESC LIMIT 1) as last_msg_id
                FROM conversations c
                JOIN users u ON c.donor_id = u.id
                WHERE c.medical_center_id = %s AND c.status = %s
-               ORDER BY c.last_message_at DESC NULLS LAST
+               ORDER BY (SELECT cm.created_at FROM chat_messages cm 
+                         WHERE cm.conversation_id = c.id AND cm.deleted_at IS NULL 
+                         ORDER BY cm.created_at DESC LIMIT 1) DESC NULLS LAST
                LIMIT %s OFFSET %s""",
             (medical_center_id, status, limit, offset)
         )

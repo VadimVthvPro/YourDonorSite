@@ -181,11 +181,28 @@ class Messenger {
             
             console.log(`📥 Загружено диалогов: ${this.conversations.length}`);
             
+            // 🔧 FIX: Инициализируем lastMessageId из диалогов при первой загрузке
+            if (this.lastMessageId === 0 && this.conversations.length > 0) {
+                // Берём максимальный ID последнего сообщения из всех диалогов
+                const maxId = this.conversations.reduce((max, conv) => {
+                    const msgId = conv.last_message?.id || 0;
+                    return Math.max(max, msgId);
+                }, 0);
+                
+                if (maxId > 0) {
+                    this.lastMessageId = maxId;
+                    console.log(`🔧 lastMessageId инициализирован: ${this.lastMessageId}`);
+                }
+            }
+            
             this.renderConversations();
             this.updateTotalUnreadCount();
         } catch (error) {
             console.error('Ошибка загрузки диалогов:', error);
-            this.showError('Не удалось загрузить диалоги');
+            // Не показываем alert при polling-ошибках
+            if (!this._isPollingUpdate) {
+                this.showError('Не удалось загрузить диалоги');
+            }
         }
     }
     
@@ -220,15 +237,17 @@ class Messenger {
         const unreadBadge = conv.unread_count > 0 ? 
             `<span class="conversation-badge">${conv.unread_count}</span>` : '';
         
-        const time = this.formatTime(conv.last_message.time);
-        const preview = conv.last_message.preview || 'Нет сообщений';
+        // 🔧 FIX: Безопасная обработка last_message
+        const lastMessage = conv.last_message || {};
+        const time = this.formatTime(lastMessage.time || lastMessage.created_at);
+        const preview = lastMessage.preview || lastMessage.content || 'Нет сообщений';
         
         return `
             <div class="conversation-item ${isActive ? 'active' : ''}" data-conversation-id="${conv.id}">
-                <div class="conversation-avatar">${conv.partner.avatar}</div>
+                <div class="conversation-avatar">${conv.partner?.avatar || '?'}</div>
                 <div class="conversation-info">
-                    <div class="conversation-name">${this.escapeHtml(conv.partner.name)}</div>
-                    <div class="conversation-preview">${this.escapeHtml(preview)}</div>
+                    <div class="conversation-name">${this.escapeHtml(conv.partner?.name || 'Неизвестно')}</div>
+                    <div class="conversation-preview">${this.escapeHtml(preview.substring(0, 50))}</div>
                 </div>
                 <div class="conversation-meta">
                     <div class="conversation-time">${time}</div>
@@ -513,10 +532,15 @@ class Messenger {
     }
     
     updateConversationPreview(conversationId, preview) {
+        const now = new Date().toISOString();
+        
+        // Обновляем в массиве conversations
         const conv = this.conversations.find(c => c.id === conversationId);
         if (conv) {
+            conv.last_message = conv.last_message || {};
             conv.last_message.preview = preview;
-            conv.last_message.time = new Date().toISOString();
+            conv.last_message.content = preview;
+            conv.last_message.time = now;
         }
         
         // Обновляем в DOM
@@ -527,6 +551,11 @@ class Messenger {
             
             if (previewEl) previewEl.textContent = preview.substring(0, 50);
             if (timeEl) timeEl.textContent = 'только что';
+            
+            // 🔧 FIX: Перемещаем диалог наверх списка
+            if (item.parentNode && item.parentNode.firstChild !== item) {
+                item.parentNode.insertBefore(item, item.parentNode.firstChild);
+            }
         }
     }
     
@@ -537,15 +566,29 @@ class Messenger {
     startPolling() {
         console.log('🔄 Запуск long polling...');
         
+        // 🔧 Polling для новых сообщений - каждые 3 сек
         this.pollingInterval = setInterval(() => {
             this.checkForUpdates();
-        }, 3000); // Каждые 3 секунды
+        }, 3000);
+        
+        // 🔧 FIX: Отдельный таймер для обновления боковой панели - каждые 10 сек
+        this.conversationsRefreshInterval = setInterval(() => {
+            this._isPollingUpdate = true;
+            this.loadConversations().finally(() => {
+                this._isPollingUpdate = false;
+            });
+        }, 10000);
     }
     
     stopPolling() {
         if (this.pollingInterval) {
             clearInterval(this.pollingInterval);
             this.pollingInterval = null;
+        }
+        // 🔧 FIX: Очищаем также таймер обновления диалогов
+        if (this.conversationsRefreshInterval) {
+            clearInterval(this.conversationsRefreshInterval);
+            this.conversationsRefreshInterval = null;
         }
     }
     
@@ -560,27 +603,65 @@ class Messenger {
                     // Обновляем lastMessageId
                     this.lastMessageId = Math.max(this.lastMessageId, msg.id);
                     
-                    // Если сообщение в текущем диалоге
+                    // Если сообщение в текущем диалоге - добавляем в чат
                     if (msg.conversation_id === this.currentConversationId) {
-                        this.messages.push(msg);
-                        this.appendMessage(msg);
-                        this.scrollToBottom();
-                        
-                        // Отмечаем как прочитанное
-                        this.markAsRead(this.currentConversationId);
+                        // Проверяем, что сообщение ещё не добавлено
+                        const exists = this.messages.some(m => m.id === msg.id);
+                        if (!exists) {
+                            this.messages.push(msg);
+                            this.appendMessage(msg);
+                            this.scrollToBottom();
+                            
+                            // Отмечаем как прочитанное
+                            this.markAsRead(this.currentConversationId);
+                        }
                     }
+                    
+                    // 🔧 FIX: Обновляем превью в боковой панели для диалога с новым сообщением
+                    this.updateConversationInSidebar(msg.conversation_id, msg);
                 });
-                
-                // Обновляем счётчики непрочитанных
-                if (data.unread_counts) {
-                    this.updateUnreadCounts(data.unread_counts);
-                }
-                
-                // Обновляем список диалогов
-                await this.loadConversations();
             }
+            
+            // 🔧 FIX: Обновляем счётчики непрочитанных независимо от новых сообщений
+            if (data.unread_counts) {
+                this.updateUnreadCounts(data.unread_counts);
+            }
+            
         } catch (error) {
-            console.error('Ошибка polling:', error);
+            // Не спамим ошибками в консоль при сетевых проблемах
+            if (error.message !== 'Failed to fetch') {
+                console.error('Ошибка polling:', error);
+            }
+        }
+    }
+    
+    // 🔧 NEW: Обновление конкретного диалога в боковой панели
+    updateConversationInSidebar(conversationId, newMessage) {
+        const item = this.conversationsList.querySelector(`[data-conversation-id="${conversationId}"]`);
+        if (item) {
+            const previewEl = item.querySelector('.conversation-preview');
+            const timeEl = item.querySelector('.conversation-time');
+            
+            if (previewEl && newMessage.content) {
+                previewEl.textContent = newMessage.content.substring(0, 50);
+            }
+            if (timeEl) {
+                timeEl.textContent = this.formatTime(newMessage.created_at);
+            }
+            
+            // Перемещаем диалог наверх списка
+            if (item.parentNode.firstChild !== item) {
+                item.parentNode.insertBefore(item, item.parentNode.firstChild);
+            }
+        }
+        
+        // Обновляем также в массиве conversations
+        const conv = this.conversations.find(c => c.id === conversationId);
+        if (conv) {
+            conv.last_message = conv.last_message || {};
+            conv.last_message.preview = newMessage.content;
+            conv.last_message.time = newMessage.created_at;
+            conv.last_message.id = newMessage.id;
         }
     }
     
@@ -659,33 +740,48 @@ class Messenger {
     formatTime(isoString) {
         if (!isoString) return '';
         
-        const date = new Date(isoString);
-        const now = new Date();
-        const diff = now - date;
-        
-        // Меньше минуты
-        if (diff < 60000) return 'только что';
-        
-        // Меньше часа
-        if (diff < 3600000) {
-            const minutes = Math.floor(diff / 60000);
-            return `${minutes} мин назад`;
+        try {
+            const date = new Date(isoString);
+            
+            // 🔧 FIX: Проверка валидности даты
+            if (isNaN(date.getTime())) {
+                console.warn('Невалидная дата:', isoString);
+                return '';
+            }
+            
+            const now = new Date();
+            const diff = now - date;
+            
+            // Защита от будущих дат
+            if (diff < 0) return 'только что';
+            
+            // Меньше минуты
+            if (diff < 60000) return 'только что';
+            
+            // Меньше часа
+            if (diff < 3600000) {
+                const minutes = Math.floor(diff / 60000);
+                return `${minutes} мин назад`;
+            }
+            
+            // Сегодня
+            if (date.toDateString() === now.toDateString()) {
+                return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            }
+            
+            // Вчера
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (date.toDateString() === yesterday.toDateString()) {
+                return 'вчера';
+            }
+            
+            // Иначе дата
+            return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+        } catch (e) {
+            console.error('Ошибка форматирования даты:', e);
+            return '';
         }
-        
-        // Сегодня
-        if (date.toDateString() === now.toDateString()) {
-            return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-        }
-        
-        // Вчера
-        const yesterday = new Date(now);
-        yesterday.setDate(yesterday.getDate() - 1);
-        if (date.toDateString() === yesterday.toDateString()) {
-            return 'вчера';
-        }
-        
-        // Иначе дата
-        return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
     }
     
     formatDate(date) {
@@ -764,11 +860,11 @@ function initMessengerUI() {
     if (!window.messenger) {
         window.messenger = new Messenger();
         console.log('✅ Экземпляр messenger создан');
-        
-        // Загружаем диалоги сразу
-        window.messenger.loadConversations();
+        // 🔧 FIX: Убрана дублированная загрузка - она уже происходит в init()
     } else {
         console.log('ℹ️ Messenger уже инициализирован');
+        // 🔧 FIX: При повторном вызове перезагружаем диалоги
+        window.messenger.loadConversations();
     }
 }
 
