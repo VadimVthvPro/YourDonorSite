@@ -532,21 +532,30 @@ function populateRequestFilter(responses) {
     const filterSelect = document.getElementById('filter-request');
     if (!filterSelect) return;
     
-    // Получаем уникальные запросы
-    const requestIds = [...new Set(responses.map(r => r.request_id).filter(id => id))];
+    // Получаем уникальные запросы с информацией из откликов
+    const requestMap = new Map();
+    responses.forEach(r => {
+        if (r.request_id && !requestMap.has(r.request_id)) {
+            // Пробуем найти в кэше или используем данные из отклика
+            const cached = bloodRequestsCache.find(req => req.id === r.request_id);
+            requestMap.set(r.request_id, {
+                id: r.request_id,
+                blood_type: cached?.blood_type || r.blood_type || r.donor_blood_type || '?'
+            });
+        }
+    });
     
     // Очищаем и заполняем select
     filterSelect.innerHTML = '<option value="all">Все запросы</option>';
     
-    requestIds.forEach(reqId => {
-        const request = bloodRequestsCache.find(r => r.id === reqId);
-        if (request) {
-            const option = document.createElement('option');
-            option.value = reqId;
-            option.textContent = `Запрос #${reqId} (${request.blood_type})`;
-            filterSelect.appendChild(option);
-        }
+    requestMap.forEach((req, reqId) => {
+        const option = document.createElement('option');
+        option.value = reqId;
+        option.textContent = `Запрос #${reqId} (${req.blood_type})`;
+        filterSelect.appendChild(option);
     });
+    
+    console.log(`📋 Фильтр запросов: ${requestMap.size} запросов`);
 }
 
 function renderResponses(responses) {
@@ -557,18 +566,26 @@ function renderResponses(responses) {
     const filterBlood = document.getElementById('filter-blood')?.value || 'all';
     const filterRequest = document.getElementById('filter-request')?.value || 'all';
     
+    console.log(`🔍 Фильтрация откликов: статус=${filterStatus}, кровь=${filterBlood}, запрос=${filterRequest}`);
+    console.log(`📊 Всего откликов до фильтра: ${responses.length}`);
+    
     let filtered = responses;
     
     if (filterStatus !== 'all') {
         filtered = filtered.filter(r => r.status === filterStatus);
+        console.log(`   После фильтра статуса: ${filtered.length}`);
     }
     
     if (filterBlood !== 'all') {
         filtered = filtered.filter(r => r.donor_blood_type === filterBlood);
+        console.log(`   После фильтра крови: ${filtered.length}`);
     }
     
     if (filterRequest !== 'all') {
-        filtered = filtered.filter(r => r.request_id == filterRequest);
+        const reqId = parseInt(filterRequest, 10);
+        filtered = filtered.filter(r => r.request_id === reqId);
+        console.log(`   После фильтра запроса #${reqId}: ${filtered.length}`);
+        console.log(`   request_ids в откликах:`, responses.map(r => r.request_id));
     }
     
     const pendingCount = responses.filter(r => r.status === 'pending').length;

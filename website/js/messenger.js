@@ -830,6 +830,9 @@ class Messenger {
             if (data.messages && data.messages.length > 0) {
                 console.log(`🔔 Новых сообщений: ${data.messages.length}`);
                 
+                let newMessagesFromOthers = 0; // Счётчик сообщений НЕ в текущем чате
+                let lastSenderName = '';
+                
                 data.messages.forEach(msg => {
                     // Обновляем lastMessageId
                     this.lastMessageId = Math.max(this.lastMessageId, msg.id);
@@ -846,11 +849,26 @@ class Messenger {
                             // Отмечаем как прочитанное
                             this.markAsRead(this.currentConversationId);
                         }
+                    } else {
+                        // Сообщение в другом чате - нужно уведомление!
+                        newMessagesFromOthers++;
+                        // Находим имя отправителя
+                        const conv = this.conversations.find(c => c.id === msg.conversation_id);
+                        if (conv && conv.partner) {
+                            lastSenderName = conv.partner.name || conv.partner.full_name || 'Контакт';
+                        }
                     }
                     
                     // 🔧 FIX: Обновляем превью в боковой панели для диалога с новым сообщением
                     this.updateConversationInSidebar(msg.conversation_id, msg);
                 });
+                
+                // 🔔 УВЕДОМЛЕНИЕ о новых сообщениях!
+                if (newMessagesFromOthers > 0) {
+                    this.showNewMessageNotification(newMessagesFromOthers, lastSenderName);
+                    // Также обновляем счётчик в меню
+                    this.loadAndUpdateUnreadCount();
+                }
             }
             
             // 🔧 FIX: Обновляем счётчики непрочитанных независимо от новых сообщений
@@ -863,6 +881,92 @@ class Messenger {
             if (error.message !== 'Failed to fetch') {
                 console.error('Ошибка polling:', error);
             }
+        }
+    }
+    
+    // 🔔 Показ уведомления о новом сообщении
+    showNewMessageNotification(count, senderName) {
+        // Удаляем предыдущие уведомления о сообщениях
+        document.querySelectorAll('.message-toast').forEach(t => t.remove());
+        
+        const toast = document.createElement('div');
+        toast.className = 'message-toast';
+        
+        const text = count === 1 
+            ? `💬 Новое сообщение от ${senderName}`
+            : `💬 Новых сообщений: ${count}`;
+        
+        toast.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+            </svg>
+            <span>${text}</span>
+        `;
+        
+        // Добавляем стили если их нет
+        if (!document.getElementById('message-toast-styles')) {
+            const styles = document.createElement('style');
+            styles.id = 'message-toast-styles';
+            styles.textContent = `
+                .message-toast {
+                    position: fixed;
+                    top: 80px;
+                    right: 20px;
+                    background: linear-gradient(135deg, #E53935 0%, #C62828 100%);
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    box-shadow: 0 4px 20px rgba(229, 57, 53, 0.4);
+                    z-index: 10000;
+                    animation: slideInRight 0.3s ease-out;
+                    cursor: pointer;
+                    font-weight: 500;
+                }
+                .message-toast:hover {
+                    transform: scale(1.02);
+                }
+                @keyframes slideInRight {
+                    from {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+            `;
+            document.head.appendChild(styles);
+        }
+        
+        document.body.appendChild(toast);
+        
+        // Клик - переход в сообщения
+        toast.addEventListener('click', () => {
+            const messagesLink = document.querySelector('[data-section="messages"]');
+            if (messagesLink) messagesLink.click();
+            toast.remove();
+        });
+        
+        // Автоудаление через 5 секунд
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.style.animation = 'slideInRight 0.3s ease-out reverse';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 5000);
+    }
+    
+    // Загрузка и обновление счётчика непрочитанных
+    async loadAndUpdateUnreadCount() {
+        try {
+            await this.loadConversations();
+            this.updateTotalUnreadCount();
+        } catch (e) {
+            console.error('Ошибка обновления счётчика:', e);
         }
     }
     
@@ -948,12 +1052,17 @@ class Messenger {
                 conv.unread_count = 0;
             }
             
-            // Убираем badge
+            // Убираем badge в списке диалогов
             const item = this.conversationsList.querySelector(`[data-conversation-id="${conversationId}"]`);
             if (item) {
                 const badge = item.querySelector('.conversation-badge');
                 if (badge) badge.remove();
             }
+            
+            // 🔧 FIX: Обновляем общий счётчик в меню!
+            this.updateTotalUnreadCount();
+            console.log('✅ Диалог отмечен прочитанным, счётчик обновлён');
+            
         } catch (error) {
             console.error('Ошибка отметки прочитанным:', error);
         }

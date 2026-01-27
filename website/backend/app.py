@@ -4561,6 +4561,28 @@ def send_conversation_message(conversation_id):
         commit=True
     )
     
+    # 🔔 УВЕЛИЧИВАЕМ СЧЁТЧИК НЕПРОЧИТАННЫХ для получателя!
+    if sender_type == 'donor':
+        # Донор отправил -> увеличиваем счётчик для медцентра
+        query_db(
+            """UPDATE conversations 
+               SET medcenter_unread_count = medcenter_unread_count + 1,
+                   updated_at = NOW()
+               WHERE id = %s""",
+            (conversation_id,), commit=True
+        )
+        app.logger.info(f"📬 Увеличен medcenter_unread_count для диалога {conversation_id}")
+    elif sender_type == 'medcenter':
+        # Медцентр отправил -> увеличиваем счётчик для донора
+        query_db(
+            """UPDATE conversations 
+               SET donor_unread_count = donor_unread_count + 1,
+                   updated_at = NOW()
+               WHERE id = %s""",
+            (conversation_id,), commit=True
+        )
+        app.logger.info(f"📬 Увеличен donor_unread_count для диалога {conversation_id}")
+    
     message = query_db(
         """SELECT * FROM chat_messages 
            WHERE conversation_id = %s 
@@ -4698,32 +4720,37 @@ def mark_conversation_read(conversation_id):
             "SELECT id FROM conversations WHERE id = %s AND donor_id = %s",
             (conversation_id, user_id), one=True
         )
+        if not conversation:
+            return jsonify({'error': 'Диалог не найден'}), 404
+            
+        # 🔧 FIX: Обнуляем счётчик непрочитанных для донора
         query_db(
-            """UPDATE messages 
-               SET is_read = TRUE, read_at = NOW() 
-               WHERE conversation_id = %s 
-                 AND is_read = FALSE 
-                 AND sender_role IN ('medical_center', 'system')""",
+            """UPDATE conversations 
+               SET donor_unread_count = 0 
+               WHERE id = %s""",
             (conversation_id,), commit=True
         )
+        app.logger.info(f"📬 donor_unread_count обнулён для диалога {conversation_id}")
+        
     elif user_type == 'medcenter':
         conversation = query_db(
             "SELECT id FROM conversations WHERE id = %s AND medical_center_id = %s",
             (conversation_id, medical_center_id), one=True
         )
+        if not conversation:
+            return jsonify({'error': 'Диалог не найден'}), 404
+            
+        # 🔧 FIX: Обнуляем счётчик непрочитанных для медцентра
         query_db(
-            """UPDATE messages 
-               SET is_read = TRUE, read_at = NOW() 
-               WHERE conversation_id = %s 
-                 AND is_read = FALSE 
-                 AND sender_role = 'donor'""",
+            """UPDATE conversations 
+               SET medcenter_unread_count = 0 
+               WHERE id = %s""",
             (conversation_id,), commit=True
         )
+        app.logger.info(f"📬 medcenter_unread_count обнулён для диалога {conversation_id}")
+        
     else:
         return jsonify({'error': 'Неизвестный тип пользователя'}), 400
-    
-    if not conversation:
-        return jsonify({'error': 'Диалог не найден'}), 404
     
     return jsonify({'message': 'Сообщения отмечены как прочитанные'})
 
