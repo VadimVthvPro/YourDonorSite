@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="blood" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E53935"/>
+      <stop offset="100%" style="stop-color:#B71C1C"/>
+    </linearGradient>
+  </defs>
+  <!-- Капля крови -->
+  <path d="M32 4C32 4 12 24 12 40C12 51.046 20.954 60 32 60C43.046 60 52 51.046 52 40C52 24 32 4 32 4Z" fill="url(#blood)"/>
+  <!-- Крест/плюс внутри -->
+  <path d="M24 38H40M32 30V46" stroke="white" stroke-width="4" stroke-linecap="round"/>
+</svg>

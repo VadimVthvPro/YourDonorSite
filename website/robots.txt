@@ -1,0 +1,11 @@
+# robots.txt для tvoydonor.by
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://tvoydonor.by/sitemap.xml
+
+# Запрещаем индексацию служебных файлов
+Disallow: /backend/
+Disallow: /*.log$
+Disallow: /data/

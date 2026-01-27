@@ -3,7 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Твой Донор — Донорство крови в Беларуси</title>
+    <title>Твой Донор — Донорство крови в Беларуси | Стань донором</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Твой Донор — платформа для доноров крови в Беларуси. Найдите ближайший центр переливания крови, узнайте о льготах доноров, запишитесь на донацию. Сдай кровь — спаси жизнь!">
+    <meta name="keywords" content="донор, донорство крови, Беларусь, сдать кровь, переливание крови, центр переливания, донор Минск, донорство Беларусь, твой донор, стать донором, группа крови, почётный донор">
+    <meta name="author" content="Твой Донор">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="Russian">
+    <meta name="geo.region" content="BY">
+    <meta name="geo.placename" content="Беларусь">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://tvoydonor.by/">
+    <meta property="og:title" content="Твой Донор — Донорство крови в Беларуси">
+    <meta property="og:description" content="Платформа для доноров крови в Беларуси. Найдите центр переливания, узнайте о льготах, запишитесь на донацию. Сдай кровь — спаси жизнь!">
+    <meta property="og:image" content="https://tvoydonor.by/images/og-image.png">
+    <meta property="og:locale" content="ru_BY">
+    <meta property="og:site_name" content="Твой Донор">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://tvoydonor.by/">
+    <meta name="twitter:title" content="Твой Донор — Донорство крови в Беларуси">
+    <meta name="twitter:description" content="Платформа для доноров крови в Беларуси. Сдай кровь — спаси жизнь!">
+    <meta name="twitter:image" content="https://tvoydonor.by/images/og-image.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
+    <meta name="theme-color" content="#E53935">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://tvoydonor.by/">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -678,5 +714,75 @@
 
     <script src="js/config.js"></script>
     <script src="js/app.js?v=3"></script>
+    
+    <!-- Schema.org JSON-LD -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Твой Донор",
+        "alternateName": ["TvoyDonor", "Твой Донор Беларусь"],
+        "url": "https://tvoydonor.by",
+        "logo": "https://tvoydonor.by/favicon.svg",
+        "description": "Платформа для доноров крови в Беларуси. Найдите центр переливания, узнайте о льготах, запишитесь на донацию.",
+        "areaServed": {
+            "@type": "Country",
+            "name": "Беларусь"
+        },
+        "sameAs": [
+            "https://t.me/TvoyDonorZdesBot"
+        ],
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer service",
+            "availableLanguage": ["Russian", "Belarusian"]
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Твой Донор",
+        "url": "https://tvoydonor.by",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://tvoydonor.by/pages/auth.html?search={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "Кто может стать донором крови в Беларуси?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Донором может стать гражданин Республики Беларусь в возрасте от 18 до 60 лет, весом не менее 55 кг, без противопоказаний по здоровью."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Какие льготы получает донор крови?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Доноры получают денежную компенсацию, 1-2 дня отдыха после донации, бесплатное питание в день сдачи крови, а почётные доноры — дополнительные льготы."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Как часто можно сдавать кровь?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Цельную кровь можно сдавать не чаще 1 раза в 60 дней для мужчин и 1 раза в 90 дней для женщин. Плазму — каждые 14 дней."
+                }
+            }
+        ]
+    }
+    </script>
 </body>
 </html>
