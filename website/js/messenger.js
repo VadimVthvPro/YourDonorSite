@@ -165,9 +165,28 @@ class Messenger {
         // Кнопка "Назад" на мобильных
         if (this.chatBackBtn) {
             this.chatBackBtn.addEventListener('click', () => {
-                this.chatPanel.classList.remove('active');
+                this.closeChatMobile();
             });
         }
+    }
+    
+    // Закрытие чата на мобильных (возврат к списку диалогов)
+    closeChatMobile() {
+        this.chatPanel.classList.remove('active');
+        
+        // Убираем класс chat-open с контейнера
+        const container = document.querySelector('.messenger-container');
+        if (container) {
+            container.classList.remove('chat-open');
+        }
+        
+        // Сбрасываем текущий диалог
+        this.currentConversationId = null;
+        
+        // Убираем active со всех диалогов
+        this.conversationsList.querySelectorAll('.conversation-item').forEach(item => {
+            item.classList.remove('active');
+        });
     }
     
     // ============================================
@@ -300,9 +319,15 @@ class Messenger {
             this.markAsRead(conversationId);
         }
         
-        // На мобильных показываем чат
+        // На мобильных показываем чат и добавляем класс для переключения вида
         if (window.innerWidth <= 768) {
             this.chatPanel.classList.add('active');
+            
+            // Добавляем класс chat-open на контейнер для CSS
+            const container = document.querySelector('.messenger-container');
+            if (container) {
+                container.classList.add('chat-open');
+            }
         }
     }
     

@@ -1,0 +1,800 @@
+/* ============================================
+   КОМПЛЕКСНОЕ МОБИЛЬНОЕ ИСПРАВЛЕНИЕ
+   Версия: 2.0 - Полный мобильный аудит
+   ============================================ */
+
+/* ===========================================
+   1. VIEWPORT И БАЗОВЫЕ ПРАВИЛА
+   =========================================== */
+
+/* Запрет горизонтального скролла на всём сайте */
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Safe area для устройств с вырезом (iPhone X+) */
+body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ===========================================
+   2. МЕССЕНДЖЕР - ИСПРАВЛЕНИЕ ГОРИЗОНТАЛЬНОГО LAYOUT
+   =========================================== */
+
+/* Мобильные устройства - вертикальный layout */
+@media (max-width: 768px) {
+    /* Контейнер мессенджера - ВЕРТИКАЛЬНЫЙ, не горизонтальный */
+    .messenger-container {
+        display: flex !important;
+        flex-direction: column !important;
+        grid-template-columns: unset !important;
+        height: 100%;
+        min-height: 100vh;
+        min-height: 100dvh; /* Dynamic viewport height для мобильных */
+    }
+    
+    /* Панель диалогов - занимает весь экран когда чат не открыт */
+    .conversations-panel {
+        display: flex;
+        flex-direction: column;
+        width: 100% !important;
+        min-width: 100% !important;
+        height: 100%;
+        min-height: 100vh;
+        min-height: 100dvh;
+    }
+    
+    /* Когда чат открыт - скрываем список диалогов */
+    .messenger-container.chat-open .conversations-panel {
+        display: none !important;
+    }
+    
+    /* Панель чата - полноэкранная */
+    .chat-panel {
+        display: none;
+        flex-direction: column;
+        width: 100% !important;
+        height: 100%;
+        min-height: 100vh;
+        min-height: 100dvh;
+        position: relative !important;
+    }
+    
+    /* Когда чат активен */
+    .chat-panel.active,
+    .messenger-container.chat-open .chat-panel {
+        display: flex !important;
+    }
+    
+    /* Кнопка "Назад" - всегда видна на мобильных */
+    .chat-back-btn {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Список диалогов - с прокруткой */
+    .conversations-list {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain;
+    }
+    
+    /* Область сообщений - с прокруткой */
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain;
+        min-height: 0; /* Важно для flex */
+    }
+    
+    /* Поле ввода сообщения */
+    .chat-input {
+        flex-shrink: 0;
+        padding: 12px 16px;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom));
+        background: white;
+        border-top: 1px solid #e5e7eb;
+    }
+}
+
+/* ===========================================
+   3. LANDSCAPE ОРИЕНТАЦИЯ - ИСПРАВЛЕНИЕ СКРОЛЛА
+   =========================================== */
+
+@media (max-width: 926px) and (orientation: landscape) {
+    /* Общие правила для landscape */
+    html, body {
+        height: 100%;
+        overflow-x: hidden;
+        overflow-y: auto !important;
+    }
+    
+    /* Dashboard в landscape */
+    .dashboard-page {
+        height: auto !important;
+        min-height: 100vh;
+        overflow-y: auto !important;
+    }
+    
+    /* Main content скролл */
+    .main-content {
+        height: auto !important;
+        min-height: 100vh;
+        overflow-y: auto !important;
+        overflow-x: hidden;
+    }
+    
+    /* Секции dashboard */
+    .dashboard-section {
+        height: auto !important;
+        min-height: auto !important;
+        overflow-y: visible !important;
+    }
+    
+    /* Мессенджер в landscape */
+    .dashboard-section#messages {
+        height: 100vh !important;
+        min-height: 100vh !important;
+        max-height: 100vh !important;
+    }
+    
+    .messenger-container {
+        height: 100% !important;
+        max-height: 100vh !important;
+    }
+    
+    /* Список диалогов в landscape */
+    .conversations-list {
+        max-height: calc(100vh - 120px);
+        overflow-y: auto !important;
+    }
+    
+    /* Сообщения в landscape */
+    .chat-messages {
+        max-height: calc(100vh - 150px);
+        overflow-y: auto !important;
+    }
+    
+    /* Sidebar в landscape */
+    .sidebar {
+        height: 100vh;
+        overflow-y: auto;
+    }
+}
+
+/* ===========================================
+   4. ИСПРАВЛЕНИЕ МАСШТАБИРОВАНИЯ СТРАНИЦ
+   =========================================== */
+
+@media (max-width: 768px) {
+    /* Контейнеры не выходят за границы */
+    .container,
+    .dashboard-container,
+    .auth-container,
+    .main-content {
+        max-width: 100vw !important;
+        overflow-x: hidden;
+        box-sizing: border-box;
+    }
+    
+    /* Hero секция */
+    .hero {
+        padding: 60px 16px 40px;
+    }
+    
+    .hero-content {
+        max-width: 100%;
+    }
+    
+    .hero-title {
+        font-size: clamp(1.75rem, 7vw, 2.5rem);
+        line-height: 1.2;
+    }
+    
+    .hero-subtitle {
+        font-size: clamp(0.9rem, 4vw, 1.1rem);
+    }
+    
+    /* Кнопки в hero */
+    .hero-buttons {
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+    }
+    
+    .hero-buttons .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    /* Секции на главной */
+    section {
+        padding: 40px 16px;
+    }
+    
+    .section-header {
+        margin-bottom: 24px;
+    }
+    
+    .section-title {
+        font-size: clamp(1.5rem, 6vw, 2rem);
+    }
+    
+    /* Карточки */
+    .card,
+    .feature-card,
+    .step-card,
+    .benefit-card {
+        padding: 20px;
+    }
+    
+    /* Гриды адаптивные */
+    .features-grid,
+    .benefits-grid,
+    .steps-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+}
+
+/* ===========================================
+   5. SIDEBAR НА МОБИЛЬНЫХ
+   =========================================== */
+
+@media (max-width: 768px) {
+    /* Sidebar скрыт по умолчанию */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 280px;
+        height: 100vh;
+        height: 100dvh;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1000;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Sidebar открыт */
+    .sidebar.active {
+        transform: translateX(0);
+    }
+    
+    /* Оверлей для sidebar */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .sidebar-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    /* Main content без отступа */
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+    
+    /* Кнопка открытия меню */
+    .mobile-sidebar-toggle {
+        display: flex !important;
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 998;
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        align-items: center;
+        justify-content: center;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .mobile-sidebar-toggle svg {
+        width: 24px;
+        height: 24px;
+        color: #374151;
+    }
+    
+    /* Отступ для header на мобильных */
+    .dashboard-header {
+        padding-left: 60px;
+    }
+}
+
+/* ===========================================
+   6. ФОРМЫ НА МОБИЛЬНЫХ
+   =========================================== */
+
+@media (max-width: 768px) {
+    /* Предотвращение автозума на iOS при фокусе */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="tel"],
+    input[type="number"],
+    input[type="date"],
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+    
+    /* Увеличенные touch-targets */
+    .form-control,
+    .form-input,
+    input,
+    select,
+    textarea {
+        min-height: 48px;
+        padding: 12px 16px;
+    }
+    
+    /* Кнопки - минимум 48px высоты */
+    .btn,
+    button {
+        min-height: 48px;
+        padding: 12px 20px;
+    }
+    
+    /* Чекбоксы и радио */
+    input[type="checkbox"],
+    input[type="radio"] {
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+        min-height: 24px;
+    }
+    
+    /* Форма авторизации */
+    .auth-form {
+        padding: 24px 20px;
+    }
+    
+    .auth-tabs {
+        gap: 8px;
+    }
+    
+    .auth-tab {
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+}
+
+/* ===========================================
+   7. ТАБЛИЦЫ НА МОБИЛЬНЫХ
+   =========================================== */
+
+@media (max-width: 768px) {
+    /* Обёртка таблицы для горизонтального скролла */
+    .table-responsive,
+    .table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -16px;
+        padding: 0 16px;
+    }
+    
+    table {
+        min-width: 600px;
+        font-size: 14px;
+    }
+    
+    th, td {
+        padding: 12px 8px;
+        white-space: nowrap;
+    }
+    
+    /* Альтернатива: карточки вместо таблиц */
+    .mobile-cards-view {
+        display: block;
+    }
+    
+    .desktop-table-view {
+        display: none;
+    }
+}
+
+@media (min-width: 769px) {
+    .mobile-cards-view {
+        display: none;
+    }
+    
+    .desktop-table-view {
+        display: block;
+    }
+}
+
+/* ===========================================
+   8. МОДАЛЬНЫЕ ОКНА НА МОБИЛЬНЫХ
+   =========================================== */
+
+@media (max-width: 768px) {
+    .modal {
+        padding: 0;
+        align-items: flex-end;
+    }
+    
+    .modal-content {
+        width: 100%;
+        max-width: 100%;
+        max-height: 90vh;
+        margin: 0;
+        border-radius: 16px 16px 0 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .modal-header {
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 10;
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .modal-body {
+        padding: 20px;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    }
+    
+    .modal-footer {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding: 16px 20px;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom));
+        border-top: 1px solid #e5e7eb;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+    }
+}
+
+/* ===========================================
+   9. НАВИГАЦИЯ НА МОБИЛЬНЫХ
+   =========================================== */
+
+@media (max-width: 768px) {
+    /* Header */
+    .header {
+        padding: 12px 0;
+    }
+    
+    .nav {
+        padding: 0 16px;
+    }
+    
+    /* Скрываем десктопное меню */
+    .nav-menu,
+    .nav-buttons {
+        display: none;
+    }
+    
+    /* Показываем мобильную кнопку меню */
+    .mobile-menu-btn {
+        display: flex !important;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 44px;
+        height: 44px;
+        gap: 5px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 8px;
+    }
+    
+    .mobile-menu-btn span {
+        display: block;
+        width: 24px;
+        height: 2px;
+        background: #374151;
+        border-radius: 2px;
+        transition: all 0.3s ease;
+    }
+    
+    /* Мобильное меню */
+    .mobile-menu {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 280px;
+        height: 100vh;
+        height: 100dvh;
+        background: white;
+        z-index: 1001;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 20px;
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .mobile-menu.active {
+        transform: translateX(0);
+    }
+    
+    .mobile-menu-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .mobile-menu-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+/* ===========================================
+   10. КАРТОЧКИ ЗАПРОСОВ/ДОНАЦИЙ
+   =========================================== */
+
+@media (max-width: 768px) {
+    .request-card,
+    .response-card,
+    .donation-card {
+        padding: 16px;
+    }
+    
+    .request-header,
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .request-actions,
+    .card-actions {
+        width: 100%;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .request-actions .btn,
+    .card-actions .btn {
+        width: 100%;
+    }
+    
+    /* Blood type badge */
+    .blood-type-badge {
+        font-size: 18px;
+        min-width: 50px;
+        height: 50px;
+    }
+    
+    /* Названия медцентров/больниц - перенос на несколько строк */
+    .center-name,
+    .request-card-title,
+    .medcenter-name,
+    .hospital-name,
+    .request-medcenter-name {
+        white-space: normal !important;
+        word-wrap: break-word;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        line-height: 1.3;
+    }
+    
+    /* Адреса тоже переносим */
+    .center-address,
+    .request-card-address,
+    .medcenter-address {
+        white-space: normal !important;
+        word-wrap: break-word;
+        line-height: 1.4;
+    }
+    
+    /* Stats grid */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .stat-card {
+        padding: 16px;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===========================================
+   11. FOOTER НА МОБИЛЬНЫХ
+   =========================================== */
+
+@media (max-width: 768px) {
+    .footer {
+        padding: 40px 16px 20px;
+    }
+    
+    .footer-main {
+        grid-template-columns: 1fr;
+        gap: 32px;
+        text-align: center;
+    }
+    
+    .footer-brand {
+        align-items: center;
+    }
+    
+    .footer-social {
+        justify-content: center;
+    }
+    
+    .footer-bottom {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+}
+
+/* ===========================================
+   12. УТИЛИТЫ ДЛЯ МОБИЛЬНЫХ
+   =========================================== */
+
+/* Скрыть на мобильных */
+@media (max-width: 768px) {
+    .hide-mobile {
+        display: none !important;
+    }
+}
+
+/* Скрыть на десктопе */
+@media (min-width: 769px) {
+    .hide-desktop {
+        display: none !important;
+    }
+}
+
+/* Показать только на мобильных */
+.show-mobile {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .show-mobile {
+        display: block;
+    }
+}
+
+/* Текст по центру на мобильных */
+@media (max-width: 768px) {
+    .text-center-mobile {
+        text-align: center;
+    }
+}
+
+/* ===========================================
+   13. ИСПРАВЛЕНИЕ ПРОБЛЕМ iOS SAFARI
+   =========================================== */
+
+/* Исправление 100vh на iOS */
+@supports (-webkit-touch-callout: none) {
+    .full-height {
+        height: -webkit-fill-available;
+    }
+    
+    .messenger-container,
+    .dashboard-section#messages {
+        height: -webkit-fill-available;
+    }
+}
+
+/* Отключение bounce эффекта где не нужен */
+.no-bounce {
+    overscroll-behavior: none;
+}
+
+/* Исправление position: fixed на iOS */
+@media (max-width: 768px) {
+    .fixed-bottom {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+    }
+}
+
+/* ===========================================
+   14. TOUCH IMPROVEMENTS
+   =========================================== */
+
+@media (max-width: 768px) {
+    /* Увеличение touch-области для ссылок */
+    a, button {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* Убираем hover эффекты на touch устройствах */
+    @media (hover: none) {
+        .btn:hover,
+        .nav-item:hover,
+        .card:hover {
+            transform: none;
+            box-shadow: inherit;
+        }
+    }
+    
+    /* Active состояния для touch */
+    .btn:active {
+        transform: scale(0.98);
+    }
+    
+    .nav-item:active,
+    .card:active {
+        opacity: 0.8;
+    }
+}
+
+/* ===========================================
+   15. PRINT STYLES (бонус)
+   =========================================== */
+
+@media print {
+    .sidebar,
+    .mobile-sidebar-toggle,
+    .mobile-menu-btn,
+    .btn,
+    .chat-input {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+    }
+    
+    body {
+        font-size: 12pt;
+    }
+}
