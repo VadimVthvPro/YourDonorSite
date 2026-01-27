@@ -637,23 +637,22 @@ function renderResponses(responses) {
                             onclick="hideResponse(${r.id}); event.stopPropagation();" 
                             title="Скрыть отклик"
                             style="
-                                opacity: 0.5 !important; 
-                                margin-left: 12px !important; 
-                                padding: 6px 10px !important; 
-                                font-size: 20px !important; 
-                                line-height: 1 !important; 
-                                background: transparent !important;
-                                border: 2px solid transparent !important;
-                                color: #6c757d !important;
-                                cursor: pointer !important;
-                                display: inline-flex !important;
-                                align-items: center !important;
-                                justify-content: center !important;
-                                transition: all 0.2s !important;
-                                position: absolute !important;
-                                right: 16px !important;
-                                top: 50% !important;
-                                transform: translateY(-50%) !important;
+                                opacity: 0.5; 
+                                padding: 4px 6px; 
+                                font-size: 14px; 
+                                line-height: 1; 
+                                background: transparent;
+                                border: 1px solid transparent;
+                                color: #6c757d;
+                                cursor: pointer;
+                                display: inline-flex;
+                                align-items: center;
+                                justify-content: center;
+                                transition: all 0.2s;
+                                min-width: 24px;
+                                min-height: 24px;
+                                border-radius: 4px;
+                                flex-shrink: 0;
                             "
                             onmouseover="this.style.opacity='1'; this.style.color='#dc3545'; this.style.borderColor='#dc3545'; this.style.background='rgba(220,53,69,0.05)';"
                             onmouseout="this.style.opacity='0.5'; this.style.color='#6c757d'; this.style.borderColor='transparent'; this.style.background='transparent';"
@@ -2285,19 +2284,23 @@ function renderResponsesTable(responses, page = 1) {
                                         onclick="hideResponse(${r.id})" 
                                         title="Скрыть отклик"
                                         style="
-                                            opacity: 0.5 !important; 
-                                            margin-left: auto !important; 
-                                            padding: 6px 10px !important; 
-                                            font-size: 20px !important; 
-                                            line-height: 1 !important; 
-                                            background: transparent !important;
-                                            border: 2px solid transparent !important;
-                                            color: #6c757d !important;
-                                            cursor: pointer !important;
-                                            display: inline-flex !important;
-                                            align-items: center !important;
-                                            justify-content: center !important;
-                                            transition: all 0.2s !important;
+                                            opacity: 0.5; 
+                                            margin-left: auto; 
+                                            padding: 4px 6px; 
+                                            font-size: 14px; 
+                                            line-height: 1; 
+                                            background: transparent;
+                                            border: 1px solid transparent;
+                                            color: #6c757d;
+                                            cursor: pointer;
+                                            display: inline-flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            transition: all 0.2s;
+                                            min-width: 24px;
+                                            min-height: 24px;
+                                            border-radius: 4px;
+                                            flex-shrink: 0;
                                         "
                                         onmouseover="this.style.opacity='1'; this.style.color='#dc3545'; this.style.borderColor='#dc3545'; this.style.background='rgba(220,53,69,0.05)';"
                                         onmouseout="this.style.opacity='0.5'; this.style.color='#6c757d'; this.style.borderColor='transparent'; this.style.background='transparent';"

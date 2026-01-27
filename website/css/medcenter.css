@@ -549,8 +549,9 @@
 }
 
 .response-actions .btn {
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 1.25rem;
     font-size: var(--text-xs);
+    white-space: nowrap;
 }
 
 /* Таблица доноров */
@@ -1215,15 +1216,37 @@
     
     .response-card {
         flex-wrap: wrap;
+        position: relative;
+        padding-right: 40px; /* Место для крестика */
     }
     
     .response-actions {
         width: 100%;
         margin-top: var(--spacing-md);
+        flex-wrap: wrap;
+        gap: 8px;
     }
     
     .response-actions .btn {
         flex: 1;
+        min-width: 80px;
+    }
+    
+    /* Кнопка скрытия отклика - компактная на мобильных */
+    .response-actions .hide-response-btn,
+    .hide-response-btn {
+        position: absolute !important;
+        top: 8px !important;
+        right: 8px !important;
+        flex: none !important;
+        width: 24px !important;
+        height: 24px !important;
+        min-width: 24px !important;
+        min-height: 24px !important;
+        padding: 0 !important;
+        font-size: 12px !important;
+        margin: 0 !important;
+        border-radius: 50% !important;
     }
     
     .donors-table {
