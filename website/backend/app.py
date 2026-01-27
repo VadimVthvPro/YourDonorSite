@@ -5171,39 +5171,12 @@ def auth_telegram():
             }
         })
     
-    # Ищем медцентр по telegram_id (если вдруг привязан)
-    mc = query_db(
-        "SELECT id, name FROM medical_centers WHERE telegram_id = %s AND is_active = TRUE",
-        (telegram_id,), one=True
-    )
-    
-    if mc:
-        print(f"[TELEGRAM AUTH] ✅ Найден медцентр: {mc['name']}")
-        
-        client_info = get_client_info()
-        access_token, refresh_token, session_id = create_session(
-            query_db,
-            medical_center_id=mc['id'],
-            user_type='medcenter',
-            device_info=f"Telegram Mini App ({user_data.get('username', 'unknown')})",
-            ip_address=client_info['ip_address'],
-            platform='telegram'
-        )
-        
-        return jsonify({
-            'access_token': access_token,
-            'refresh_token': refresh_token,
-            'user_type': 'medcenter',
-            'user': {
-                'id': mc['id'],
-                'name': mc['name']
-            }
-        })
-    
-    print(f"[TELEGRAM AUTH] ℹ️ Пользователь с telegram_id={telegram_id} не найден")
+    # Донор не найден - просто возвращаем 404, фронтенд перенаправит на регистрацию
+    # Медцентры не регистрируются через Telegram, проверка только для доноров
+    print(f"[TELEGRAM AUTH] ℹ️ Донор с telegram_id={telegram_id} не найден - гость")
     return jsonify({
-        'error': 'Аккаунт не найден',
-        'message': 'Telegram не привязан к аккаунту. Сначала войдите и привяжите Telegram в настройках.',
+        'error': 'not_found',
+        'message': 'Аккаунт не найден',
         'telegram_id': telegram_id
     }), 404
 

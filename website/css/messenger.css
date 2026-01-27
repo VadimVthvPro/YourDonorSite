@@ -932,10 +932,10 @@ button.chat-input-btn svg {
 
 .messenger-back-btn {
     display: none;
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
     border-radius: 50%;
     border: none;
     background: var(--color-primary, #E53935);
@@ -948,9 +948,12 @@ button.chat-input-btn svg {
     transition: all 0.2s;
 }
 
+/* Иконка как у chat-back-btn - 26px */
 .messenger-back-btn svg {
-    width: 24px;
-    height: 24px;
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px !important;
+    min-height: 26px !important;
     stroke: white;
     stroke-width: 2.5;
 }
@@ -973,7 +976,9 @@ button.chat-input-btn svg {
     
     .conversations-header h2 {
         margin: 0 !important;
+        margin-right: auto !important; /* Прижимает к левой стороне */
         font-size: 18px !important;
+        flex-shrink: 0 !important;
     }
 }
 
