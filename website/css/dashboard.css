@@ -93,6 +93,28 @@
     border-radius: var(--radius-full);
 }
 
+/* Счётчик непрочитанных сообщений - ВСЕГДА ВИДИМ */
+#messages-badge {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 10px;
+    background: #E53935 !important;
+    color: white !important;
+}
+
+/* Серый badge когда 0 сообщений */
+#messages-badge.empty,
+#messages-badge[data-count="0"] {
+    background: rgba(255, 255, 255, 0.3) !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
 .sidebar-footer {
     padding: var(--spacing-lg);
     border-top: 1px solid rgba(255, 255, 255, 0.1);

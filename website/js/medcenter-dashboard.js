@@ -111,6 +111,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     try {
         initMessenger();
         console.log('✓ Мессенджер инициализирован');
+        
+        // 📬 Загружаем счётчик непрочитанных сообщений
+        loadUnreadMessagesCount();
     } catch (e) { console.error('✗ Ошибка initMessenger:', e); }
     
     // Асинхронные функции - загрузка данных (последовательно, чтобы данные загрузились)
@@ -2972,6 +2975,78 @@ function initMessenger() {
         initMessengerUI();
     }
 }
+
+/**
+ * 📬 Загрузка счётчика непрочитанных сообщений (мессенджер)
+ */
+async function loadUnreadMessagesCount() {
+    console.log('📬 МЦ: Загрузка счётчика непрочитанных...');
+    try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+            console.warn('📬 МЦ: Нет токена авторизации');
+            return;
+        }
+        
+        const response = await fetch(`${MC_API_URL}/messages/conversations?status=active`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+        
+        console.log('📬 МЦ: Ответ API:', response.status);
+        
+        if (response.ok) {
+            const data = await response.json();
+            const conversations = data.conversations || [];
+            const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
+            
+            console.log(`📬 МЦ: Диалогов: ${conversations.length}, непрочитанных: ${totalUnread}`);
+            
+            const badge = document.getElementById('messages-badge');
+            console.log('📬 МЦ: Badge элемент найден:', !!badge);
+            
+            if (badge) {
+                badge.textContent = totalUnread;
+                badge.setAttribute('data-count', totalUnread);
+                
+                if (totalUnread > 0) {
+                    badge.classList.remove('empty');
+                    badge.style.background = '#E53935';
+                    badge.style.color = 'white';
+                    badge.style.opacity = '1';
+                } else {
+                    badge.classList.add('empty');
+                    badge.style.background = 'rgba(255, 255, 255, 0.3)';
+                    badge.style.color = 'rgba(255, 255, 255, 0.8)';
+                    badge.style.opacity = '1';
+                }
+                
+                badge.style.display = 'inline-flex';
+                console.log(`📬 МЦ: Badge обновлён: ${totalUnread}`);
+            } else {
+                console.error('📬 МЦ: ОШИБКА: Элемент messages-badge НЕ НАЙДЕН!');
+            }
+        } else {
+            console.warn('📬 МЦ: Ошибка API:', response.status);
+        }
+    } catch (e) {
+        console.error('📬 МЦ: Ошибка загрузки счётчика:', e);
+    }
+}
+
+// Гарантированный вызов после полной загрузки страницы
+window.addEventListener('load', () => {
+    console.log('📬 МЦ: Window load - вызываем loadUnreadMessagesCount');
+    setTimeout(() => loadUnreadMessagesCount(), 1000);
+});
+
+// Периодическое обновление счётчика каждые 30 секунд
+setInterval(() => {
+    loadUnreadMessagesCount();
+}, 30000);
 
 /**
  * Открыть модальное окно для подтверждения донации с вводом даты/времени

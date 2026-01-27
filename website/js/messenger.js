@@ -168,6 +168,152 @@ class Messenger {
                 this.closeChatMobile();
             });
         }
+        
+        // Кнопка "Инфо" о собеседнике
+        const chatInfoBtn = document.getElementById('chat-info-btn');
+        if (chatInfoBtn) {
+            chatInfoBtn.addEventListener('click', () => {
+                this.showPartnerInfo();
+            });
+        }
+    }
+    
+    // ============================================
+    // ИНФОРМАЦИЯ О СОБЕСЕДНИКЕ (МОДАЛЬНОЕ ОКНО)
+    // ============================================
+    
+    async showPartnerInfo() {
+        if (!this.currentConversationId) {
+            console.warn('❌ Нет активного диалога');
+            return;
+        }
+        
+        const conv = this.conversations.find(c => c.id === this.currentConversationId);
+        if (!conv || !conv.partner) {
+            console.warn('❌ Нет данных о собеседнике');
+            return;
+        }
+        
+        const partner = conv.partner;
+        const isPartnerDonor = this.userRole === 'medcenter'; // Медцентр смотрит инфо о доноре
+        
+        // Создаём модальное окно
+        let modal = document.getElementById('partner-info-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'partner-info-modal';
+            modal.className = 'modal-overlay';
+            document.body.appendChild(modal);
+        }
+        
+        modal.classList.add('active');
+        
+        if (isPartnerDonor) {
+            // Информация о ДОНОРЕ (для медцентра)
+            modal.innerHTML = this.renderDonorInfoModal(partner);
+        } else {
+            // Информация о МЕДЦЕНТРЕ (для донора)
+            modal.innerHTML = this.renderMedcenterInfoModal(partner);
+        }
+        
+        // Закрытие модалки
+        modal.querySelector('.modal-close')?.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.classList.contains('active')) {
+                modal.classList.remove('active');
+            }
+        }, { once: true });
+    }
+    
+    renderDonorInfoModal(donor) {
+        const initials = this.getInitials(donor.name || 'Донор');
+        return `
+            <div class="modal-content partner-info-modal-content">
+                <button class="modal-close">&times;</button>
+                <div class="partner-info-header">
+                    <div class="partner-info-avatar">${initials}</div>
+                    <div class="partner-info-title">
+                        <h2>${donor.name || 'Донор'}</h2>
+                        <span class="blood-type-badge">${donor.blood_type || '—'}</span>
+                    </div>
+                </div>
+                <div class="partner-info-grid">
+                    <div class="partner-info-section">
+                        <h4>📋 Информация</h4>
+                        <div class="partner-info-row">
+                            <span class="label">Группа крови:</span>
+                            <span class="value blood-type">${donor.blood_type || '—'}</span>
+                        </div>
+                        <div class="partner-info-row">
+                            <span class="label">Всего донаций:</span>
+                            <span class="value">${donor.donation_count || 0}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="partner-info-footer">
+                    <button class="btn btn-outline" onclick="document.getElementById('partner-info-modal').classList.remove('active')">Закрыть</button>
+                </div>
+            </div>
+        `;
+    }
+    
+    renderMedcenterInfoModal(medcenter) {
+        const initials = this.getInitials(medcenter.name || 'МЦ');
+        const name = medcenter.name || 'Медицинский центр';
+        const address = medcenter.address || '—';
+        const phone = medcenter.phone || '—';
+        const email = medcenter.email || '—';
+        
+        return `
+            <div class="modal-content partner-info-modal-content">
+                <button class="modal-close">&times;</button>
+                <div class="partner-info-header">
+                    <div class="partner-info-avatar medcenter">${initials}</div>
+                    <div class="partner-info-title">
+                        <h2>${name}</h2>
+                        <span class="partner-type-badge">Медицинский центр</span>
+                    </div>
+                </div>
+                <div class="partner-info-grid">
+                    <div class="partner-info-section">
+                        <h4>🏥 Информация о медцентре</h4>
+                        <div class="partner-info-row">
+                            <span class="label">Название:</span>
+                            <span class="value">${name}</span>
+                        </div>
+                        <div class="partner-info-row">
+                            <span class="label">Адрес:</span>
+                            <span class="value">${address}</span>
+                        </div>
+                        <div class="partner-info-row">
+                            <span class="label">Телефон:</span>
+                            <span class="value">${phone !== '—' ? `<a href="tel:${phone}">${phone}</a>` : phone}</span>
+                        </div>
+                        <div class="partner-info-row">
+                            <span class="label">Email:</span>
+                            <span class="value">${email !== '—' ? `<a href="mailto:${email}">${email}</a>` : email}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="partner-info-footer">
+                    <button class="btn btn-outline" onclick="document.getElementById('partner-info-modal').classList.remove('active')">Закрыть</button>
+                </div>
+            </div>
+        `;
+    }
+    
+    getInitials(name) {
+        if (!name) return '?';
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     }
     
     // Закрытие чата на мобильных (возврат к списку диалогов)
@@ -249,6 +395,29 @@ class Messenger {
                 this.openConversation(convId);
             });
         });
+        
+        // Обновляем счётчик непрочитанных в меню
+        this.updateUnreadBadge();
+    }
+    
+    // ============================================
+    // СЧЁТЧИК НЕПРОЧИТАННЫХ СООБЩЕНИЙ В МЕНЮ
+    // ============================================
+    
+    updateUnreadBadge() {
+        // Считаем общее количество непрочитанных
+        const totalUnread = this.conversations.reduce((sum, conv) => {
+            return sum + (conv.unread_count || 0);
+        }, 0);
+        
+        // Обновляем badge в меню
+        const badge = document.getElementById('messages-badge');
+        if (badge) {
+            badge.textContent = totalUnread;
+            badge.style.display = totalUnread > 0 ? 'inline-flex' : 'none';
+        }
+        
+        console.log(`📬 Непрочитанных сообщений: ${totalUnread}`);
     }
     
     renderConversationItem(conv) {

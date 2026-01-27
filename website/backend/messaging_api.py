@@ -54,7 +54,11 @@ def format_conversation(conv, partner_info, unread_count, query_db_func):
             'type': partner_info.get('type', 'medical_center'),
             'blood_type': partner_info.get('blood_type'),
             'donation_count': partner_info.get('donation_count', 0),
-            'avatar': get_avatar_initials(partner_info.get('full_name') or partner_info.get('name'))
+            'avatar': get_avatar_initials(partner_info.get('full_name') or partner_info.get('name')),
+            # Дополнительная информация о партнёре
+            'address': partner_info.get('address'),
+            'phone': partner_info.get('phone'),
+            'email': partner_info.get('email')
         },
         'last_message': {
             'id': conv.get('last_msg_id'),

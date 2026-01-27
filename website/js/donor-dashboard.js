@@ -48,6 +48,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Инициализируем мессенджер после загрузки данных
             initMessenger();
             
+            // 📬 Загружаем счётчик непрочитанных сообщений
+            loadUnreadMessagesCount();
+            
             // 🔄 ЗАПУСКАЕМ POLLING
             startDataPolling();
         } catch (e) {
@@ -820,6 +823,86 @@ function displayMessages(messages) {
         item.addEventListener('click', () => markMessageAsRead(item.dataset.id));
     });
 }
+
+/**
+ * 📬 Загрузка счётчика непрочитанных сообщений (мессенджер)
+ */
+async function loadUnreadMessagesCount() {
+    console.log('📬 Загрузка счётчика непрочитанных...');
+    try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+            console.warn('📬 Нет токена авторизации');
+            return;
+        }
+        
+        const response = await fetch(`${DONOR_API_URL}/messages/conversations?status=active`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+        
+        console.log('📬 Ответ API:', response.status);
+        
+        if (response.ok) {
+            const data = await response.json();
+            const conversations = data.conversations || [];
+            const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
+            
+            console.log(`📬 Диалогов: ${conversations.length}, непрочитанных: ${totalUnread}`);
+            
+            updateMessagesBadgeUI(totalUnread);
+        } else {
+            console.warn('📬 Ошибка API:', response.status);
+        }
+    } catch (e) {
+        console.error('📬 Ошибка загрузки счётчика:', e);
+    }
+}
+
+/**
+ * 📬 Обновление UI счётчика непрочитанных
+ */
+function updateMessagesBadgeUI(count) {
+    const badge = document.getElementById('messages-badge');
+    console.log('📬 Обновление badge, элемент найден:', !!badge, ', count:', count);
+    
+    if (badge) {
+        badge.textContent = count;
+        badge.setAttribute('data-count', count);
+        
+        if (count > 0) {
+            badge.classList.remove('empty');
+            badge.style.background = '#E53935';
+            badge.style.color = 'white';
+            badge.style.opacity = '1';
+        } else {
+            badge.classList.add('empty');
+            badge.style.background = 'rgba(255, 255, 255, 0.3)';
+            badge.style.color = 'rgba(255, 255, 255, 0.8)';
+            badge.style.opacity = '1';
+        }
+        
+        // Гарантируем видимость
+        badge.style.display = 'inline-flex';
+        console.log(`📬 Badge обновлён: ${count}`);
+    } else {
+        console.error('📬 ОШИБКА: Элемент messages-badge НЕ НАЙДЕН!');
+    }
+}
+
+// Гарантированный вызов после полной загрузки страницы
+window.addEventListener('load', () => {
+    console.log('📬 Window load - вызываем loadUnreadMessagesCount');
+    setTimeout(() => loadUnreadMessagesCount(), 1000);
+});
+
+// Периодическое обновление счётчика каждые 30 секунд
+setInterval(() => {
+    loadUnreadMessagesCount();
+}, 30000);
 
 function updateMessagesBadge(messages) {
     const unreadCount = messages.filter(m => !m.is_read).length;

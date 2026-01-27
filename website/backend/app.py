@@ -4227,6 +4227,7 @@ def get_conversations():
                       mc.name as partner_name,
                       mc.address,
                       mc.phone,
+                      mc.email,
                       (SELECT LEFT(cm.message_text, 100) FROM chat_messages cm 
                        WHERE cm.conversation_id = c.id AND cm.deleted_at IS NULL 
                        ORDER BY cm.created_at DESC LIMIT 1) as last_message_preview,
@@ -4253,7 +4254,8 @@ def get_conversations():
                 'name': conv['partner_name'],
                 'type': 'medical_center',
                 'address': conv.get('address'),
-                'phone': conv.get('phone')
+                'phone': conv.get('phone'),
+                'email': conv.get('email')
             }
             result.append(format_conversation(conv, partner_info, conv['unread_count'], query_db))
         
